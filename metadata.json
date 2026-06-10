@@ -1,0 +1,6 @@
+{
+  "name": "Noto",
+  "description": "A productivity app focusing on notes and tasks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
