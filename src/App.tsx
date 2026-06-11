@@ -67,18 +67,23 @@ export default function App() {
         }
         
         if ('Notification' in window && Notification.permission === 'granted') {
-          navigator.serviceWorker.ready.then(reg => {
-             reg.showNotification(title, {
-                 body: body,
-                 icon: '/icon.png',
-                 badge: '/icon.png'
-             });
-          }).catch(() => {
-             new Notification(title, {
-               body: body,
-               icon: '/icon.png'
-             });
-          });
+          if (navigator.serviceWorker) {
+            navigator.serviceWorker.getRegistration().then(reg => {
+              if (reg) {
+                 reg.showNotification(title, {
+                     body: body,
+                     icon: '/icon.png',
+                     badge: '/icon.png'
+                 });
+              } else {
+                 new Notification(title, { body, icon: '/icon.png' });
+              }
+            }).catch(() => {
+               new Notification(title, { body, icon: '/icon.png' });
+            });
+          } else {
+             new Notification(title, { body, icon: '/icon.png' });
+          }
         }
       }
     }, 60000); 

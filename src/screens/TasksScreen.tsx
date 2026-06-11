@@ -65,7 +65,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
   if (activeTab === 'Hari Ini') {
     filteredTasks = filteredTasks.filter(t => (t.date === todayStr || t.date === 'Hari ini' || t.date === 'Hari Ini'));
   } else if (activeTab === 'Akan Datang') {
-    filteredTasks = filteredTasks.filter(t => !t.completed && t.date !== todayStr && t.date !== 'Hari ini' && t.date !== 'Hari Ini');
+    filteredTasks = filteredTasks.filter(t => !t.completed && t.date > todayStr && t.date !== 'Hari ini' && t.date !== 'Hari Ini');
   } else if (activeTab === 'Belum Selesai') {
     filteredTasks = filteredTasks.filter(t => !t.completed);
   } else if (activeTab === 'Selesai') {
@@ -96,22 +96,22 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
       </div>
 
       {/* Tabs */}
-      <div className="px-6 py-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-800/50 flex-shrink-0 lg:justify-center">
+      <div className="px-5 py-3 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-800/80 flex-shrink-0 lg:justify-center">
         {['Hari Ini', 'Akan Datang', 'Belum Selesai', 'Selesai'].map((tab, idx) => {
           const tabLabels = [
-             lang === 'id' ? 'Tugas Hari Ini' : "Today's Tasks", 
-             lang === 'id' ? 'Tugas Akan Datang' : "Upcoming Tasks", 
+             lang === 'id' ? 'Hari Ini' : "Today", 
+             lang === 'id' ? 'Berikutnya' : "Upcoming", 
              lang === 'id' ? 'Belum Selesai' : "Uncompleted", 
-             lang === 'id' ? 'Sudah Selesai' : "Completed"
+             lang === 'id' ? 'Selesai' : "Done"
           ];
           return (
           <button 
             key={tab}
             onClick={() => setActiveTab(tab as any)}
-            className={`px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors flex-shrink-0 ${
+            className={`px-4 py-2 rounded-xl text-[11px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors flex-shrink-0 ${
               activeTab === tab 
-                ? 'bg-indigo-600 text-white' 
-                : 'bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-800'
+                ? 'bg-slate-800 text-slate-50' 
+                : 'text-slate-500 hover:bg-slate-900'
             }`}
           >
             {tabLabels[idx]}
@@ -120,12 +120,12 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24 w-full">
-        <div className="w-full px-6 py-6 space-y-8">
+        <div className="w-full px-4 md:px-6 py-6 space-y-6">
           
           {filteredTasks.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-              <ClipboardList className="w-12 h-12 md:w-16 md:h-16 mb-4 text-slate-700 opacity-50" />
-              <div className="text-center font-medium placeholder-text text-sm md:text-base">
+            <div className="flex flex-col items-center justify-center py-24 text-slate-500">
+              <ClipboardList className="w-12 h-12 mb-4 text-slate-800" />
+              <div className="text-center font-medium text-sm md:text-base">
                 {activeTab === 'Selesai' 
                   ? (lang === 'id' ? 'Belum ada tugas yang selesai.' : 'No completed tasks yet.') 
                   : activeTab === 'Hari Ini' 
@@ -138,11 +138,13 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
           {/* Group: Hari Ini */}
           {todayTasks.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-4 md:mb-6">
-              <h3 className="text-sm md:text-base font-bold text-slate-400 uppercase tracking-widest">{t('today')}</h3>
-              <span className="w-6 h-6 bg-indigo-500/20 text-indigo-400 rounded-md flex items-center justify-center text-xs font-bold">{todayTasks.length}</span>
-            </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-8 flex flex-col gap-3 md:gap-4">
+            {activeTab !== 'Hari Ini' && (
+              <div className="flex items-center gap-3 mb-3 ml-2">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('today')}</h3>
+                <span className="text-[10px] text-slate-500 font-medium bg-slate-800/50 px-2 py-0.5 rounded-md">{todayTasks.length}</span>
+              </div>
+            )}
+            <div className="bg-slate-900 border border-slate-800/80 rounded-2xl flex flex-col overflow-hidden">
                {todayTasks.map((task, i) => (
                  <TaskCard key={task.id} task={task} last={i === todayTasks.length - 1} onToggle={() => toggleTask(task.id)} onEdit={() => { openEditTask(task); setIsAddingTask(true); }} />
                ))}
@@ -153,11 +155,11 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
           {/* Group: Besok */}
           {tomorrowTasks.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-4 md:mb-6">
-              <h3 className="text-sm md:text-base font-bold text-slate-400 uppercase tracking-widest">{t('tomorrow')}</h3>
-              <span className="w-6 h-6 bg-slate-800 text-slate-400 rounded-md flex items-center justify-center text-xs font-bold">{tomorrowTasks.length}</span>
+            <div className="flex items-center gap-3 mb-3 ml-2">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('tomorrow')}</h3>
+              <span className="text-[10px] text-slate-500 font-medium bg-slate-800/50 px-2 py-0.5 rounded-md">{tomorrowTasks.length}</span>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-8 flex flex-col gap-3 md:gap-4">
+            <div className="bg-slate-900 border border-slate-800/80 rounded-2xl flex flex-col overflow-hidden">
                {tomorrowTasks.map((task, i) => (
                  <TaskCard key={task.id} task={task} last={i === tomorrowTasks.length - 1} onToggle={() => toggleTask(task.id)} onEdit={() => { openEditTask(task); setIsAddingTask(true); }} />
                ))}
@@ -168,11 +170,11 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
           {/* Group: Lainnya */}
           {otherTasks.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-4 md:mb-6">
-              <h3 className="text-sm md:text-base font-bold text-slate-400 uppercase tracking-widest">{t('other')}</h3>
-              <span className="w-6 h-6 bg-slate-800 text-slate-400 rounded-md flex items-center justify-center text-xs font-bold">{otherTasks.length}</span>
+            <div className="flex items-center gap-3 mb-3 ml-2">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('other')}</h3>
+              <span className="text-[10px] text-slate-500 font-medium bg-slate-800/50 px-2 py-0.5 rounded-md">{otherTasks.length}</span>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-8 flex flex-col gap-3 md:gap-4">
+            <div className="bg-slate-900 border border-slate-800/80 rounded-2xl flex flex-col overflow-hidden">
                {otherTasks.map((task, i) => (
                  <TaskCard key={task.id} task={task} last={i === otherTasks.length - 1} onToggle={() => toggleTask(task.id)} onEdit={() => { openEditTask(task); setIsAddingTask(true); }} />
                ))}
@@ -268,7 +270,7 @@ const TaskCard: React.FC<{ task: Task, last?: boolean, onToggle: () => void, onE
   const t = useTranslation(lang);
 
   return (
-    <div className={`flex items-start gap-4 group border-slate-800 pb-3 cursor-pointer ${last ? '' : 'border-b mt-2 -mb-1'}`}>
+    <div className={`flex items-start gap-4 group border-slate-800/60 cursor-pointer px-4 ${!last ? 'border-b py-4' : 'pt-4 pb-4'}`}>
       <button onClick={onToggle} className="p-2 -ml-2 rounded-full flex-none flex items-center justify-center transition-colors mt-0">
         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
           task.completed 
@@ -295,7 +297,7 @@ const TaskCard: React.FC<{ task: Task, last?: boolean, onToggle: () => void, onE
              isMed ? 'text-blue-400 bg-blue-500/10' : 
              'text-emerald-400 bg-emerald-500/10'
            }`}>
-             {(isHigh ? t('high') : isMed ? t('medium') : t('low')) || task.priority} {t('priority')}
+             {(isHigh ? t('high') : isMed ? t('medium') : t('low')) || task.priority}
            </span>
          </div>
       </div>
