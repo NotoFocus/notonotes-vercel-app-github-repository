@@ -5,7 +5,7 @@ import { Plus, Hash, Tag, FileText, Calendar, Trash2, ArrowUpRight, ArrowDownRig
 import { Transaction } from '../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const expenseCategoriesList = ['Food', 'Transport', 'Bills', 'Investment', 'Health', 'Education', 'Entertainment', 'Other'];
+const expenseCategoriesList = ['Food', 'Transport', 'Bills', 'Investment', 'Health', 'Education', 'Entertainment', 'Pocket Money', 'Other'];
 const incomeCategoriesList = ['Salary', 'Freelance', 'Investment', 'Gift', 'Other'];
 
 export const translateCategory = (cat: string, lang: 'id' | 'en') => {
@@ -18,6 +18,7 @@ export const translateCategory = (cat: string, lang: 'id' | 'en') => {
     'Health': 'Kesehatan',
     'Education': 'Pendidikan',
     'Entertainment': 'Hiburan',
+    'Pocket Money': 'Uang Jajan',
     'Salary': 'Gaji',
     'Freelance': 'Sambilan',
     'Gift': 'Hadiah',
@@ -46,6 +47,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<'IDR' | 'USD'>('IDR');
   const [category, setCategory] = useState('');
+  const [showCustomCategory, setShowCustomCategory] = useState(false);
   const [date, setDate] = useState(() => {
     return new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   });
@@ -156,6 +158,15 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
     setType(t.type);
     setAmount(t.currency === 'IDR' ? (t.amount / 1000).toString() : t.amount.toString());
     setCategory(t.category);
+    
+    // Check if it's a custom category
+    const list = t.type === 'expense' ? expenseCategoriesList : incomeCategoriesList;
+    if (!list.includes(t.category)) {
+      setShowCustomCategory(true);
+    } else {
+      setShowCustomCategory(false);
+    }
+
     setDate(t.date);
     setDescription(t.description || '');
     setCurrency(t.currency || 'IDR');
@@ -247,7 +258,18 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
           </button>
           
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setEditingId(null);
+              setType('expense');
+              setAmount('');
+              setCategory('');
+              setShowCustomCategory(false);
+              setDescription('');
+              setCurrency('IDR');
+              const offset = new Date().getTimezoneOffset() * 60000;
+              setDate(new Date(new Date().getTime() - offset).toISOString().split('T')[0]);
+              setShowAddModal(true);
+            }}
             className="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20"
           >
             <Plus className="w-5 h-5" />
@@ -519,21 +541,21 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                 <div>
                   <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`}>{t('amount') as string}</label>
                   <div className={`flex items-center px-3 py-2.5 rounded-xl border ${'bg-slate-950 border-slate-800'} focus-within:border-indigo-500/50`}>
-                    <Hash className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
                     <select 
                       value={currency} 
                       onChange={e => setCurrency(e.target.value as 'IDR' | 'USD')}
                       className="bg-transparent font-bold text-slate-400 outline-none mr-2 appearance-none cursor-pointer text-sm"
                     >
-                      <option value="IDR">IDR</option>
-                      <option value="USD">USD</option>
+                      <option value="IDR">Rp</option>
+                      <option value="USD">$</option>
                     </select>
                     <div className="flex-1 flex items-center pr-3">
                       <input 
                         type="number"
                         value={amount}
                         onChange={e => setAmount(e.target.value)}
-                        className="w-full text-right bg-transparent text-sm outline-none text-current font-semibold"
+                        className="bg-transparent text-sm outline-none text-slate-50 font-semibold text-right"
+                        style={{ width: amount ? `${Math.max(2, amount.length)}ch` : '2ch', minWidth: '40px', maxWidth: '100%' }}
                         placeholder="0"
                       />
                       {currency === 'IDR' && <span className="text-sm font-semibold text-slate-400 ml-0.5">.000</span>}
@@ -549,13 +571,37 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                       <button
                         key={cat}
                         type="button"
-                        onClick={() => setCategory(cat)}
-                        className={`px-2 py-1 rounded text-[11px] font-bold transition-all border-2 ${category === cat ? (type === 'income' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500' : 'bg-rose-500/10 text-rose-500 border-rose-500') : `border-transparent bg-slate-800 text-slate-400 hover:bg-slate-700`}`}
+                        onClick={() => {
+                          setCategory(cat);
+                          setShowCustomCategory(false);
+                        }}
+                        className={`px-2 py-1 rounded text-[11px] font-bold transition-all border-2 ${category === cat && !showCustomCategory ? (type === 'income' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500' : 'bg-rose-500/10 text-rose-500 border-rose-500') : `border-transparent bg-slate-800 text-slate-400 hover:bg-slate-700`}`}
                       >
                         {translateCategory(cat, lang)}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomCategory(true);
+                        setCategory('');
+                      }}
+                      className={`px-2 py-1 rounded text-[11px] font-bold transition-all border-2 flex items-center justify-center ${showCustomCategory ? (type === 'income' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500' : 'bg-rose-500/10 text-rose-500 border-rose-500') : `border-transparent bg-slate-800 text-slate-400 hover:bg-slate-700`}`}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+                  {showCustomCategory && (
+                    <div className="mt-2 text-left">
+                      <input 
+                        type="text" 
+                        value={category}
+                        onChange={e => setCategory(e.target.value)}
+                        placeholder={t('customCategoryPlaceholder') as string || 'Kategori Kustom...'}
+                        className={`w-full px-3 py-2.5 rounded-xl border text-sm font-semibold outline-none transition-colors border-slate-800 bg-slate-950 text-slate-50 focus:border-indigo-500/50`}
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex gap-3">
