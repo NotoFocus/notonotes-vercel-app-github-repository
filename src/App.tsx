@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Home, CheckCircle2, Calendar as CalendarIcon, Settings, Lock, Layers, Bell, X } from 'lucide-react';
+import { Home, CheckCircle2, Calendar as CalendarIcon, Settings, Lock, Layers, Bell, X, Wallet } from 'lucide-react';
 import HomeScreen from './screens/HomeScreen';
 import TasksScreen from './screens/TasksScreen';
 import CalendarScreen from './screens/CalendarScreen';
@@ -12,11 +12,12 @@ import NoteEditorScreen from './screens/NoteEditorScreen';
 import SearchScreen from './screens/SearchScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
+import FinanceScreen from './screens/FinanceScreen';
 import { Note } from './types';
 import { useAppStore } from './store';
 import { useTranslation } from './translations';
 
-export type ScreenItem = 'home' | 'tasks' | 'search' | 'calendar' | 'settings' | 'note-editor';
+export type ScreenItem = 'home' | 'tasks' | 'search' | 'calendar' | 'finance' | 'settings' | 'note-editor';
 
 let activeAudio: HTMLAudioElement | null = null;
 
@@ -91,7 +92,7 @@ export default function App() {
         } catch(e) {}
         
         if ('Notification' in window && Notification.permission === 'granted') {
-          const options: NotificationOptions = { 
+          const options: any = { 
             body: body, 
             icon: '/icon.png', 
             badge: '/icon.png',
@@ -261,6 +262,7 @@ export default function App() {
         {currentScreen === 'home' && <HomeScreen appTheme={appTheme} setAppTheme={setAppTheme} onOpenNote={openNote} onNavigate={(screen) => setCurrentScreen(screen)} />}
         {currentScreen === 'tasks' && <TasksScreen onNavigate={(screen) => setCurrentScreen(screen)} />}
         {currentScreen === 'calendar' && <CalendarScreen />}
+        {currentScreen === 'finance' && <FinanceScreen appTheme={appTheme} onBack={() => setCurrentScreen('home')} />}
         {currentScreen === 'note-editor' && activeNote && <NoteEditorScreen note={activeNote} onBack={closeNote} />}
         {currentScreen === 'search' && <SearchScreen onOpenNote={openNote} />}
         {currentScreen === 'settings' && <SettingsScreen appTheme={appTheme} setAppTheme={setAppTheme} />}

@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Note, Task, User } from './types';
+import { Note, Task, User, Transaction } from './types';
 import { currentUser, recentNotes, allTasks } from './data';
 
 interface AppContextType {
   notes: Note[];
   tasks: Task[];
+  transactions: Transaction[];
   user: User;
   updateUser: (u: User) => void;
   addNote: (note: Note) => void;
@@ -14,7 +15,12 @@ interface AppContextType {
   updateTask: (task: Task) => void;
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
-  importData: (notes: Note[], tasks: Task[]) => void;
+  addTransaction: (transaction: Transaction) => void;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => void;
+  deleteTransaction: (id: string) => void;
+  clearAllTransactions: () => void;
+  importTransactions: (transactions: Transaction[]) => void;
+  importData: (notes: Note[], tasks: Task[], transactions?: Transaction[]) => void;
   clearAllData: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
@@ -78,6 +84,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     } catch(e){}
     return allTasks;
+  });
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      const s = localStorage.getItem('noto_transactions');
+      if (s) {
+        return JSON.parse(s);
+      }
+    } catch(e){}
+    return [];
   });
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,6 +180,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { localStorage.setItem('noto_user', JSON.stringify(user)); }, [user]);
   useEffect(() => { localStorage.setItem('noto_notes', JSON.stringify(notes)); }, [notes]);
   useEffect(() => { localStorage.setItem('noto_tasks', JSON.stringify(tasks)); }, [tasks]);
+  useEffect(() => { localStorage.setItem('noto_transactions', JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { if (appPin) localStorage.setItem('noto_pin', appPin); else localStorage.removeItem('noto_pin'); }, [appPin]);
   useEffect(() => { localStorage.setItem('noto_streak', streak.toString()); }, [streak]);
   useEffect(() => { if (lastTaskCompleted) localStorage.setItem('noto_last_task_completed', lastTaskCompleted); }, [lastTaskCompleted]);
@@ -219,21 +236,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const deleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
 
-  const importData = (importedNotes: Note[], importedTasks: Task[]) => {
+  const addTransaction = (t: Transaction) => setTransactions(prev => [t, ...prev]);
+  const updateTransaction = (id: string, updates: Partial<Transaction>) => setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  const deleteTransaction = (id: string) => setTransactions(prev => prev.filter(t => t.id !== id));
+  const clearAllTransactions = () => setTransactions([]);
+  const importTransactions = (importedTransactions: Transaction[]) => setTransactions(importedTransactions);
+
+  const importData = (importedNotes: Note[], importedTasks: Task[], importedTransactions?: Transaction[]) => {
     setNotes(importedNotes);
     setTasks(importedTasks);
+    if (importedTransactions) setTransactions(importedTransactions);
   };
 
   const clearAllData = () => {
     localStorage.setItem('noto_user', JSON.stringify({ name: 'Pengguna', avatarUrl: '' }));
     localStorage.setItem('noto_notes', '[]');
     localStorage.setItem('noto_tasks', '[]');
+    localStorage.setItem('noto_transactions', '[]');
     localStorage.setItem('noto_streak', '0');
     localStorage.removeItem('noto_last_task_completed');
     localStorage.removeItem('noto_pin');
     localStorage.removeItem('noto_onboarding_completed');
     setNotes([]);
     setTasks([]);
+    setTransactions([]);
     setStreak(0);
     setLastTaskCompleted(null);
     setAppPin(null);
@@ -242,9 +268,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const contextValue = React.useMemo(() => ({
-    notes, tasks, user, updateUser: setUser,
+    notes, tasks, transactions, user, updateUser: setUser,
     addNote, updateNote, deleteNote, 
     addTask, updateTask, toggleTask, deleteTask,
+    addTransaction, updateTransaction, deleteTransaction, clearAllTransactions, importTransactions,
     importData, clearAllData,
     searchQuery, setSearchQuery, appPin, setAppPin,
     lang, setLang,
@@ -252,7 +279,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     isUnlocked, setIsUnlocked, streak,
     reminderActive, setReminderActive, reminderTime, setReminderTime
   }), [
-    notes, tasks, user, searchQuery, appPin, lang,
+    notes, tasks, transactions, user, searchQuery, appPin, lang,
     hasCompletedOnboarding, isUnlocked, streak,
     reminderActive, reminderTime
   ]);

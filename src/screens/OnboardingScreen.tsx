@@ -35,7 +35,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
       className="flex flex-col items-center text-center px-8 w-full max-w-sm"
     >
       <div className="w-20 h-20 bg-indigo-500/20 rounded-full flex items-center justify-center mb-8">
-        <span className="text-4xl">👋</span>
+        <span className="text-6xl md:text-6xl">👋</span>
       </div>
       <h2 className="text-3xl font-bold mb-4 text-slate-100">{t('welcomeTo')}</h2>
       <p className="text-slate-400 mb-10">{t('whoAreYou')}</p>
@@ -46,7 +46,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleNext()}
         placeholder={t('yourName') as string}
-        className="w-full bg-slate-900 border border-slate-700/50 rounded-2xl px-6 py-4 text-slate-100 placeholder-slate-500 text-center text-lg outline-none focus:border-indigo-500/50 focus:bg-slate-800/80 transition-all mb-8 shadow-inner"
+        className="w-full bg-slate-900 border border-slate-700/50 rounded-2xl px-6 py-4 text-slate-100 placeholder-slate-500 text-center text-2xl outline-none focus:border-indigo-500/50 focus:bg-slate-800/80 transition-all mb-8 shadow-inner"
         autoFocus
       />
     </motion.div>,
@@ -62,7 +62,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
       <div className="w-24 h-24 bg-orange-500/10 rounded-full flex items-center justify-center mb-8 border border-orange-500/20 relative">
         <Home className="w-12 h-12 text-orange-400 relative z-10" />
       </div>
-      <h2 className="text-2xl font-bold mb-4 text-slate-100">{t('tourHome')}</h2>
+      <h2 className="text-3xl font-bold mb-4 text-slate-100">{t('tourHome')}</h2>
       <p className="text-slate-400 text-center leading-relaxed">
         {t('tourHomeDesc')}
       </p>
@@ -79,7 +79,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
       <div className="w-24 h-24 bg-indigo-500/10 rounded-full flex items-center justify-center mb-8 border border-indigo-500/20 relative">
         <LayoutList className="w-12 h-12 text-indigo-400 relative z-10" />
       </div>
-      <h2 className="text-2xl font-bold mb-4 text-slate-100">{t('tourTasks')}</h2>
+      <h2 className="text-3xl font-bold mb-4 text-slate-100">{t('tourTasks')}</h2>
       <p className="text-slate-400 text-center leading-relaxed">
         {t('tourTasksDesc')}
       </p>
@@ -96,7 +96,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
       <div className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-8 border border-blue-500/20 relative">
         <NotebookPen className="w-12 h-12 text-blue-400 relative z-10" />
       </div>
-      <h2 className="text-2xl font-bold mb-4 text-slate-100">{t('tourNotes')}</h2>
+      <h2 className="text-3xl font-bold mb-4 text-slate-100">{t('tourNotes')}</h2>
       <p className="text-slate-400 text-center leading-relaxed">
         {t('tourNotesDesc')}
       </p>
@@ -113,7 +113,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
       <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mb-8 border border-rose-500/20 relative">
         <CalendarDays className="w-12 h-12 text-rose-400 relative z-10" />
       </div>
-      <h2 className="text-2xl font-bold mb-4 text-slate-100">{t('tourCalendar')}</h2>
+      <h2 className="text-3xl font-bold mb-4 text-slate-100">{t('tourCalendar')}</h2>
       <p className="text-slate-400 text-center leading-relaxed">
         {t('tourCalendarDesc')}
       </p>
@@ -130,7 +130,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
       <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mb-8 border border-green-500/20 relative">
         <Rocket className="w-12 h-12 text-green-400 relative z-10" />
       </div>
-      <h2 className="text-2xl font-bold mb-4 text-slate-100">{t('allSet')}{name ? `, ${name}` : ''}!</h2>
+      <h2 className="text-3xl font-bold mb-4 text-slate-100">{t('allSet')}{name ? `, ${name}` : ''}!</h2>
       <p className="text-slate-400 text-center leading-relaxed">
         {t('allSetDesc')}
       </p>
@@ -161,7 +161,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
         <button
           onClick={handleNext}
           disabled={step === 0 && !name.trim()}
-          className="w-full max-w-sm bg-indigo-500 text-white rounded-full py-4 font-bold text-lg hover:bg-indigo-600 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100 shadow-lg shadow-indigo-500/25"
+          className="w-full max-w-sm bg-indigo-500 text-white rounded-full py-4 font-bold text-xl hover:bg-indigo-600 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100 shadow-lg shadow-indigo-500/25"
         >
           {step === 5 ? t('startUsing') : step === 0 ? t('continue') : t('next')}
           <ArrowRight className="w-5 h-5" />

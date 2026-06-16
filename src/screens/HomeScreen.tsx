@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckSquare, Bell, Clock, Play, Pause, RotateCcw, X, Pin, FileText, Trash2, Flame, Sparkles, ChevronRight, Repeat } from 'lucide-react';
+import { Plus, CheckSquare, Bell, Clock, Play, Pause, RotateCcw, X, Pin, FileText, Trash2, Flame, Sparkles, ChevronRight, Repeat, Wallet } from 'lucide-react';
 import { Note, Task } from '../types';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -9,7 +9,7 @@ interface HomeProps {
   appTheme: string;
   setAppTheme: (theme: 'dark' | 'light' | 'pink') => void;
   onOpenNote: (note: Note) => void;
-  onNavigate: (screen: 'home' | 'tasks' | 'search' | 'calendar' | 'settings') => void;
+  onNavigate: (screen: 'home' | 'tasks' | 'search' | 'calendar' | 'settings' | 'finance') => void;
 }
 
 export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNavigate }: HomeProps) {
@@ -107,7 +107,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
   };
 
   const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [hasSeenUpdate110, setHasSeenUpdate110] = useState(() => localStorage.getItem('noto_update_1_1_0') === 'true');
+  const [hasSeenUpdate120, setHasSeenUpdate120] = useState(() => localStorage.getItem('noto_update_1_2_0') === 'true');
 
   const particleData = React.useMemo(() => {
     return [...Array(15)].map((_, i) => ({
@@ -284,77 +284,80 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
               NOTO
            </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button className="p-3 text-slate-400 hover:text-emerald-400 transition-colors relative" onClick={() => onNavigate('finance')} title={t('financeMenu') as string}>
+            <Wallet className="w-5 h-5" />
+          </button>
           <button className="p-3 text-slate-400 hover:text-indigo-400 transition-colors" onClick={() => setShowTimer(true)}>
             <Clock className="w-5 h-5" />
           </button>
           <button className="p-3 -mr-2 text-slate-400 hover:text-slate-50 transition-colors relative" onClick={() => setShowNotificationModal(true)}>
             <Bell className="w-5 h-5" />
-            {!hasSeenUpdate110 && <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></span>}
+            {!hasSeenUpdate120 && <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></span>}
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar pb-6 w-full">
+      <div className="flex-1 overflow-y-auto px-4 py-4 no-scrollbar pb-6 w-full">
         {/* Greeting & Focus Card */}
-        <div className="relative w-full rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 p-6 overflow-hidden shadow-lg mb-8 text-white">
+        <div className="relative w-full rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-4 overflow-hidden shadow-md mb-5 text-white">
           <div className="relative z-10">
-            <div className="flex justify-between items-start mb-6 gap-4">
+            <div className="flex justify-between items-start mb-3 gap-3">
               <div className="flex-1">
-                <p className="text-indigo-100 text-sm font-medium opacity-90 leading-relaxed mb-2">{getGreeting()}</p>
-                <h2 className="text-3xl font-black mb-1 tracking-tight">{t('focusToday')}</h2>
-                <p className="text-indigo-200 text-sm font-medium">{activeTasksCount} {t('remainingTask')}</p>
+                <p className="text-indigo-50 text-sm sm:text-base font-semibold leading-relaxed mb-0.5">{getGreeting()}</p>
+                <h2 className="text-xl sm:text-2xl font-bold mb-1 tracking-tight leading-tight">{t('focusToday')}</h2>
+                <p className="text-indigo-200 text-xs sm:text-sm font-medium mt-1 mb-1">{activeTasksCount} {t('remainingTask')}</p>
               </div>
               
               {/* Streak Badge */}
               <div 
                 onClick={() => setShowStreakSplash(true)}
-                className="relative flex-shrink-0 flex flex-col items-center justify-center bg-gradient-to-b from-orange-500/20 to-orange-600/20 border border-orange-400/30 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:scale-105 hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] transition-all cursor-pointer group" 
+                className="relative flex-shrink-0 flex flex-col items-center justify-center bg-gradient-to-b from-orange-500/20 to-orange-600/20 border border-orange-400/30 rounded-2xl px-4 py-2 hover:scale-105 transition-all cursor-pointer group shadow-[0_0_15px_rgba(249,115,22,0.2)]" 
                 title={`${streak} hari berturut-turut!`}
               >
-                <Flame className="w-8 h-8 text-orange-400 fill-orange-400 drop-shadow-[0_0_12px_rgba(249,115,22,0.8)] mb-2 group-hover:animate-pulse" />
-                <span className="text-4xl font-black text-white leading-none relative z-10 drop-shadow-lg tracking-tighter">{streak}</span>
+                <Flame className="w-5 h-5 text-orange-400 fill-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)] mb-0.5 group-hover:animate-pulse" />
+                <span className="text-2xl sm:text-3xl font-black text-white leading-none relative z-10 drop-shadow-lg tracking-tighter">{streak}</span>
                 <span className="text-[9px] font-bold uppercase tracking-widest text-orange-200 relative z-10 mt-1 opacity-90">Streak</span>
               </div>
             </div>
             
             <div className="w-full max-w-[200px]">
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-100">Progress</span>
-                <span className="text-xl font-bold">{progressPercent}%</span>
+              <div className="flex justify-between items-end mb-1">
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-indigo-100">Progress</span>
+                <span className="text-[10px] font-bold">{progressPercent}%</span>
               </div>
-              <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
-                <div className="h-full bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,0.6)]" style={{ width: `${progressPercent}%` }}></div>
+              <div className="h-0.5 w-full bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" style={{ width: `${progressPercent}%` }}></div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Prioritas Utama */}
-        <section className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-             <h3 className="text-lg font-bold text-slate-50 flex items-center gap-2">
-                <Pin className="w-5 h-5 text-orange-400 fill-orange-400" />
+        <section className="mb-5">
+          <div className="flex justify-between items-center mb-2">
+             <h3 className="text-lg font-bold text-slate-50 flex items-center gap-1.5">
+                <Pin className="w-4 h-4 text-orange-400 fill-orange-400" />
                 {t('topPriority')}
              </h3>
-             <button onClick={() => { setSearchQuery(''); onNavigate('search'); }} className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">{t('allTasks') || 'Semua'}</button>
+             <button onClick={() => { setSearchQuery(''); onNavigate('search'); }} className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest">{t('allTasks') || 'Semua'}</button>
           </div>
           
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-2">
             {pinnedNotes.length === 0 && pinnedTasks.length === 0 && (
-              <p className="text-xs text-slate-500 font-medium bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center">
+              <p className="text-[10px] text-slate-500 font-medium bg-slate-900 border border-slate-800 p-3 rounded-xl text-center">
                 {t('noPriority')}
               </p>
             )}
 
             {pinnedTasks.length > 0 && (
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col gap-3">
-                 <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1"><CheckSquare className="w-3 h-3" /> {t('priorityTasks')}</h4>
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2">
+                 <h4 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-1"><CheckSquare className="w-2.5 h-2.5" /> {t('priorityTasks')}</h4>
                  {pinnedTasks.map((task, i) => (
-                   <div key={task.id} className={`flex items-center gap-3 group border-slate-800 pb-3 cursor-pointer ${i === pinnedTasks.length - 1 ? '' : 'border-b mt-2 -mb-1'}`} onClick={() => toggleTask(task.id)}>
-                     <div className="p-2 -ml-2 rounded-full flex-none flex items-center justify-center transition-colors">
-                       <button className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-none transition-colors ${task.completed ? 'border-indigo-500 bg-indigo-500' : 'border-slate-700 group-hover:border-indigo-500'}`}>
-                         {task.completed && <div className="w-2 h-2 rounded-sm bg-white" />}
+                   <div key={task.id} className={`flex items-start gap-2.5 group border-slate-800 pb-2 cursor-pointer ${i === pinnedTasks.length - 1 ? '' : 'border-b mt-1.5 -mb-1'}`} onClick={() => toggleTask(task.id)}>
+                     <div className="p-1 -ml-1 rounded-full flex-none flex items-center justify-center transition-colors">
+                       <button className={`w-4 h-4 rounded-[4px] border-2 flex items-center justify-center flex-none transition-colors ${task.completed ? 'border-indigo-500 bg-indigo-500' : 'border-slate-700 group-hover:border-indigo-500'}`}>
+                         {task.completed && <div className="w-1.5 h-1.5 rounded-[1px] bg-white" />}
                        </button>
                      </div>
                      <div className={`flex-1 ${task.completed ? 'opacity-50' : ''}`}>
@@ -373,9 +376,9 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                      </div>
                      <button 
                        onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
-                       className="opacity-100 p-3 -mr-2 flex-shrink-0 text-slate-500 hover:text-red-400 transition-colors"
+                       className="opacity-100 p-2 flex-shrink-0 text-slate-500 hover:text-red-400 transition-colors"
                      >
-                       <Trash2 className="w-5 h-5" />
+                       <X className="w-4 h-4" />
                      </button>
                    </div>
                  ))}
@@ -424,7 +427,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
       {/* Timer Modal */}
       {showTimer && (
         <div className="absolute inset-0 bg-slate-950/60  z-[100] flex items-center justify-center p-4">
-           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-xs shadow-2xl relative">
+           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-4 w-full max-w-xs shadow-2xl relative">
               <button 
                 onClick={() => setShowTimer(false)}
                 className="absolute top-4 right-4 text-slate-500 hover:text-slate-50 transition-colors"
@@ -489,37 +492,37 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
 
       {/* Notification Modal */}
       {showNotificationModal && (
-        <div className="absolute inset-0 bg-slate-950/95 z-[100] flex flex-col items-center justify-center animate-in fade-in duration-200 p-6" onClick={() => {
+        <div className="absolute inset-0 bg-slate-950/95 z-[100] flex flex-col items-center justify-center animate-in fade-in duration-200 p-4 md:p-5" onClick={() => {
           setShowNotificationModal(false);
-          if (!hasSeenUpdate110) {
-            localStorage.setItem('noto_update_1_1_0', 'true');
-            setHasSeenUpdate110(true);
+          if (!hasSeenUpdate120) {
+            localStorage.setItem('noto_update_1_2_0', 'true');
+            setHasSeenUpdate120(true);
           }
         }}>
-           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 w-full max-w-sm flex flex-col shadow-2xl relative items-center text-center" onClick={e => e.stopPropagation()}>
+           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-4 md:p-4 w-full max-w-sm flex flex-col shadow-2xl relative items-center text-center" onClick={e => e.stopPropagation()}>
               <button 
                 onClick={() => {
                   setShowNotificationModal(false);
-                  if (!hasSeenUpdate110) {
-                    localStorage.setItem('noto_update_1_1_0', 'true');
-                    setHasSeenUpdate110(true);
+                  if (!hasSeenUpdate120) {
+                    localStorage.setItem('noto_update_1_2_0', 'true');
+                    setHasSeenUpdate120(true);
                   }
                 }}
                 className="absolute top-4 right-4 text-slate-500 hover:text-slate-50"
               >
                 <X className="w-5 h-5" />
               </button>
-              <div className={`w-12 h-12 ${!hasSeenUpdate110 ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-800 text-slate-400'} rounded-2xl flex items-center justify-center mb-6`}>
+              <div className={`w-12 h-12 ${!hasSeenUpdate120 ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-800 text-slate-400'} rounded-2xl flex items-center justify-center mb-6`}>
                 <Bell className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-slate-50 mb-2">{!hasSeenUpdate110 ? t('appUpdateTitle') : t('noNotification')}</h3>
-              <p className="text-sm text-slate-400 mb-6">{!hasSeenUpdate110 ? t('appUpdateBody') : t('allNotificationRead')}</p>
+              <h3 className="text-lg font-bold text-slate-50 mb-2">{!hasSeenUpdate120 ? t('appUpdateTitle') : t('noNotification')}</h3>
+              <p className="text-sm text-slate-400 mb-6">{!hasSeenUpdate120 ? t('appUpdateBody') : t('allNotificationRead')}</p>
               <button 
                 onClick={() => {
                   setShowNotificationModal(false);
-                  if (!hasSeenUpdate110) {
-                    localStorage.setItem('noto_update_1_1_0', 'true');
-                    setHasSeenUpdate110(true);
+                  if (!hasSeenUpdate120) {
+                    localStorage.setItem('noto_update_1_2_0', 'true');
+                    setHasSeenUpdate120(true);
                   }
                 }}
                 className="w-full py-4 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"

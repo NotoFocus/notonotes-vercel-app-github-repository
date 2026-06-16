@@ -262,7 +262,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
           </div>
 
           {/* Content */}
-          <div className="flex-grow flex flex-col bg-slate-900 border border-slate-800 rounded-3xl p-6">
+          <div className="flex-grow flex flex-col bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-5">
             <div
               id="note-editor-content"
               ref={editorRef}
@@ -304,9 +304,9 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-6 z-[100]">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm">
-            <h3 className="text-lg font-bold text-red-400 mb-2">{t('deleteNoteTitle')}</h3>
+        <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-4 z-[100]">
+          <div className="bg-slate-900 border border-slate-800 p-4 md:p-4 rounded-3xl w-full max-w-sm">
+            <h3 className="text-xl font-bold text-red-400 mb-2">{t('deleteNoteTitle')}</h3>
             <p className="text-sm text-slate-400 mb-6">
               {t('deleteNoteConfirm')}
             </p>

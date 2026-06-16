@@ -131,7 +131,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><CheckSquare className="w-4 h-4" /> {group.name}</h3>
                  <span className="w-5 h-5 bg-slate-800 text-slate-400 rounded flex items-center justify-center text-[10px] font-bold">{group.items.length}</span>
                </div>
-               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col gap-1">
+               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 flex flex-col gap-1">
                  {group.items.map((task, i) => renderTaskCard(task, i === group.items.length - 1))}
                </div>
              </div>
@@ -183,7 +183,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
          {filteredTasks.length > 0 && (
           <div>
             <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><CheckSquare className="w-4 h-4" /> {t('tasks')}</h3>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col gap-1">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 flex flex-col gap-1">
                {filteredTasks.map((task, i) => renderTaskCard(task, i === filteredTasks.length - 1))}
             </div>
           </div>

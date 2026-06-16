@@ -110,7 +110,7 @@ export default function CalendarScreen() {
     <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
       {/* Top Bar */}
       <div className="flex-none h-16 border-b border-slate-800 bg-slate-900 px-6 flex items-center gap-4">
-        <span className="font-bold text-lg text-slate-50 tracking-tight flex-1">{t('calendar')}</span>
+        <span className="font-bold text-2xl text-slate-50 tracking-tight flex-1">{t('calendar')}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24 w-full">
@@ -121,16 +121,16 @@ export default function CalendarScreen() {
             <button className="p-2 -ml-2 text-slate-400 hover:text-slate-50 transition-colors" onClick={handlePrevMonth}>
               <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
             </button>
-            <h2 className="text-xl md:text-3xl font-bold text-slate-50 tracking-tight">{monthNames[currentMonth]} {currentYear}</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-slate-50 tracking-tight">{monthNames[currentMonth]} {currentYear}</h2>
             <button className="p-2 -mr-2 text-slate-400 hover:text-slate-50 transition-colors" onClick={handleNextMonth}>
               <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-            <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:p-4 lg:gap-4 sm:p-4 md:p-5">
+            <div className="flex flex-col gap-4 md:p-5">
               {/* Calendar Grid */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6 mb-6">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-4 md:p-4 mb-6">
                 {/* Days Header */}
                 <div className="grid grid-cols-7 mb-4">
                   {daysOfWeek.map((day, i) => (
@@ -156,18 +156,18 @@ export default function CalendarScreen() {
               </div>
 
               {/* Streak Info */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 flex items-center justify-between">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-4 md:p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                    <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-500/10 text-orange-400 rounded-2xl flex items-center justify-center">
                      <Flame className="w-6 h-6 md:w-8 md:h-8" />
                    </div>
                    <div>
-                     <h4 className="text-slate-50 font-bold md:text-lg">{t('streak')}</h4>
+                     <h4 className="text-slate-50 font-bold md:text-xl">{t('streak')}</h4>
                      <p className="text-xs md:text-sm text-slate-400">{t('streakKeep')}</p>
                    </div>
                 </div>
                 <div className="flex flex-col items-end">
-                   <span className="text-2xl md:text-4xl font-black text-orange-400 tracking-tighter">{streak}</span>
+                   <span className="text-3xl md:text-4xl font-black text-orange-400 tracking-tighter">{streak}</span>
                    <span className="text-[10px] md:text-xs uppercase font-bold text-orange-400/70 tracking-widest">{t('days')}</span>
                 </div>
               </div>
@@ -191,20 +191,20 @@ export default function CalendarScreen() {
                   )})}
                 </div>
 
-                <h3 className="text-sm md:text-base font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">
+                <h3 className="text-sm md:text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">
                   {t('statistics') || 'Statistik'} {viewType === 'Harian' ? `- ${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
                             viewType === 'Mingguan' ? `- ${startOfWeek.getDate()} ${monthNames[startOfWeek.getMonth()]} - ${endOfWeek.getDate()} ${monthNames[endOfWeek.getMonth()]} ${endOfWeek.getFullYear()}` : 
                             viewType === 'Bulanan' ? `- ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
                             `- ${selectedDate.getFullYear()}`}
                 </h3>
                 
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-8 mb-6">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-4 sm:p-4 md:p-4 mb-6">
                   <div className="flex items-center gap-4 mb-6 md:mb-8">
                     <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center">
                       <Activity className="w-6 h-6 md:w-7 md:h-7" />
                     </div>
                     <div>
-                      <h4 className="text-slate-50 font-bold md:text-lg">{t('taskSummary') || 'Ringkasan Tugas'}</h4>
+                      <h4 className="text-slate-50 font-bold md:text-xl">{t('taskSummary') || 'Ringkasan Tugas'}</h4>
                       <p className="text-xs md:text-sm text-slate-400">{t('todayAchievement') || 'Pencapaian hari ini'}</p>
                     </div>
                   </div>

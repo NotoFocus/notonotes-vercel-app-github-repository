@@ -99,7 +99,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
       {/* Top Bar */}
       <div className="flex-none h-16 border-b border-slate-800 bg-slate-900 px-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <span className="font-bold text-lg text-slate-50 tracking-tight">{t('tasksMenu')}</span>
+          <span className="font-bold text-2xl text-slate-50 tracking-tight">{t('tasksMenu')}</span>
         </div>
       </div>
 
@@ -202,9 +202,9 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
 
       {isAddingTask && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex flex-col pt-8 sm:p-4 animate-in fade-in duration-200 overflow-y-auto overscroll-none">
-           <div className="bg-slate-900 border-t sm:border border-slate-800 p-5 sm:p-6 rounded-t-3xl sm:rounded-3xl w-full max-w-[480px] mx-auto mt-auto sm:my-auto animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 shadow-2xl relative">
+           <div className="bg-slate-900 border-t sm:border border-slate-800 p-4 sm:p-4 md:p-4 rounded-t-3xl sm:rounded-3xl w-full max-w-[480px] mx-auto mt-auto sm:my-auto animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 shadow-2xl relative">
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-bold text-slate-200">{editingTask ? (lang === 'id' ? 'Edit Tugas' : 'Edit Task') : (lang === 'id' ? 'Tugas Baru' : 'New Task')}</h3>
+                <h3 className="text-xl font-bold text-slate-200">{editingTask ? (lang === 'id' ? 'Edit Tugas' : 'Edit Task') : (lang === 'id' ? 'Tugas Baru' : 'New Task')}</h3>
                 <button onClick={() => { setIsAddingTask(false); setEditingTask(null); setNewTaskTitle(''); }} className="p-2 bg-slate-800/50 hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-200 transition-colors">
                   <X className="w-5 h-5" />
                 </button>
@@ -216,7 +216,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
                    value={newTaskTitle}
                    onChange={e => setNewTaskTitle(e.target.value)}
                    placeholder={t('taskPlaceholder') || "Contoh: Belajar UI/UX..."}
-                   className="w-full min-h-[80px] bg-slate-950/50 border border-slate-800/80 rounded-2xl px-4 py-4 text-base text-slate-50 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/50 focus:bg-slate-950 mb-5 resize-none transition-all"
+                   className="w-full min-h-[80px] bg-slate-950/50 border border-slate-800/80 rounded-2xl px-4 py-4 text-xl text-slate-50 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/50 focus:bg-slate-950 mb-5 resize-none transition-all"
                  />
                  
                  <div className="space-y-4 mb-6">
