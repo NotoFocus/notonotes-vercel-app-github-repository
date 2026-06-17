@@ -39,6 +39,10 @@ interface AppContextType {
   setReminderTime: (val: string) => void;
   savingsTarget: number | null;
   setSavingsTarget: (val: number | null) => void;
+  savingsTargetTitle: string;
+  setSavingsTargetTitle: (val: string) => void;
+  savingsBalance: number;
+  setSavingsBalance: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -132,6 +136,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return null;
   });
 
+  const [savingsTargetTitle, setSavingsTargetTitle] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem('noto_savings_target_title');
+      if (s !== null) return s;
+    } catch(e){}
+    return '';
+  });
+
+  const [savingsBalance, setSavingsBalance] = useState<number>(() => {
+    try {
+      const s = localStorage.getItem('noto_savings_balance');
+      if (s !== null) return JSON.parse(s);
+    } catch(e){}
+    return 0;
+  });
+
   useEffect(() => { localStorage.setItem('noto_lang', lang); }, [lang]);
   useEffect(() => { localStorage.setItem('noto_reminder_active', JSON.stringify(reminderActive)); }, [reminderActive]);
   useEffect(() => { localStorage.setItem('noto_reminder_time', reminderTime); }, [reminderTime]);
@@ -139,6 +159,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (savingsTarget !== null) localStorage.setItem('noto_savings_target', JSON.stringify(savingsTarget));
     else localStorage.removeItem('noto_savings_target');
   }, [savingsTarget]);
+
+  useEffect(() => {
+    if (savingsTargetTitle) localStorage.setItem('noto_savings_target_title', savingsTargetTitle);
+    else localStorage.removeItem('noto_savings_target_title');
+  }, [savingsTargetTitle]);
+
+  useEffect(() => {
+    localStorage.setItem('noto_savings_balance', JSON.stringify(savingsBalance));
+  }, [savingsBalance]);
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(() => {
@@ -292,11 +321,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     hasCompletedOnboarding, setHasCompletedOnboarding,
     isUnlocked, setIsUnlocked, streak,
     reminderActive, setReminderActive, reminderTime, setReminderTime,
-    savingsTarget, setSavingsTarget
+    savingsTarget, setSavingsTarget, savingsTargetTitle, setSavingsTargetTitle,
+    savingsBalance, setSavingsBalance
   }), [
     notes, tasks, transactions, user, searchQuery, appPin, lang,
     hasCompletedOnboarding, isUnlocked, streak,
-    reminderActive, reminderTime, savingsTarget
+    reminderActive, reminderTime, savingsTarget, savingsTargetTitle, savingsBalance
   ]);
 
   return (

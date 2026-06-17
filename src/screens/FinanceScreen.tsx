@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
-import { Plus, Hash, Tag, FileText, Calendar, Trash2, ArrowUpRight, ArrowDownRight, Wallet, ArrowLeft, MoreVertical, Download, AlertTriangle, ChevronDown, PieChart as PieChartIcon, Activity, Upload, Search, X, Target } from 'lucide-react';
+import { Plus, Minus, Hash, Tag, FileText, Calendar, Trash2, ArrowUpRight, ArrowDownRight, Wallet, ArrowLeft, MoreVertical, Download, AlertTriangle, ChevronDown, PieChart as PieChartIcon, Activity, Upload, Search, X, Target } from 'lucide-react';
 import { Transaction } from '../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const expenseCategoriesList = ['Food', 'Transport', 'Bills', 'Investment', 'Health', 'Education', 'Entertainment', 'Pocket Money', 'Other'];
-const incomeCategoriesList = ['Salary', 'Freelance', 'Investment', 'Gift', 'Other'];
+const expenseCategoriesList = ['Food', 'Transport', 'Bills', 'Investment', 'Health', 'Education', 'Entertainment', 'Pocket Money', 'Savings', 'Other'];
+const incomeCategoriesList = ['Salary', 'Freelance', 'Investment', 'Gift', 'Savings', 'Other'];
 
 export const translateCategory = (cat: string, lang: 'id' | 'en') => {
   if (lang === 'en') return cat;
@@ -22,17 +22,23 @@ export const translateCategory = (cat: string, lang: 'id' | 'en') => {
     'Salary': 'Gaji',
     'Freelance': 'Sambilan',
     'Gift': 'Hadiah',
+    'Savings': 'Tabungan',
     'Other': 'Lainnya'
   };
   return map[cat] || cat;
 };
 
 export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; onBack: () => void }) {
-  const { transactions, addTransaction, updateTransaction, deleteTransaction, clearAllTransactions, lang, savingsTarget, setSavingsTarget } = useAppStore();
+  const { transactions, addTransaction, updateTransaction, deleteTransaction, clearAllTransactions, lang, savingsTarget, setSavingsTarget, savingsTargetTitle, setSavingsTargetTitle, savingsBalance, setSavingsBalance } = useAppStore();
   const t = useTranslation(lang);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTargetModal, setShowTargetModal] = useState(false);
+  const [showSavingsDepositModal, setShowSavingsDepositModal] = useState(false);
+  const [showSavingsWithdrawModal, setShowSavingsWithdrawModal] = useState(false);
+  const [savingsDepositAmount, setSavingsDepositAmount] = useState('');
+  const [savingsWithdrawAmount, setSavingsWithdrawAmount] = useState('');
   const [targetInputAmount, setTargetInputAmount] = useState('');
+  const [targetInputTitle, setTargetInputTitle] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   
@@ -295,37 +301,37 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm flex flex-col justify-center">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-6">
+          <div className="col-span-2 md:col-span-1 p-3 sm:p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center">
                 <Wallet className="w-3 h-3 text-indigo-400" />
               </div>
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">{t('balance') as string}</span>
             </div>
-            <span className="text-lg sm:text-xl font-black tracking-tight text-slate-50 truncate w-full">
+            <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-50 truncate w-full">
               {totalBalance < 0 ? '-' : ''}Rp {Math.abs(totalBalance).toLocaleString('id-ID')}
             </span>
           </div>
-          <div className="p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm flex flex-col justify-center">
+          <div className="p-3 sm:p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                 <ArrowDownRight className="w-3 h-3 text-emerald-500" />
               </div>
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">{t('income') as string}</span>
             </div>
-            <span className="text-lg sm:text-xl font-black tracking-tight text-emerald-500 truncate w-full">
+            <span className="text-sm sm:text-xl font-black tracking-tight text-emerald-500 truncate w-full">
               Rp {totalIncome.toLocaleString('id-ID')}
             </span>
           </div>
-          <div className="p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm flex flex-col justify-center">
+          <div className="p-3 sm:p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-6 h-6 rounded-lg bg-rose-500/10 flex items-center justify-center">
                 <ArrowUpRight className="w-3 h-3 text-rose-500" />
               </div>
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">{t('expense') as string}</span>
             </div>
-            <span className="text-lg sm:text-xl font-black tracking-tight text-rose-500 truncate w-full">
+            <span className="text-sm sm:text-xl font-black tracking-tight text-rose-500 truncate w-full">
               Rp {totalExpense.toLocaleString('id-ID')}
             </span>
           </div>
@@ -336,7 +342,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className={`text-base font-bold text-slate-50 shrink-0`}>{isSearching ? (t('searchResults') as string) : (t('recentTransactions') as string)}</h3>
               
-              <div className="relative flex-1 max-w-sm">
+              <div className="relative w-full sm:flex-1 sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input 
                   type="text" 
@@ -381,17 +387,17 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                     <div key={dateKey} className="space-y-3">
                       <h4 className={`text-xs font-bold ml-2 mb-1 text-slate-500 uppercase tracking-wider`}>{dateLabel}</h4>
                       {displayData.groups[dateKey].map(t => (
-                        <div key={t.id} className={`flex items-center justify-between p-3 sm:p-4 rounded-2xl border transition-all hover:-translate-y-0.5 hover:shadow-lg bg-slate-900 border-slate-800 shadow-sm hover:shadow-black/50`}>
-                          <div className="flex items-center gap-3 sm:gap-4">
-                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500 shadow-inner shadow-emerald-500/20' : 'bg-rose-500/10 text-rose-500 shadow-inner shadow-rose-500/20'}`}>
+                        <div key={t.id} className={`flex items-center justify-between p-3 sm:p-4 rounded-2xl border transition-all hover:-translate-y-0.5 hover:shadow-lg bg-slate-900 border-slate-800 shadow-sm hover:shadow-black/50 gap-2`}>
+                          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                            <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500 shadow-inner shadow-emerald-500/20' : 'bg-rose-500/10 text-rose-500 shadow-inner shadow-rose-500/20'}`}>
                               {t.type === 'income' ? <ArrowDownRight className="w-5 h-5 sm:w-6 sm:h-6" /> : <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6" />}
                             </div>
-                            <div>
-                              <h4 className={`font-bold text-sm sm:text-base text-slate-50 leading-tight`}>{translateCategory(t.category, lang)}</h4>
-                              {t.description && <p className={`text-[11px] sm:text-xs mt-1 text-slate-400 line-clamp-1 max-w-[120px] sm:max-w-[200px]`}>{t.description}</p>}
+                            <div className="min-w-0">
+                              <h4 className={`font-bold text-sm sm:text-base text-slate-50 leading-tight truncate`}>{translateCategory(t.category, lang)}</h4>
+                              {t.description && <p className={`text-[11px] sm:text-xs mt-1 text-slate-400 truncate`}>{t.description}</p>}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 sm:gap-4">
+                          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                             <div className="text-right">
                               <span className={`font-black text-sm sm:text-base block truncate ${t.type === 'income' ? 'text-emerald-500' : 'text-slate-50'}`}>
                                 {t.type === 'income' ? '+' : '-'} {t.currency === 'USD' ? '$' : 'Rp'} {t.amount.toLocaleString(t.currency === 'USD' ? 'en-US' : 'id-ID')}
@@ -439,63 +445,98 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
           </div>
 
           <div className="space-y-6">
-            {/* Savings Target Card */}
+            {/* Savings Goal Card */}
             <div className="p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm transition-all hover:bg-slate-800/50">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-slate-50 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-amber-500" />
-                  {t('savingsTarget') as string}
-                </h3>
-                <button 
-                  onClick={() => {
-                    setTargetInputAmount(savingsTarget ? savingsTarget.toString() : '');
-                    setShowTargetModal(true);
-                  }}
-                  className="text-[11px] font-bold text-slate-400 hover:text-amber-500 transition-colors"
-                >
-                  {t('setSavingsTarget') as string}
-                </button>
-              </div>
-              {savingsTarget ? (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-end">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t('targetProgress') as string}</span>
-                      <span className="text-lg font-black tracking-tight text-slate-50">
-                        Rp {Math.max(0, totalBalance).toLocaleString('id-ID')}
-                      </span>
-                    </div>
-                    <div className="flex flex-col text-right">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t('targetAmount') as string}</span>
-                      <span className="text-sm font-bold tracking-tight text-slate-400">
-                        Rp {savingsTarget.toLocaleString('id-ID')}
-                      </span>
-                    </div>
+              <div className="flex items-center justify-between mb-4 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                     <Target className="w-5 h-5 text-amber-500" />
                   </div>
-                  <div className="h-2.5 w-full bg-slate-950 rounded-full overflow-hidden relative border border-slate-800">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-slate-50 truncate">
+                      {savingsTargetTitle || (lang === 'id' ? 'Target Tabungan' : 'Savings Goal')}
+                    </h3>
+                    <p className="text-[11px] font-semibold text-slate-400">
+                      {savingsTarget ? (lang === 'id' ? `Target: Rp ${savingsTarget.toLocaleString('id-ID')}` : `Goal: Rp ${savingsTarget.toLocaleString('id-ID')}`) : (lang === 'id' ? 'Belum ada target' : 'No target set')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {savingsTarget ? (
+                    <>
+                      <button 
+                        onClick={() => {
+                          setSavingsDepositAmount('');
+                          setShowSavingsDepositModal(true);
+                        }}
+                        className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500/20 transition-colors"
+                        title={lang === 'id' ? 'Tambah Tabungan' : 'Add to Savings'}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSavingsWithdrawAmount('');
+                          setShowSavingsWithdrawModal(true);
+                        }}
+                        className="w-8 h-8 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 transition-colors"
+                        title={lang === 'id' ? 'Tarik Tabungan' : 'Withdraw from Savings'}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setTargetInputAmount(savingsTarget ? savingsTarget.toString() : '');
+                          setTargetInputTitle(savingsTargetTitle || '');
+                          setShowTargetModal(true);
+                        }}
+                        className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-amber-500 transition-colors"
+                        title={lang === 'id' ? 'Edit Target' : 'Edit Goal'}
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              
+              {savingsTarget ? (
+                <div className="space-y-3 mt-2">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-xl font-black tracking-tight text-slate-50">
+                      Rp {Math.max(0, savingsBalance).toLocaleString('id-ID')}
+                    </span>
+                    <span className="text-xs font-bold text-slate-400">
+                      {Math.min(100, Math.max(0, (savingsBalance / savingsTarget) * 100)).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="h-3 w-full bg-slate-950 rounded-full overflow-hidden relative border border-slate-800">
                     <div 
-                      className={`h-full absolute left-0 top-0 transition-all duration-1000 ${totalBalance >= savingsTarget ? 'bg-amber-500' : 'bg-indigo-500'}`}
-                      style={{ width: `${Math.min(100, Math.max(0, (totalBalance / savingsTarget) * 100))}%` }}
+                      className={`h-full absolute left-0 top-0 transition-all duration-1000 ${savingsBalance >= savingsTarget ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-emerald-500'}`}
+                      style={{ width: `${Math.min(100, Math.max(0, (savingsBalance / savingsTarget) * 100))}%` }}
                     />
                   </div>
-                  {totalBalance >= savingsTarget && (
-                    <p className="text-xs font-bold text-amber-500 text-center animate-pulse pt-1">
-                      {t('targetReached') as string} 🎉
+                  {savingsBalance >= savingsTarget && (
+                    <p className="text-xs font-bold text-amber-500 text-center animate-pulse pt-2">
+                      {lang === 'id' ? 'Selamat! Target tabungan tercapai 🎉' : 'Congratulations! Savings target reached 🎉'}
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="text-center py-5 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl">
-                  <p className="text-[11px] font-semibold text-slate-400 mb-3 text-balance">Set a trackable savings goal for this month.</p>
+                <div className="text-center py-4 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl mt-4">
+                  <p className="text-[11px] font-semibold text-slate-400 mb-3 text-balance">
+                    {lang === 'id' ? 'Buat target menabung untuk impianmu bulan ini.' : 'Set a savings goal for your dream this month.'}
+                  </p>
                   <button 
                     onClick={() => {
                       setTargetInputAmount('');
+                      setTargetInputTitle('');
                       setShowTargetModal(true);
                     }}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-lg shadow-indigo-500/20"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    {t('setSavingsTarget') as string}
+                    <Target className="w-3.5 h-3.5" />
+                    {lang === 'id' ? '+ Buat Target' : '+ Create Goal'}
                   </button>
                 </div>
               )}
@@ -752,6 +793,19 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
               
               <div className="space-y-4 mb-5">
                 <div>
+                  <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`}>{lang === 'id' ? 'Nama Target (Opsional)' : 'Target Name (Optional)'}</label>
+                  <div className={`flex items-center px-3 py-2.5 rounded-xl border bg-slate-950 border-slate-800 focus-within:border-indigo-500/50`}>
+                    <input 
+                      type="text"
+                      value={targetInputTitle}
+                      onChange={e => setTargetInputTitle(e.target.value)}
+                      className="w-full bg-transparent text-sm outline-none text-slate-50 font-semibold"
+                      placeholder={lang === 'id' ? 'Contoh: Beli Laptop' : 'e.g., Buy a Laptop'}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div>
                   <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`}>{t('targetAmount') as string}</label>
                   <div className={`flex items-center px-3 py-2.5 rounded-xl border bg-slate-950 border-slate-800 focus-within:border-indigo-500/50`}>
                     <span className="font-bold text-slate-400 mr-2 text-sm">Rp</span>
@@ -761,7 +815,6 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                       onChange={e => setTargetInputAmount(e.target.value)}
                       className="w-full bg-transparent text-sm outline-none text-slate-50 font-semibold"
                       placeholder="0"
-                      autoFocus
                     />
                   </div>
                 </div>
@@ -779,8 +832,10 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                     const val = Number(targetInputAmount);
                     if (!isNaN(val) && val > 0) {
                       setSavingsTarget(val);
-                    } else if (targetInputAmount === '') {
+                      setSavingsTargetTitle(targetInputTitle);
+                    } else {
                       setSavingsTarget(null);
+                      setSavingsTargetTitle('');
                     }
                     setShowTargetModal(false);
                   }}
@@ -851,6 +906,110 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                  >
                    {t('deleteTransaction') as string}
                  </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {showSavingsDepositModal && (
+        <div className="absolute inset-0 z-[70] flex items-center justify-center p-4">
+           {/* Backdrop */}
+           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowSavingsDepositModal(false)}></div>
+           
+           <div className={`relative w-full max-w-sm p-4 rounded-2xl border shadow-2xl animate-in fade-in zoom-in duration-200 bg-slate-900 border-slate-800`}>
+              <h3 className={`text-base font-bold mb-4 text-slate-50 flex items-center gap-2`}>
+                <Target className="w-5 h-5 text-emerald-500" />
+                {lang === 'id' ? 'Tambah ke Tabungan' : 'Add to Savings'}
+              </h3>
+              
+              <div className="space-y-4 mb-5">
+                <div>
+                  <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`}>{lang === 'id' ? 'Jumlah (Rp)' : 'Amount (Rp)'}</label>
+                  <div className={`flex items-center px-3 py-2.5 rounded-xl border bg-slate-950 border-slate-800 focus-within:border-emerald-500/50`}>
+                    <span className="font-bold text-slate-400 mr-2 text-sm">Rp</span>
+                    <input 
+                      type="number"
+                      value={savingsDepositAmount}
+                      onChange={e => setSavingsDepositAmount(e.target.value)}
+                      className="w-full bg-transparent text-sm outline-none text-slate-50 font-semibold"
+                      placeholder="0"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowSavingsDepositModal(false)}
+                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold transition-colors bg-slate-800 text-slate-400 hover:bg-slate-700`}
+                >
+                  {t('cancel') as string}
+                </button>
+                <button 
+                  onClick={() => {
+                    const val = Number(savingsDepositAmount);
+                    if (!isNaN(val) && val > 0) {
+                      setSavingsBalance(prev => prev + val);
+                    }
+                    setShowSavingsDepositModal(false);
+                  }}
+                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold transition-colors bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20`}
+                >
+                  {lang === 'id' ? 'Tambah' : 'Add'}
+                </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {showSavingsWithdrawModal && (
+        <div className="absolute inset-0 z-[70] flex items-center justify-center p-4">
+           {/* Backdrop */}
+           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowSavingsWithdrawModal(false)}></div>
+           
+           <div className={`relative w-full max-w-sm p-4 rounded-2xl border shadow-2xl animate-in fade-in zoom-in duration-200 bg-slate-900 border-slate-800`}>
+              <h3 className={`text-base font-bold mb-4 text-slate-50 flex items-center gap-2`}>
+                <Minus className="w-5 h-5 text-rose-500" />
+                {lang === 'id' ? 'Tarik dari Tabungan' : 'Withdraw from Savings'}
+              </h3>
+              
+              <div className="space-y-4 mb-5">
+                <div>
+                  <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`}>{lang === 'id' ? 'Jumlah (Rp)' : 'Amount (Rp)'}</label>
+                  <div className={`flex items-center px-3 py-2.5 rounded-xl border bg-slate-950 border-slate-800 focus-within:border-rose-500/50`}>
+                    <span className="font-bold text-slate-400 mr-2 text-sm">Rp</span>
+                    <input 
+                      type="number"
+                      value={savingsWithdrawAmount}
+                      onChange={e => setSavingsWithdrawAmount(e.target.value)}
+                      className="w-full bg-transparent text-sm outline-none text-slate-50 font-semibold"
+                      placeholder="0"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowSavingsWithdrawModal(false)}
+                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold transition-colors bg-slate-800 text-slate-400 hover:bg-slate-700`}
+                >
+                  {t('cancel') as string}
+                </button>
+                <button 
+                  onClick={() => {
+                    const val = Number(savingsWithdrawAmount);
+                    if (!isNaN(val) && val > 0) {
+                      setSavingsBalance(prev => Math.max(0, prev - val));
+                    }
+                    setShowSavingsWithdrawModal(false);
+                  }}
+                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold transition-colors bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20`}
+                >
+                  {lang === 'id' ? 'Tarik' : 'Withdraw'}
+                </button>
               </div>
            </div>
         </div>
