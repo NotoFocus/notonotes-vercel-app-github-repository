@@ -101,15 +101,15 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
     return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const pinnedNotes = notes.filter(n => n.pinned);
-  const pinnedTasks = tasks.filter(t => t.pinned);
+  const pinnedNotes = (notes || []).filter(n => n && n.pinned);
+  const pinnedTasks = (tasks || []).filter(t => t && t.pinned);
 
   const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   const isToday = (d: string) => d === todayStr || d === 'Hari ini' || d === 'Hari Ini';
   
-  const todayTasks = tasks.filter(t => isToday(t.date)).slice(0, 3);
-  const activeTasksCount = tasks.filter(t => isToday(t.date) && !t.completed).length;
-  const totalTodayCount = tasks.filter(t => isToday(t.date)).length;
+  const todayTasks = (tasks || []).filter(t => t && t.date && isToday(t.date)).slice(0, 3);
+  const activeTasksCount = (tasks || []).filter(t => t && t.date && isToday(t.date) && !t.completed).length;
+  const totalTodayCount = (tasks || []).filter(t => t && t.date && isToday(t.date)).length;
   const progressPercent = totalTodayCount === 0 ? 0 : Math.round(((totalTodayCount - activeTasksCount) / totalTodayCount) * 100);
 
   const handleCreateNote = () => {
@@ -365,7 +365,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
               { id: 'bad', label: 'Buruk', colors: 'bg-orange-500/10 text-orange-400 border-orange-500/30 hover:bg-orange-500/20' },
               { id: 'terrible', label: 'Sangat Buruk', colors: 'bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20' }
             ].map(m => {
-              const currentMood = moods.find(x => x.date === todayStr)?.mood;
+              const currentMood = (moods || []).find(x => x && x.date === todayStr)?.mood;
               const isSelected = currentMood === m.id;
               const notSelectedOpacity = currentMood && !isSelected ? 'opacity-40 grayscale' : '';
               

@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import App from './App.tsx';
 import './index.css';
 import { AppProvider } from './store.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -15,9 +16,11 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppProvider>
-      <App />
-      <Analytics />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <App />
+        <Analytics />
+      </AppProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

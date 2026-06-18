@@ -26,9 +26,10 @@ export default function CalendarScreen() {
   const currentMonth = currentDate.getMonth();
 
   const getMonthlyAverageMood = () => {
-    const monthMoods = moods.filter(m => {
+    const monthMoods = (moods || []).filter(m => {
+      if (!m || !m.date) return false;
       const d = new Date(m.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
     if (monthMoods.length === 0) return null;
 
@@ -209,7 +210,7 @@ export default function CalendarScreen() {
                   {days.map((day) => {
                     const cellDateObj = new Date(currentYear, currentMonth, day);
                     const cellDateStr = new Date(cellDateObj.getTime() - (cellDateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                    const dayMood = moods.find(m => m.date === cellDateStr)?.mood;
+                    const dayMood = (moods || []).find(m => m && m.date === cellDateStr)?.mood;
 
                     return (
                       <Day 

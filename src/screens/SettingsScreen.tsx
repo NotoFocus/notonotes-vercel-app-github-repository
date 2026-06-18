@@ -508,26 +508,26 @@ export default function SettingsScreen({ appTheme, setAppTheme }: { appTheme: st
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4">
                   <div>
                     <h5 className="font-semibold text-emerald-400 mb-1 flex items-start gap-2">
-                      <span className="mt-0.5">{t('privacyPolicy3').split(' ')[0]}</span>
-                      <span>{t('privacyPolicy3').split(' ').slice(1).join(' ')}</span>
+                      <Shield className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>{t('privacyPolicy3')}</span>
                     </h5>
-                    <p className="pl-6 opacity-90">{t('privacyPolicy4')}</p>
+                    <p className="pl-6 opacity-90 text-xs">{t('privacyPolicy4')}</p>
                   </div>
                   <div className="bg-slate-800/50 h-[1px] w-full"></div>
                   <div>
                     <h5 className="font-semibold text-emerald-400 mb-1 flex items-start gap-2">
-                      <span className="mt-0.5">{t('privacyPolicy5').split(' ')[0]}</span>
-                      <span>{t('privacyPolicy5').split(' ').slice(1).join(' ')}</span>
+                      <Shield className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>{t('privacyPolicy5')}</span>
                     </h5>
-                    <p className="pl-6 opacity-90">{t('privacyPolicy6')}</p>
+                    <p className="pl-6 opacity-90 text-xs">{t('privacyPolicy6')}</p>
                   </div>
                   <div className="bg-slate-800/50 h-[1px] w-full"></div>
                   <div>
                     <h5 className="font-semibold text-emerald-400 mb-1 flex items-start gap-2">
-                      <span className="mt-0.5">{t('privacyPolicy7').split(' ')[0]}</span>
-                      <span>{t('privacyPolicy7').split(' ').slice(1).join(' ')}</span>
+                      <Shield className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span>{t('privacyPolicy7')}</span>
                     </h5>
-                    <p className="pl-6 opacity-90">{t('privacyPolicy8')}</p>
+                    <p className="pl-6 opacity-90 text-xs">{t('privacyPolicy8')}</p>
                   </div>
                 </div>
 
