@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Home, CheckCircle2, Calendar as CalendarIcon, Settings, Lock, Layers, Bell, X, Wallet, WifiOff } from 'lucide-react';
 import HomeScreen from './screens/HomeScreen';
 import TasksScreen from './screens/TasksScreen';
@@ -44,7 +44,28 @@ export default function App() {
     reminderActive, reminderTime, hasCompletedOnboarding, setHasCompletedOnboarding 
   } = useAppStore();
   const t = useTranslation(lang);
-  const [currentScreen, setCurrentScreen] = useState<ScreenItem>('home');
+  const [currentScreen, _setCurrentScreen] = useState<ScreenItem>('home');
+
+  const setCurrentScreen = useCallback((screen: ScreenItem) => {
+    if (screen !== currentScreen) {
+      window.history.pushState({ screen }, '');
+      _setCurrentScreen(screen);
+    }
+  }, [currentScreen]);
+
+  useEffect(() => {
+    window.history.replaceState({ screen: 'home' }, '');
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.screen) {
+        _setCurrentScreen(e.state.screen);
+      } else {
+        _setCurrentScreen('home');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [appTheme, setAppTheme] = useState<'dark' | 'light' | 'pink'>(() => (localStorage.getItem('noto_theme') as 'dark' | 'light' | 'pink') || 'dark');
   
   useEffect(() => {
@@ -330,14 +351,19 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const [forgotNameInput, setForgotNameInput] = useState('');
 
-  const handleInput = (num: string) => {
+  const handleInput = async (num: string) => {
     if (input.length < 4) {
       const newVal = input + num;
       setInput(newVal);
       setError(false);
       
       if (newVal.length === 4) {
-        if (newVal === correctPin) {
+        const { hashPin } = await import('./utils');
+        const hashed = await hashPin(newVal);
+        if (hashed === correctPin || newVal === correctPin) { // support legacy plaintext pin
+          if (newVal === correctPin && newVal !== hashed) {
+            setAppPin(hashed); // seamlessly upgrade to hash
+          }
           setTimeout(onUnlock, 200);
         } else {
           setError(true);

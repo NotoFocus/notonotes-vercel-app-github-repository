@@ -403,14 +403,17 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 autoFocus
                 value={pinInput}
                 onChange={e => setPinInput(e.target.value.replace(/\D/g, ''))}
-                onKeyDown={e => {
+                onKeyDown={async (e) => {
                   if (e.key === 'Enter' && pinInput.length === 4) {
+                    const { hashPin } = await import('../utils');
                     if (pinModalMode === 'create' || pinModalMode === 'change') {
-                      setAppPin(pinInput);
+                      const hashed = await hashPin(pinInput);
+                      setAppPin(hashed);
                       setIsUnlocked(true);
                       setPinModalMode(null);
                     } else if (pinModalMode === 'verify') {
-                      if (pinInput === appPin) {
+                      const hashed = await hashPin(pinInput);
+                      if (hashed === appPin || pinInput === appPin) { // fallback for legacy plaintext pin
                         setPinInput('');
                         setPinError(false);
                         setPinModalMode('change');
@@ -420,7 +423,8 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                         setTimeout(() => setPinError(false), 500);
                       }
                     } else if (pinModalMode === 'remove') {
-                      if (pinInput === appPin) {
+                      const hashed = await hashPin(pinInput);
+                      if (hashed === appPin || pinInput === appPin) { // fallback for legacy plaintext pin
                         setAppPin(null);
                         setPinModalMode(null);
                       } else {
@@ -447,13 +451,16 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </button>
                 <button 
                   disabled={pinInput.length !== 4}
-                  onClick={() => {
+                  onClick={async () => {
+                    const { hashPin } = await import('../utils');
                     if (pinModalMode === 'create' || pinModalMode === 'change') {
-                      setAppPin(pinInput);
+                      const hashed = await hashPin(pinInput);
+                      setAppPin(hashed);
                       setIsUnlocked(true);
                       setPinModalMode(null);
                     } else if (pinModalMode === 'verify') {
-                      if (pinInput === appPin) {
+                      const hashed = await hashPin(pinInput);
+                      if (hashed === appPin || pinInput === appPin) {
                         setPinInput('');
                         setPinError(false);
                         setPinModalMode('change');
@@ -463,7 +470,8 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                         setTimeout(() => setPinError(false), 500);
                       }
                     } else if (pinModalMode === 'remove') {
-                      if (pinInput === appPin) {
+                      const hashed = await hashPin(pinInput);
+                      if (hashed === appPin || pinInput === appPin) {
                         setAppPin(null);
                         setPinModalMode(null);
                       } else {

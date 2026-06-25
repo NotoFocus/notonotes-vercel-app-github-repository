@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, CheckSquare, Bell, Clock, Play, Pause, RotateCcw, X, Pin, FileText, Trash2, Flame, Sparkles, ChevronRight, Repeat, Wallet } from 'lucide-react';
+import { Plus, CheckSquare, Bell, Clock, Play, Pause, RotateCcw, X, Pin, FileText, Trash2, Flame, Sparkles, ChevronRight, Repeat, Wallet, Target } from 'lucide-react';
 import { Note, Task } from '../types';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -30,7 +30,7 @@ const getMoodIcon = (id: string, className = "w-6 h-6") => {
 };
 
 export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNavigate }: HomeProps) {
-  const { notes, tasks, moods, setMood, user, updateUser, toggleTask, deleteTask, deleteNote, setSearchQuery, streak, lang } = useAppStore();
+  const { notes, tasks, moods, setMood, user, updateUser, toggleTask, deleteTask, deleteNote, setSearchQuery, streak, lang, updateTask, checkInDaily } = useAppStore();
   const t = useTranslation(lang);
   
   // Use the current user from the store instead of static data
@@ -110,13 +110,14 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
 
   const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
-  const { pinnedNotes, pinnedTasks, todayTasks, activeTasksCount, totalTodayCount, progressPercent } = useMemo(() => {
+  const { pinnedNotes, pinnedTasks, disciplineTask, todayTasks, activeTasksCount, totalTodayCount, progressPercent } = useMemo(() => {
     const pNotes = (notes || []).filter(n => n && n.pinned);
-    const pTasks = (tasks || []).filter(t => t && t.pinned);
+    const pTasks = (tasks || []).filter(t => t && t.pinned && !t.isDiscipline);
+    const dTask = (tasks || []).find(t => t && t.isDiscipline && !t.isArchived);
 
     const isToday = (t: any) => t?.date === todayStr || t?.date === 'Hari ini' || t?.date === 'Hari Ini' || t?.repeat === 'daily';
     
-    const tTasks = (tasks || []).filter(t => t && isToday(t));
+    const tTasks = (tasks || []).filter(t => t && isToday(t) && !t.isDiscipline);
     const activeCount = tTasks.filter(t => !t.completed).length;
     const totalCount = tTasks.length;
     const pPercent = totalCount === 0 ? 0 : Math.round(((totalCount - activeCount) / totalCount) * 100);
@@ -124,6 +125,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
     return {
       pinnedNotes: pNotes,
       pinnedTasks: pTasks,
+      disciplineTask: dTask,
       todayTasks: tTasks.slice(0, 3),
       activeTasksCount: activeCount,
       totalTodayCount: totalCount,
@@ -345,6 +347,67 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             })}
           </div>
         </div>
+
+        {/* Target Disiplin */}
+        {disciplineTask && disciplineTask.pinned && (
+          <section className="mb-5 bg-gradient-to-br from-indigo-900/40 via-slate-900 to-slate-900 border border-indigo-500/20 p-5 rounded-3xl shadow-sm relative overflow-hidden group cursor-pointer" onClick={() => onNavigate('tasks')}>
+            <div className="absolute -top-10 -right-10 p-6 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity rotate-12 pointer-events-none">
+              <Target className="w-40 h-40 text-indigo-400" />
+            </div>
+            
+            <div className="flex justify-between items-center mb-4 relative z-10">
+               <h3 className="text-lg font-black text-slate-50 flex items-center gap-2">
+                  <Target className={`w-5 h-5 text-indigo-400 drop-shadow-sm`} />
+                  {lang === 'id' ? 'Target Disiplin' : 'Discipline Target'}
+               </h3>
+               <span className="text-[10px] font-bold uppercase tracking-widest bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/20">
+                 {lang === 'id' ? 'Fokus' : 'Focus'}
+               </span>
+            </div>
+            
+            <div className="relative z-10 bg-slate-950/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
+               <div className={`flex-1 ${disciplineTask.completed ? 'opacity-50' : ''}`}>
+                  <h4 className={`text-base font-bold ${disciplineTask.completed ? 'text-slate-400 line-through' : 'text-slate-100'} leading-snug`}>
+                    {disciplineTask.title}
+                  </h4>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Flame className="w-3 h-3 text-orange-400" /> 
+                      {disciplineTask.disciplineData?.dailyCheckins?.length || 0} {lang === 'id' ? 'Hari' : 'Days'}
+                    </span>
+                    {disciplineTask.disciplineData?.targetDate && (
+                      <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                         • Target: {disciplineTask.disciplineData.targetDate}
+                      </span>
+                    )}
+                  </div>
+               </div>
+               
+               <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const d = disciplineTask.disciplineData || {};
+                    const today = new Date().toISOString().split('T')[0];
+                    const checkins = d.dailyCheckins || [];
+                    if (!checkins.includes(today)) {
+                      updateTask({ ...disciplineTask, disciplineData: { ...d, dailyCheckins: [...checkins, today] } });
+                      checkInDaily();
+                    }
+                  }}
+                  disabled={disciplineTask.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0])}
+                  className={`flex-none px-3 py-2 rounded-xl font-bold text-[11px] transition-all ${
+                    disciplineTask.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0])
+                      ? 'bg-slate-800/80 text-slate-500 cursor-not-allowed border border-white/5'
+                      : 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30 active:scale-95'
+                  }`}
+                >
+                  {disciplineTask.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0]) 
+                    ? (lang === 'id' ? 'Selesai' : 'Done') 
+                    : (lang === 'id' ? 'Check-in' : 'Check-in')}
+               </button>
+            </div>
+          </section>
+        )}
 
         {/* Prioritas Utama */}
         <section className="mb-5 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-sm">

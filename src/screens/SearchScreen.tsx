@@ -5,7 +5,7 @@ import { useTranslation } from '../translations';
 import { Note, Task } from '../types';
 
 export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) => void }) {
-  const { notes, tasks, toggleTask, updateTask, updateNote, deleteNote, deleteTask, searchQuery, setSearchQuery, lang } = useAppStore();
+  const { notes, tasks, toggleTask, updateTask, updateNote, deleteNote, deleteTask, searchQuery, setSearchQuery, lang, checkInDaily } = useAppStore();
   const t = useTranslation(lang);
   const [groupBy, setGroupBy] = useState<'Semua' | 'Level Tugas' | 'Tag Catatan'>('Semua');
 
@@ -69,6 +69,58 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
   );
 
   const renderTaskCard = (task: Task, isLast: boolean) => {
+     if (task.isDiscipline) {
+       return (
+         <div key={`task-${task.id}`} className={`flex items-start gap-4 group border-slate-800/60 px-4 ${!isLast ? 'border-b py-4' : 'pt-4 pb-4'}`}>
+           <div className={`flex-1 ${task.completed ? 'opacity-50' : ''}`}>
+              <h4 className={`text-sm font-bold text-indigo-300`}>
+                <span className="mr-2 inline-block">🎯</span>
+                {task.title}
+              </h4>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                  {lang === 'id' ? 'Fokus Disiplin' : 'Discipline'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-500">
+                   {task.disciplineData?.targetDate ? `Target: ${task.disciplineData.targetDate}` : ''}
+                </span>
+              </div>
+           </div>
+           
+           <div className="flex items-center gap-2">
+             <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const d = task.disciplineData || {};
+                  const today = new Date().toISOString().split('T')[0];
+                  const checkins = d.dailyCheckins || [];
+                  if (!checkins.includes(today)) {
+                    updateTask({ ...task, disciplineData: { ...d, dailyCheckins: [...checkins, today] } });
+                    checkInDaily();
+                  }
+                }}
+                disabled={task.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0])}
+                className={`flex-none px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all ${
+                  task.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0])
+                    ? 'bg-slate-800/80 text-slate-500 cursor-not-allowed border border-white/5'
+                    : 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30 active:scale-95'
+                }`}
+              >
+                {task.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0]) 
+                  ? (lang === 'id' ? 'Selesai' : 'Done') 
+                  : (lang === 'id' ? 'Check-in' : 'Check-in')}
+             </button>
+             <button 
+               onClick={(e) => handleTogglePinTask(e, task)}
+               className="p-3 -mr-3 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-slate-800/50 flex-none"
+             >
+               <Pin className={`w-5 h-5 ${task.pinned ? 'fill-indigo-400 text-indigo-400' : 'text-slate-500 hover:text-indigo-400'}`} />
+             </button>
+           </div>
+         </div>
+       );
+     }
+
      const isHigh = task.priority === 'Tinggi';
      const isMed = task.priority === 'Sedang';
      return (

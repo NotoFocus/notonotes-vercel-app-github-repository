@@ -141,6 +141,9 @@ export const translations = {
     madeWithSimplicity: 'Dibuat dengan kesederhanaan pikiran',
     taskPlaceholder: 'Contoh: Belajar UI/UX...',
     days: 'Hari',
+    overdue: 'Terlewat',
+    upcoming: 'Akan Datang',
+    noDate: 'Tanpa Tanggal',
     // Onboarding
     welcomeTo: 'Selamat Datang di Noto',
     whoAreYou: 'Sebelum kita mulai, siapa nama Anda?',
@@ -418,6 +421,9 @@ export const translations = {
     madeWithSimplicity: 'Crafted with simplicity in mind',
     taskPlaceholder: 'Ex: Study UI/UX...',
     days: 'Days',
+    overdue: 'Overdue',
+    upcoming: 'Upcoming',
+    noDate: 'No Date',
     // Onboarding
     welcomeTo: 'Welcome to Noto',
     whoAreYou: 'Before we start, what is your name?',

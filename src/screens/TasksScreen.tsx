@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Trash2, ClipboardList, Repeat, Bell, X, Target, Image as ImageIcon, Calendar, CheckSquare, Pencil, Camera, ChevronRight, Flame, Gift, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, ClipboardList, Repeat, Bell, X, Target, Image as ImageIcon, Calendar, CheckSquare, Pencil, Camera, ChevronRight, Flame, Gift, AlertTriangle, Pin } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { Task } from '../types';
 
 export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => void }) {
-  const [activeTab, setActiveTab] = useState<'Disiplin' | 'Hari Ini' | 'Akan Datang' | 'Belum Selesai' | 'Selesai'>('Hari Ini');
+  const [activeTab, setActiveTab] = useState<'Biasa' | 'Disiplin'>('Biasa');
+  const [showCompleted, setShowCompleted] = useState(false);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -99,46 +100,48 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
     setEditingTask(null);
   };
 
-  const { todayTasks, tomorrowTasks, otherTasks, disciplineTask, filteredTasks } = useMemo(() => {
+  const { todayTasks, overdueTasks, upcomingTasks, noDateTasks, completedTasks, disciplineTask, filteredTasks } = useMemo(() => {
     const todayDate = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000));
     const todayStr = todayDate.toISOString().split('T')[0];
-    const tmr = new Date(todayDate);
-    tmr.setDate(tmr.getDate() + 1);
-    const tomorrowStr = tmr.toISOString().split('T')[0];
 
-    let filtered = [...(tasks || [])].filter(t => t !== null && t !== undefined);
-    if (activeTab === 'Hari Ini') {
-      filtered = filtered.filter(t => (t.date === todayStr || t.date === 'Hari ini' || t.date === 'Hari Ini' || t.repeat === 'daily'));
-    } else if (activeTab === 'Akan Datang') {
-      filtered = filtered.filter(t => !t.completed && t.date && t.date > todayStr && t.date !== 'Hari ini' && t.date !== 'Hari Ini' && t.repeat !== 'daily');
-    } else if (activeTab === 'Belum Selesai') {
-      filtered = filtered.filter(t => !t.completed);
-    } else if (activeTab === 'Selesai') {
-      filtered = filtered.filter(t => t.completed);
-    } else if (activeTab === 'Disiplin') {
-      filtered = [];
-    }
+    const getTaskDateStr = (t: any) => {
+        if (t.date === 'Hari ini' || t.date === 'Hari Ini') return todayStr;
+        if (t.date === 'Besok') {
+            const tmr = new Date(todayDate);
+            tmr.setDate(todayDate.getDate() + 1);
+            return tmr.toISOString().split('T')[0];
+        }
+        return t.date;
+    };
 
-    filtered.sort((a, b) => {
-      if (a.completed !== b.completed) {
-        return a.completed ? 1 : -1;
-      }
-      return 0;
-    });
+    let filtered = [...(tasks || [])].filter(t => t !== null && t !== undefined && !t.isDiscipline);
+    
+    // For Biasa view, we only partition tasks
+    const uncompleted = filtered.filter(t => !t.completed);
+    const completed = filtered.filter(t => t.completed);
 
-    const isTodayTask = (t: any) => t?.date === todayStr || t?.date === 'Hari ini' || t?.date === 'Hari Ini' || t?.repeat === 'daily';
-    const isTomorrowTask = (t: any) => t?.date === tomorrowStr || t?.date === 'Besok';
+    const isTodayTask = (t: any) => getTaskDateStr(t) === todayStr || t?.repeat === 'daily';
+    const isOverdueTask = (t: any) => {
+        const d = getTaskDateStr(t);
+        return d && d < todayStr && t?.repeat !== 'daily';
+    };
+    const isUpcomingTask = (t: any) => {
+        const d = getTaskDateStr(t);
+        return d && d > todayStr && t?.repeat !== 'daily';
+    };
+    const isNoDateTask = (t: any) => !t.date && t?.repeat !== 'daily';
 
-    const todayTasks = filtered.filter(t => isTodayTask(t));
-    const tomorrowTasks = filtered.filter(t => isTomorrowTask(t));
-    const otherTasks = filtered.filter(t => !isTodayTask(t) && !isTomorrowTask(t));
+    const todayTasks = uncompleted.filter(isTodayTask);
+    const overdueTasks = uncompleted.filter(isOverdueTask);
+    const upcomingTasks = uncompleted.filter(isUpcomingTask);
+    const noDateTasks = uncompleted.filter(isNoDateTask);
 
     const disciplineTask = tasks.find(t => t.isDiscipline && !t.isArchived);
 
-    return { todayTasks, tomorrowTasks, otherTasks, disciplineTask, filteredTasks: filtered };
-  }, [tasks, activeTab]);
+    return { todayTasks, overdueTasks, upcomingTasks, noDateTasks, completedTasks: completed, disciplineTask, filteredTasks: uncompleted };
+  }, [tasks]);
 
-  const handleSelectExisting = useCallback(() => { setActiveTab('Hari Ini'); setIsAddingTask(true); }, []);
+  const handleSelectExisting = useCallback(() => { setActiveTab('Biasa'); setIsAddingTask(true); }, []);
 
   return (
     <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
@@ -150,53 +153,27 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
       </div>
 
       {/* Mode Selector */}
-      <div className="px-5 py-4">
-        <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1 relative">
+      <div className="px-4 py-3">
+        <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1 relative shadow-inner">
           <div 
-            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl transition-transform duration-300 ease-out ${activeTab === 'Disiplin' ? 'bg-gradient-to-r from-orange-500 to-rose-500 shadow-lg shadow-orange-500/20 translate-x-[calc(100%+4px)]' : 'bg-indigo-600 shadow-lg shadow-indigo-600/20 translate-x-0'}`} 
+            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg transition-transform duration-300 ease-out ${activeTab === 'Disiplin' ? 'bg-gradient-to-r from-orange-500 to-rose-500 shadow-sm translate-x-[calc(100%+4px)]' : 'bg-indigo-600 shadow-sm translate-x-0'}`} 
           />
           <button 
-            onClick={() => setActiveTab('Hari Ini')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-colors z-10 ${activeTab !== 'Disiplin' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            onClick={() => setActiveTab('Biasa')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors z-10 ${activeTab !== 'Disiplin' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
           >
             <ClipboardList className="w-4 h-4" />
             {lang === 'id' ? 'Tugas Biasa' : 'Normal Tasks'}
           </button>
           <button 
             onClick={() => setActiveTab('Disiplin')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-colors z-10 ${activeTab === 'Disiplin' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-colors z-10 ${activeTab === 'Disiplin' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
           >
             <Target className="w-4 h-4" />
             {lang === 'id' ? 'Fokus Disiplin' : 'Discipline Focus'}
           </button>
         </div>
       </div>
-
-      {/* Sub Tabs for Normal Tasks */}
-      {activeTab !== 'Disiplin' && (
-        <div className="px-5 pb-4 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-800/50 flex-shrink-0 lg:justify-center">
-          {['Hari Ini', 'Akan Datang', 'Belum Selesai', 'Selesai'].map((tab, idx) => {
-            const tabLabels = [
-               lang === 'id' ? 'Hari Ini' : "Today", 
-               lang === 'id' ? 'Berikutnya' : "Upcoming", 
-               lang === 'id' ? 'Belum Selesai' : "Uncompleted", 
-               lang === 'id' ? 'Selesai' : "Done"
-            ];
-            return (
-            <button 
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`px-5 py-2.5 rounded-full text-[11px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all flex-shrink-0 ${
-                activeTab === tab 
-                  ? 'bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/30 shadow-inner' 
-                  : 'text-slate-500 hover:bg-slate-800/50 hover:text-slate-300'
-              }`}
-            >
-              {tabLabels[idx]}
-            </button>
-          )})}
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-32 w-full">
         <div className="w-full px-4 md:px-6 py-6 space-y-6">
@@ -205,28 +182,37 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
             <DisciplineView task={disciplineTask} onSelectExisting={handleSelectExisting} lang={lang} />
           ) : (
             <>
-              {filteredTasks.length === 0 && (
+              {filteredTasks.length === 0 && completedTasks.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-24 text-slate-500">
                   <ClipboardList className="w-12 h-12 mb-4 text-slate-800" />
                   <div className="text-center font-medium text-sm md:text-base">
-                    {activeTab === 'Selesai' 
-                      ? (lang === 'id' ? 'Belum ada tugas yang selesai.' : 'No completed tasks yet.') 
-                      : activeTab === 'Hari Ini' 
-                        ? t('noTasks') 
-                        : (lang === 'id' ? 'Belum ada tugas.' : 'No tasks.')}
+                    {lang === 'id' ? 'Belum ada tugas.' : 'No tasks.'}
                   </div>
                 </div>
               )}
 
-              {/* Group: Hari Ini */}
+              {/* Group: Terlewat (Overdue) */}
+              {overdueTasks.length > 0 && (
+              <div>
+                <div className="flex items-center gap-3 mb-3 ml-2 mt-2">
+                  <h3 className="text-xs font-bold text-rose-500 uppercase tracking-widest">{t('overdue')}</h3>
+                  <span className="text-[10px] text-rose-500 font-medium bg-rose-500/10 px-2 py-0.5 rounded-md">{overdueTasks.length}</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden shadow-sm">
+                   {overdueTasks.map((task, i) => (
+                     <TaskCard key={task.id} task={task} last={i === overdueTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
+                   ))}
+                </div>
+              </div>
+              )}
+
+              {/* Group: Hari Ini (Today) */}
               {todayTasks.length > 0 && (
               <div>
-                {activeTab !== 'Hari Ini' && (
-                  <div className="flex items-center gap-3 mb-3 ml-2">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('today')}</h3>
-                    <span className="text-[10px] text-slate-500 font-medium bg-slate-800/50 px-2 py-0.5 rounded-md">{todayTasks.length}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-3 mb-3 ml-2 mt-4">
+                  <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest">{t('today')}</h3>
+                  <span className="text-[10px] text-indigo-400 font-medium bg-indigo-500/10 px-2 py-0.5 rounded-md">{todayTasks.length}</span>
+                </div>
                 <div className="bg-slate-900 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden shadow-sm">
                    {todayTasks.map((task, i) => (
                      <TaskCard key={task.id} task={task} last={i === todayTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
@@ -235,33 +221,57 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
               </div>
               )}
 
-              {/* Group: Besok */}
-              {tomorrowTasks.length > 0 && (
+              {/* Group: Akan Datang (Upcoming) */}
+              {upcomingTasks.length > 0 && (
               <div>
-                <div className="flex items-center gap-3 mb-3 ml-2">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('tomorrow')}</h3>
-                  <span className="text-[10px] text-slate-500 font-medium bg-slate-800/50 px-2 py-0.5 rounded-md">{tomorrowTasks.length}</span>
+                <div className="flex items-center gap-3 mb-3 ml-2 mt-4">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('upcoming')}</h3>
+                  <span className="text-[10px] text-slate-400 font-medium bg-slate-800/50 px-2 py-0.5 rounded-md">{upcomingTasks.length}</span>
                 </div>
                 <div className="bg-slate-900 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden shadow-sm">
-                   {tomorrowTasks.map((task, i) => (
-                     <TaskCard key={task.id} task={task} last={i === tomorrowTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
+                   {upcomingTasks.map((task, i) => (
+                     <TaskCard key={task.id} task={task} last={i === upcomingTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
                    ))}
                 </div>
               </div>
               )}
 
-              {/* Group: Lainnya */}
-              {otherTasks.length > 0 && (
+              {/* Group: Tanpa Tanggal (No Date) */}
+              {noDateTasks.length > 0 && (
               <div>
-                <div className="flex items-center gap-3 mb-3 ml-2">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('other')}</h3>
-                  <span className="text-[10px] text-slate-500 font-medium bg-slate-800/50 px-2 py-0.5 rounded-md">{otherTasks.length}</span>
+                <div className="flex items-center gap-3 mb-3 ml-2 mt-4">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('noDate')}</h3>
+                  <span className="text-[10px] text-slate-500 font-medium bg-slate-800/50 px-2 py-0.5 rounded-md">{noDateTasks.length}</span>
                 </div>
                 <div className="bg-slate-900 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden shadow-sm">
-                   {otherTasks.map((task, i) => (
-                     <TaskCard key={task.id} task={task} last={i === otherTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
+                   {noDateTasks.map((task, i) => (
+                     <TaskCard key={task.id} task={task} last={i === noDateTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
                    ))}
                 </div>
+              </div>
+              )}
+
+              {/* Group: Selesai */}
+              {completedTasks.length > 0 && (
+              <div className="mt-8">
+                <button 
+                  onClick={() => setShowCompleted(!showCompleted)} 
+                  className="w-full flex items-center justify-between p-4 bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 rounded-2xl transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <CheckSquare className="w-5 h-5 text-emerald-500" />
+                    <h3 className="text-sm font-bold text-slate-300">{lang === 'id' ? 'Tugas Selesai' : 'Completed Tasks'}</h3>
+                    <span className="text-[10px] text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-md">{completedTasks.length}</span>
+                  </div>
+                  <ChevronRight className={`w-5 h-5 text-slate-500 transition-transform ${showCompleted ? 'rotate-90' : ''}`} />
+                </button>
+                {showCompleted && (
+                  <div className="bg-slate-900 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden shadow-sm mt-3">
+                     {completedTasks.map((task, i) => (
+                       <TaskCard key={task.id} task={task} last={i === completedTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
+                     ))}
+                  </div>
+                )}
               </div>
               )}
             </>
@@ -489,6 +499,8 @@ const TaskCard = React.memo<{ task: Task, last?: boolean, onToggle: (id: string)
 
 const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, lang: string }>(({ task, onSelectExisting, lang }) => {
   const { updateTask, checkInDaily } = useAppStore();
+  const [fullScreenImage, setFullScreenImage] = useState<{ url: string, type: 'beforePhotoUrl' | 'afterPhotoUrl' | 'after1MonthPhotoUrl' | 'after6MonthsPhotoUrl' | 'after1YearPhotoUrl' } | null>(null);
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
   
   if (!task) {
     return (
@@ -521,7 +533,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
   const isMissedDay = lastCheckin && lastCheckin !== today && lastCheckin !== yesterdayDate;
   const hasStarted = checkins.length > 0;
   
-  const handlePhotoUpload = (type: 'beforePhotoUrl' | 'afterPhotoUrl') => {
+  const handlePhotoUpload = (type: 'beforePhotoUrl' | 'afterPhotoUrl' | 'after1MonthPhotoUrl' | 'after6MonthsPhotoUrl' | 'after1YearPhotoUrl') => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -544,6 +556,17 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
     input.click();
   };
 
+  const handleRemovePhoto = (e: React.MouseEvent, type: 'beforePhotoUrl' | 'afterPhotoUrl' | 'after1MonthPhotoUrl' | 'after6MonthsPhotoUrl' | 'after1YearPhotoUrl') => {
+    e.stopPropagation();
+    updateTask({
+      ...task,
+      disciplineData: {
+        ...d,
+        [type]: undefined
+      }
+    });
+  };
+
   return (
     <div className="animate-in fade-in duration-300 pb-8 px-1 space-y-8">
       {/* 1. Header Info */}
@@ -557,7 +580,16 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
               {lang === 'id' ? 'Tujuan Utama' : 'Main Goal'}
             </span>
           </div>
-          <h2 className="text-2xl font-bold text-slate-50 mb-6 pr-12 leading-tight tracking-tight">{task.title}</h2>
+          <div className="flex justify-between items-start gap-4 mb-6">
+            <h2 className="text-2xl font-bold text-slate-50 pr-4 leading-tight tracking-tight">{task.title}</h2>
+            <button
+              onClick={() => updateTask({ ...task, pinned: !task.pinned })}
+              className={`p-2 rounded-full border transition-all ${task.pinned ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-slate-800/50 border-white/5 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30'}`}
+              title={lang === 'id' ? 'Sematkan di Beranda' : 'Pin to Home'}
+            >
+              <Pin className={`w-5 h-5 ${task.pinned ? 'fill-indigo-400' : ''}`} />
+            </button>
+          </div>
           
           <div className="grid grid-cols-2 gap-3">
              <div className="bg-slate-950/60 rounded-2xl p-4 border border-white/5">
@@ -781,53 +813,126 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
       <div>
         <div className="flex items-center justify-between mb-3 px-2">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{lang === 'id' ? 'Transformasi Visual' : 'Visual Transformation'}</h3>
-          <span className="text-[10px] text-slate-500">{lang === 'id' ? 'Ketuk foto untuk mengubah' : 'Tap photo to change'}</span>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div 
-            onClick={() => handlePhotoUpload('beforePhotoUrl')}
+            onClick={() => d.beforePhotoUrl ? setFullScreenImage({ url: d.beforePhotoUrl, type: 'beforePhotoUrl' }) : handlePhotoUpload('beforePhotoUrl')}
             className="aspect-[3/4] bg-slate-900/50 border border-white/5 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm hover:border-slate-700 transition-colors"
           >
             {d.beforePhotoUrl ? (
-              <img src={d.beforePhotoUrl} alt="Before" className="w-full h-full object-cover" />
+              <>
+                <img src={d.beforePhotoUrl} alt="Before" className="w-full h-full object-cover" />
+                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? 'Sebelum' : 'Before'}</span>
+                </div>
+              </>
             ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
-                 <ImageIcon className="w-8 h-8 mb-3 opacity-30 group-hover:scale-110 transition-transform" />
-                 <span className="text-[10px] font-bold uppercase tracking-widest">{lang === 'id' ? 'Sebelum' : 'Before'}</span>
-              </div>
-            )}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-              <Camera className="w-8 h-8 text-white" />
-            </div>
-            {d.beforePhotoUrl && (
-              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 shadow-lg">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? 'Sebelum' : 'Before'}</span>
-              </div>
+              <>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
+                   <ImageIcon className="w-8 h-8 mb-3 opacity-30 group-hover:scale-110 transition-transform" />
+                   <span className="text-[10px] font-bold uppercase tracking-widest">{lang === 'id' ? 'Sebelum' : 'Before'}</span>
+                </div>
+              </>
             )}
           </div>
           
           <div 
-            onClick={() => handlePhotoUpload('afterPhotoUrl')}
-            className="aspect-[3/4] bg-slate-900/50 border border-white/5 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm hover:border-indigo-500/30 transition-colors"
+            onClick={() => d.afterPhotoUrl ? setFullScreenImage({ url: d.afterPhotoUrl, type: 'afterPhotoUrl' }) : handlePhotoUpload('afterPhotoUrl')}
+            className="aspect-[3/4] bg-indigo-900/20 border border-white/5 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm hover:border-indigo-500/30 transition-colors"
           >
             {d.afterPhotoUrl ? (
-              <img src={d.afterPhotoUrl} alt="After" className="w-full h-full object-cover" />
+              <>
+                <img src={d.afterPhotoUrl} alt="After" className="w-full h-full object-cover" />
+                <div className="absolute bottom-3 right-3 bg-indigo-500/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-lg">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? 'Sesudah' : 'After'}</span>
+                </div>
+              </>
             ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-indigo-500/30">
-                 <ImageIcon className="w-8 h-8 mb-3 opacity-50 group-hover:scale-110 transition-transform text-indigo-400" />
-                 <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">{lang === 'id' ? 'Sesudah' : 'After'}</span>
-              </div>
-            )}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-              <Camera className="w-8 h-8 text-white" />
-            </div>
-            {d.afterPhotoUrl && (
-              <div className="absolute bottom-3 right-3 bg-indigo-500/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-lg">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? 'Sesudah' : 'After'}</span>
-              </div>
+              <>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-indigo-500/30">
+                   <ImageIcon className="w-8 h-8 mb-3 opacity-50 group-hover:scale-110 transition-transform text-indigo-400" />
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-400">{lang === 'id' ? 'Sesudah' : 'After'}</span>
+                </div>
+              </>
             )}
           </div>
+
+          {showAllPhotos && (
+            <>
+              <div 
+                onClick={() => d.after1MonthPhotoUrl ? setFullScreenImage({ url: d.after1MonthPhotoUrl, type: 'after1MonthPhotoUrl' }) : handlePhotoUpload('after1MonthPhotoUrl')}
+                className="aspect-[3/4] bg-indigo-900/10 border border-white/5 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm hover:border-indigo-500/20 transition-colors"
+              >
+                {d.after1MonthPhotoUrl ? (
+                  <>
+                    <img src={d.after1MonthPhotoUrl} alt="1 Month" className="w-full h-full object-cover" />
+                    <div className="absolute bottom-3 right-3 bg-indigo-500/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-lg">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? '1 Bulan' : '1 Month'}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-indigo-500/20">
+                       <ImageIcon className="w-8 h-8 mb-3 opacity-40 group-hover:scale-110 transition-transform text-indigo-300" />
+                       <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">{lang === 'id' ? '1 Bulan' : '1 Month'}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div 
+                onClick={() => d.after6MonthsPhotoUrl ? setFullScreenImage({ url: d.after6MonthsPhotoUrl, type: 'after6MonthsPhotoUrl' }) : handlePhotoUpload('after6MonthsPhotoUrl')}
+                className="aspect-[3/4] bg-indigo-900/10 border border-white/5 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm hover:border-indigo-500/20 transition-colors"
+              >
+                {d.after6MonthsPhotoUrl ? (
+                  <>
+                    <img src={d.after6MonthsPhotoUrl} alt="6 Months" className="w-full h-full object-cover" />
+                    <div className="absolute bottom-3 right-3 bg-indigo-500/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-lg">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? '6 Bulan' : '6 Months'}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-indigo-500/20">
+                       <ImageIcon className="w-8 h-8 mb-3 opacity-40 group-hover:scale-110 transition-transform text-indigo-300" />
+                       <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">{lang === 'id' ? '6 Bulan' : '6 Months'}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div 
+                onClick={() => d.after1YearPhotoUrl ? setFullScreenImage({ url: d.after1YearPhotoUrl, type: 'after1YearPhotoUrl' }) : handlePhotoUpload('after1YearPhotoUrl')}
+                className="aspect-[3/4] bg-indigo-900/10 border border-white/5 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm hover:border-indigo-500/20 transition-colors"
+              >
+                {d.after1YearPhotoUrl ? (
+                  <>
+                    <img src={d.after1YearPhotoUrl} alt="1 Year" className="w-full h-full object-cover" />
+                    <div className="absolute bottom-3 right-3 bg-indigo-500/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-lg">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? '1 Tahun' : '1 Year'}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-indigo-500/20">
+                       <ImageIcon className="w-8 h-8 mb-3 opacity-40 group-hover:scale-110 transition-transform text-indigo-300" />
+                       <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-300">{lang === 'id' ? '1 Tahun' : '1 Year'}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
+        
+        {!showAllPhotos && (
+           <button 
+             onClick={() => setShowAllPhotos(true)}
+             className="w-full mt-4 py-3 bg-slate-900 border border-white/5 rounded-2xl text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+           >
+             {lang === 'id' ? 'Lihat Selengkapnya' : 'View More'}
+           </button>
+        )}
       </div>
 
       {/* 7. Complete Mission Button */}
@@ -868,6 +973,55 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
         </div>
       </div>
       
+      {/* Full Screen Image Modal */}
+      {fullScreenImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setFullScreenImage(null)}
+        >
+          <div className="absolute top-0 inset-x-0 p-6 flex justify-end z-10 bg-gradient-to-b from-black/80 to-transparent">
+            <button 
+              className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white"
+              onClick={(e) => { e.stopPropagation(); setFullScreenImage(null); }}
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <img 
+            src={fullScreenImage.url} 
+            alt="Full Screen" 
+            className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl relative z-0" 
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          <div className="absolute bottom-0 inset-x-0 p-6 flex justify-center gap-4 z-10 bg-gradient-to-t from-black/80 to-transparent">
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                handlePhotoUpload(fullScreenImage.type);
+                setFullScreenImage(null);
+              }}
+              className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-2xl font-bold text-white flex items-center gap-2 backdrop-blur-md transition-colors"
+            >
+              <Camera className="w-5 h-5" />
+              {lang === 'id' ? 'Ganti' : 'Change'}
+            </button>
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                handleRemovePhoto(e, fullScreenImage.type);
+                setFullScreenImage(null);
+              }}
+              className="px-6 py-3 bg-rose-500/20 hover:bg-rose-500/30 rounded-2xl font-bold text-rose-300 flex items-center gap-2 backdrop-blur-md transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+              {lang === 'id' ? 'Hapus' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 });

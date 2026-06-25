@@ -26,6 +26,9 @@ export interface Note {
 export interface DisciplineData {
   beforePhotoUrl?: string;
   afterPhotoUrl?: string;
+  after1MonthPhotoUrl?: string;
+  after6MonthsPhotoUrl?: string;
+  after1YearPhotoUrl?: string;
   startDate?: string;
   targetDate?: string;
   motivation?: string;
