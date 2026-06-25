@@ -229,19 +229,19 @@ export default function CalendarScreen() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:p-4 lg:gap-4 sm:p-4 md:p-5">
-            <div className="flex flex-col gap-4 md:p-5">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 items-start">
+            <div className="flex flex-col gap-6">
               {/* Calendar Grid */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-4 md:p-4 mb-6">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6">
                 {/* Days Header */}
-                <div className="grid grid-cols-7 mb-4">
+                <div className="grid grid-cols-7 mb-4 md:mb-6">
                   {daysOfWeek.map((day, i) => (
                     <div key={i} className="text-center text-[10px] md:text-xs uppercase font-bold text-slate-500 tracking-widest">
                       {day}
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-y-4 md:gap-y-6 lg:gap-y-8">
+                <div className="grid grid-cols-7 gap-y-2 md:gap-y-4">
                   {blanks.map((_, i) => (
                     <div key={`blank-${i}`} className="flex items-center justify-center"></div>
                   ))}
@@ -264,68 +264,70 @@ export default function CalendarScreen() {
                 </div>
               </div>
 
-              {/* Streak Info */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-4 md:p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 md:w-16 md:h-16 bg-orange-500/10 text-orange-400 rounded-2xl flex items-center justify-center">
-                     <Flame className="w-6 h-6 md:w-8 md:h-8" />
-                   </div>
-                   <div>
-                     <h4 className="text-slate-50 font-bold md:text-xl">{t('streak')}</h4>
-                     <p className="text-xs md:text-sm text-slate-400">{t('streakKeep')}</p>
-                   </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Streak Info */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 flex flex-col justify-between">
+                  <div className="flex items-center gap-3 mb-4">
+                     <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-500/10 text-orange-400 rounded-2xl flex items-center justify-center shrink-0">
+                       <Flame className="w-5 h-5 md:w-6 md:h-6" />
+                     </div>
+                     <div>
+                       <h4 className="text-slate-50 font-bold">{t('streak')}</h4>
+                       <p className="text-[10px] md:text-xs text-slate-400 leading-tight">{t('streakKeep')}</p>
+                     </div>
+                  </div>
+                  <div className="flex items-end gap-2 mt-auto">
+                     <span className="text-3xl md:text-4xl font-black text-orange-400 tracking-tighter leading-none">{streak}</span>
+                     <span className="text-[10px] md:text-xs uppercase font-bold text-orange-400/70 tracking-widest mb-1">{t('days')}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end">
-                   <span className="text-3xl md:text-4xl font-black text-orange-400 tracking-tighter">{streak}</span>
-                   <span className="text-[10px] md:text-xs uppercase font-bold text-orange-400/70 tracking-widest">{t('days')}</span>
-                </div>
-              </div>
 
-              {/* Monthly Average Mood */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-4 md:p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                   <div className={`w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center border border-transparent ${getMoodColorClass(avgMood)}`}>
-                     {getMoodIcon(avgMood || 'neutral', "w-6 h-6 md:w-8 md:h-8")}
-                   </div>
-                   <div>
-                     <h4 className="text-slate-50 font-bold md:text-xl">Rata-rata Mood</h4>
-                     <p className="text-xs md:text-sm text-slate-400">Dalam bulan ini</p>
-                   </div>
-                </div>
-                <div className="flex flex-col items-end">
-                   <span className={`text-xl md:text-2xl font-black tracking-tighter text-right ${avgMood ? getMoodColorClass(avgMood).split(' ')[0] : 'text-slate-500'}`}>
-                     {getMoodLabel(avgMood)}
-                   </span>
+                {/* Monthly Average Mood */}
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 flex flex-col justify-between">
+                  <div className="flex items-center gap-3 mb-4">
+                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border border-transparent shrink-0 ${getMoodColorClass(avgMood)}`}>
+                       {getMoodIcon(avgMood || 'neutral', "w-5 h-5 md:w-6 md:h-6")}
+                     </div>
+                     <div>
+                       <h4 className="text-slate-50 font-bold leading-tight">{lang === 'id' ? 'Rata-rata Mood' : 'Average Mood'}</h4>
+                       <p className="text-[10px] md:text-xs text-slate-400 leading-tight">{lang === 'id' ? 'Bulan ini' : 'This month'}</p>
+                     </div>
+                  </div>
+                  <div className="mt-auto">
+                     <span className={`text-xl md:text-2xl font-black tracking-tighter ${avgMood ? getMoodColorClass(avgMood).split(' ')[0] : 'text-slate-500'}`}>
+                       {getMoodLabel(avgMood)}
+                     </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-6">
               {/* Stats Section */}
-              <div className="mb-4">
+              <div className="flex flex-col">
                 {/* View Toggle */}
-                <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1 mb-6">
+                <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1.5 mb-6">
                   {['Harian', 'Mingguan', 'Bulanan', 'Tahunan'].map((type, idx) => {
                     const displayType = [t('daily') || 'Harian', t('weekly') || 'Mingguan', t('monthly') || 'Bulanan', t('yearly') || 'Tahunan'];
                     return (
                     <button 
                       key={type}
                       onClick={() => setViewType(type as any)}
-                      className={`flex-1 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${viewType === type ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+                      className={`flex-1 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${viewType === type ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/50'}`}
                     >
                       {displayType[idx]}
                     </button>
                   )})}
                 </div>
 
-                <h3 className="text-sm md:text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">
                   {t('statistics') || 'Statistik'} {viewType === 'Harian' ? `- ${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
                             viewType === 'Mingguan' ? `- ${startOfWeek.getDate()} ${monthNames[startOfWeek.getMonth()]} - ${endOfWeek.getDate()} ${monthNames[endOfWeek.getMonth()]} ${endOfWeek.getFullYear()}` : 
                             viewType === 'Bulanan' ? `- ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
                             `- ${selectedDate.getFullYear()}`}
                 </h3>
                 
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-4 sm:p-4 md:p-4 mb-6">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6">
                   <div className="flex items-center gap-4 mb-6 md:mb-8">
                     <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center">
                       <Activity className="w-6 h-6 md:w-7 md:h-7" />
@@ -383,11 +385,34 @@ export default function CalendarScreen() {
                     </div>
                   )}
                 </div>
+
+                {/* Selected Tasks List (Harian view) */}
+                {viewType === 'Harian' && (
+                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mt-6">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
+                       {lang === 'id' ? 'Tugas pada tanggal ini' : 'Tasks on this date'}
+                    </h3>
+                    {selectedTasks.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedTasks.map(task => (
+                           <div key={task.id} className="flex items-center gap-3 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+                             <div className={`w-3.5 h-3.5 rounded-full border-2 ${task.completed || (task.completedDates && task.completedDates.includes(selectedDateStr)) ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent border-slate-600'}`}></div>
+                             <span className={`text-sm font-medium ${task.completed || (task.completedDates && task.completedDates.includes(selectedDateStr)) ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{task.title}</span>
+                           </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-slate-500 text-sm">
+                        {t('emptyCalendar') || 'Tidak ada tugas atau catatan di tanggal ini.'}
+                      </div>
+                    )}
+                  </div>
+                )}
                 
                 {/* Habit Stats */}
                 {tasks.filter(t => t.repeat === 'daily').length > 0 && (
-                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-4 mb-6">
-                    <h3 className="text-sm md:text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
+                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mt-6">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
                        <Repeat className="w-4 h-4" />
                        {lang === 'id' ? 'Statistik Kebiasaan' : 'Habit Statistics'}
                     </h3>
