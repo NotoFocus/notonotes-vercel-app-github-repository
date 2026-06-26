@@ -274,7 +274,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
         <div className="relative w-full rounded-[2rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-6 sm:p-8 flex flex-col justify-between mb-8 text-white shadow-lg shadow-indigo-500/20 overflow-hidden">
           {/* Subtle decoration elements */}
           <div className="absolute -top-16 -right-16 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-indigo-900/30 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
           
           <div className="relative z-10 flex justify-between items-start mb-8 gap-3">
             <div className="flex-1">
@@ -350,7 +350,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
 
         {/* Target Disiplin */}
         {disciplineTask && disciplineTask.pinned && (
-          <section className="mb-5 bg-gradient-to-br from-indigo-900/40 via-slate-900 to-slate-900 border border-indigo-500/20 p-5 rounded-3xl shadow-sm relative overflow-hidden group cursor-pointer" onClick={() => onNavigate('tasks')}>
+          <section className="mb-5 bg-gradient-to-br from-indigo-500/10 via-slate-900 to-slate-900 border border-indigo-500/20 p-5 rounded-3xl shadow-sm relative overflow-hidden group cursor-pointer" onClick={() => onNavigate('tasks')}>
             <div className="absolute -top-10 -right-10 p-6 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity rotate-12 pointer-events-none">
               <Target className="w-40 h-40 text-indigo-400" />
             </div>
@@ -365,7 +365,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                </span>
             </div>
             
-            <div className="relative z-10 bg-slate-950/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
+            <div className="relative z-10 bg-slate-950/40 border border-slate-800 rounded-2xl p-4 flex items-center gap-4">
                <div className={`flex-1 ${disciplineTask.completed ? 'opacity-50' : ''}`}>
                   <h4 className={`text-base font-bold ${disciplineTask.completed ? 'text-slate-400 line-through' : 'text-slate-100'} leading-snug`}>
                     {disciplineTask.title}
@@ -376,7 +376,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                       {disciplineTask.disciplineData?.dailyCheckins?.length || 0} {lang === 'id' ? 'Hari' : 'Days'}
                     </span>
                     {disciplineTask.disciplineData?.targetDate && (
-                      <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                      <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
                          • Target: {disciplineTask.disciplineData.targetDate}
                       </span>
                     )}
@@ -397,7 +397,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                   disabled={disciplineTask.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0])}
                   className={`flex-none px-3 py-2 rounded-xl font-bold text-[11px] transition-all ${
                     disciplineTask.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0])
-                      ? 'bg-slate-800/80 text-slate-500 cursor-not-allowed border border-white/5'
+                      ? 'bg-slate-800/80 text-slate-400 cursor-not-allowed border border-slate-800'
                       : 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30 active:scale-95'
                   }`}
                 >
@@ -421,14 +421,14 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           
           <div className="grid grid-cols-1 gap-2">
             {pinnedNotes.length === 0 && pinnedTasks.length === 0 && (
-              <p className="text-[11px] text-slate-500 font-medium p-4 text-center">
+              <p className="text-[11px] text-slate-400 font-medium p-4 text-center">
                 {t('noPriority')}
               </p>
             )}
 
             {pinnedTasks.length > 0 && (
               <div className="bg-slate-800/30 border border-slate-800/60 rounded-2xl p-4 flex flex-col gap-2 mb-2">
-                 <h4 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-1"><CheckSquare className="w-2.5 h-2.5" /> {t('priorityTasks')}</h4>
+                 <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-1"><CheckSquare className="w-2.5 h-2.5" /> {t('priorityTasks')}</h4>
                  {pinnedTasks.map((task, i) => (
                    <div key={task.id} className={`flex items-start gap-2.5 group border-slate-800 pb-2 cursor-pointer ${i === pinnedTasks.length - 1 ? '' : 'border-b mt-1.5 -mb-1'}`} onClick={() => toggleTask(task.id)}>
                      <div className="p-3 -ml-3 rounded-full flex-none flex items-center justify-center transition-colors">
@@ -439,10 +439,10 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                      <div className={`flex-1 ${task.completed ? 'opacity-50' : ''}`}>
                         <h4 className={`text-sm font-medium ${task.completed ? 'text-slate-400 line-through' : 'text-slate-50'}`}>{task.title}</h4>
                         <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <p className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                          <p className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
                             <span>{task.date && task.date.includes('-') && task.date !== new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0] ? `${task.date} • ` : ''}{task.time}</span>
                             {task.alarmTime && (
-                              <span className="flex items-center gap-0.5 ml-1 text-slate-400 bg-slate-800/50 px-1 py-0.5 rounded font-bold">
+                              <span className="flex items-center gap-0.5 ml-1 text-slate-400 bg-slate-800/80 px-1 py-0.5 rounded font-bold">
                                 <Bell className="w-2.5 h-2.5" />
                                 {task.alarmTime}
                               </span>
@@ -458,7 +458,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                      </div>
                      <button 
                        onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
-                       className="p-3 -mr-2 flex-shrink-0 text-slate-500 hover:text-red-400 transition-colors flex items-center justify-center"
+                       className="p-3 -mr-2 flex-shrink-0 text-slate-400 hover:text-red-400 transition-colors flex items-center justify-center"
                      >
                        <X className="w-5 h-5" />
                      </button>
@@ -469,7 +469,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
 
             {pinnedNotes.length > 0 && (
               <div className="flex flex-col gap-3 mt-1">
-                 <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 ml-1"><FileText className="w-3 h-3" /> {t('priorityNotes')}</h4>
+                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1"><FileText className="w-3 h-3" /> {t('priorityNotes')}</h4>
                 {pinnedNotes.map((note) => (
                   <div 
                     key={note.id} 
@@ -488,10 +488,10 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                               }} className="px-2 py-1 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-colors text-[9px] font-bold rounded uppercase tracking-wider cursor-pointer">{tag.replace('#', '')}</span>
                             ))}
                           </div>
-                          <span className="text-[10px] text-slate-500 font-mono flex-shrink-0 ml-2">{note.date}</span>
+                          <span className="text-[10px] text-slate-400 font-mono flex-shrink-0 ml-2">{note.date}</span>
                        </div>
                        <h4 className="font-bold text-slate-50 leading-tight mb-1 truncate">{note.title || 'Untitled Note'}</h4>
-                       <p className="text-xs text-slate-500 line-clamp-2">{note.content ? note.content.replace(/<[^>]*>?/gm, '') : '...'}</p>
+                       <p className="text-xs text-slate-400 line-clamp-2">{note.content ? note.content.replace(/<[^>]*>?/gm, '') : '...'}</p>
                     </div>
                   </div>
                 ))}
@@ -519,7 +519,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                initial={{ scale: 0.95, y: 10, opacity: 0 }}
                animate={{ scale: 1, y: 0, opacity: 1 }}
                exit={{ scale: 0.95, opacity: 0, y: 10 }}
-               className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl relative overflow-hidden"
+               className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl relative overflow-hidden"
              >
                 {/* Subtle gradient bg */}
                 <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-transparent pointer-events-none" />
@@ -532,13 +532,13 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 </button>
                 
                 <div className="flex flex-col items-center mb-8 relative z-10">
-                  <div className="w-16 h-16 flex items-center justify-center bg-indigo-50 text-indigo-500 rounded-3xl mb-4 border border-indigo-100 shadow-sm">
+                  <div className="w-16 h-16 flex items-center justify-center bg-indigo-500/10 text-indigo-400 rounded-3xl mb-4 border border-indigo-500/20 shadow-sm">
                     <Clock className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-black text-slate-900">{t('focusTimer')}</h3>
+                  <h3 className="text-xl font-black text-slate-50">{t('focusTimer')}</h3>
                 </div>
 
-                <div className="text-6xl font-mono font-black text-center text-slate-800 tracking-tighter mb-8 relative z-10">
+                <div className="text-6xl font-mono font-black text-center text-slate-100 tracking-tighter mb-8 relative z-10">
                   {formatTime(timeLeft)}
                 </div>
                 
@@ -552,7 +552,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                           className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all ${
                             timerDuration === mins * 60 
                               ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
-                              : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
+                              : 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100'
                           }`}
                         >
                           {mins}m
@@ -576,7 +576,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                     </button>
                     <button 
                       onClick={resetTimer} 
-                      className="w-14 py-4 rounded-2xl bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200 font-bold transition-colors flex items-center justify-center active:scale-95"
+                      className="w-14 py-4 rounded-2xl bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 font-bold transition-colors flex items-center justify-center active:scale-95"
                       title="Reset"
                     >
                       <RotateCcw className="w-5 h-5" />
@@ -604,34 +604,34 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 10, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm flex flex-col items-center text-center shadow-2xl relative overflow-hidden" 
+              className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-sm flex flex-col items-center text-center shadow-2xl relative overflow-hidden" 
               onClick={e => e.stopPropagation()}
             >
               {/* Subtle ambient light */}
-              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-100 to-transparent pointer-events-none" />
+              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none" />
             
               <button 
                 onClick={handleCloseAd}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 transition-colors z-10 bg-slate-100 hover:bg-slate-200 rounded-full p-1.5"
+                className="absolute top-5 right-5 text-slate-400 hover:text-slate-200 transition-colors z-10 bg-slate-800 hover:bg-slate-700 rounded-full p-1.5"
                 title={t('close') as string}
               >
                 <X className="w-5 h-5" />
               </button>
               
-              <div className="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm border border-indigo-100">
+              <div className="w-20 h-20 bg-indigo-500/10 text-indigo-400 rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm border border-indigo-500/20">
                  <Sparkles className="w-10 h-10" />
               </div>
               
-              <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight z-10">
+              <h3 className="text-2xl font-black text-slate-50 mb-3 tracking-tight z-10">
                 {lang === 'id' ? 'Selamat Datang' : 'Welcome'}
               </h3>
               
-              <p className="text-[15px] text-slate-600 mb-8 leading-relaxed font-medium z-10 px-2">
+              <p className="text-[15px] text-slate-400 mb-8 leading-relaxed font-medium z-10 px-2">
                 {lang === 'id' ? 'Mari mulai hari dengan niat yang baik. Fokus, selesaikan tugasmu, dan nikmati prosesnya.' : 'Let\'s start the day with good intentions. Focus, complete your tasks, and enjoy the process.'}
               </p>
               
-              <div className="bg-indigo-50/50 rounded-2xl p-5 w-full mb-8 relative border border-indigo-100 z-10">
-                 <p className="text-indigo-900/80 font-medium text-[14px] leading-relaxed italic">
+              <div className="bg-indigo-500/10 rounded-2xl p-5 w-full mb-8 relative border border-indigo-500/20 z-10">
+                 <p className="text-indigo-300 font-medium text-[14px] leading-relaxed italic">
                    {lang === 'id' ? '"Jangan paksakan apapun. Jujur pada dirimu sendiri."' : '"Don\'t force anything. Be honest with yourself."'}
                  </p>
               </div>
@@ -667,10 +667,10 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                initial={{ scale: 0.95, y: 10, opacity: 0 }}
                animate={{ scale: 1, y: 0, opacity: 1 }}
                exit={{ scale: 0.95, opacity: 0, y: 10 }}
-               className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm flex flex-col shadow-2xl relative items-center text-center overflow-hidden" 
+               className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-sm flex flex-col shadow-2xl relative items-center text-center overflow-hidden" 
                onClick={e => e.stopPropagation()}
              >
-                <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-slate-100 to-transparent pointer-events-none" />
+                <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none" />
                 
                 <button 
                   onClick={() => {
@@ -680,15 +680,15 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                       setHasSeenUpdate121(true);
                     }
                   }}
-                  className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 transition-colors z-10 bg-slate-100 hover:bg-slate-200 rounded-full p-1.5"
+                  className="absolute top-5 right-5 text-slate-400 hover:text-slate-200 transition-colors z-10 bg-slate-800 hover:bg-slate-700 rounded-full p-1.5"
                 >
                   <X className="w-5 h-5" />
                 </button>
-                <div className={`w-16 h-16 ${!hasSeenUpdate121 ? 'bg-indigo-50 text-indigo-500 border border-indigo-100' : 'bg-slate-50 text-slate-400 border border-slate-100'} rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm`}>
+                <div className={`w-16 h-16 ${!hasSeenUpdate121 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'} rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm`}>
                   <Bell className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-black text-slate-900 mb-3 z-10 tracking-tight">{!hasSeenUpdate121 ? t('appUpdateTitle') : t('noNotification')}</h3>
-                <p className="text-[15px] text-slate-600 mb-8 font-medium z-10 leading-relaxed px-2">{!hasSeenUpdate121 ? t('appUpdateBody') : t('allNotificationRead')}</p>
+                <h3 className="text-xl font-black text-slate-50 mb-3 z-10 tracking-tight">{!hasSeenUpdate121 ? t('appUpdateTitle') : t('noNotification')}</h3>
+                <p className="text-[15px] text-slate-400 mb-8 font-medium z-10 leading-relaxed px-2">{!hasSeenUpdate121 ? t('appUpdateBody') : t('allNotificationRead')}</p>
                 <button 
                   onClick={() => {
                     setShowNotificationModal(false);
@@ -697,7 +697,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                       setHasSeenUpdate121(true);
                     }
                   }}
-                  className="w-full py-4 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-colors active:scale-95 shadow-lg shadow-slate-900/20 z-10"
+                  className="w-full py-4 rounded-2xl font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors active:scale-95 shadow-lg shadow-indigo-600/20 z-10"
                 >
                   {t('close')}
                 </button>

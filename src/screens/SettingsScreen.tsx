@@ -95,7 +95,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
           
           {/* AKUN & TAMPILAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Smartphone size={16} className="text-indigo-400" /> {t('appearance')}</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Smartphone size={16} className="text-indigo-400" /> {t('appearance')}</h3>
           <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
               <div className="flex items-center gap-3 w-1/2">
@@ -152,7 +152,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
         {/* NOTIFIKASI & HABIT */}
         <section>
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Bell size={16} className="text-orange-400" /> {t('notifications')}</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Bell size={16} className="text-orange-400" /> {t('notifications')}</h3>
           <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
               <div className="flex items-center gap-3">
@@ -163,7 +163,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                   <span className="font-bold text-[15px] text-slate-200">
                     {t('appReminder')}
                   </span>
-                  <span className="text-xs font-medium text-slate-500 mt-0.5">{reminderActive ? t('activeLabel') : t('inactiveLabel')}</span>
+                  <span className="text-xs font-medium text-slate-400 mt-0.5">{reminderActive ? t('activeLabel') : t('inactiveLabel')}</span>
                 </div>
               </div>
               <button 
@@ -191,7 +191,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 value={reminderTime}
                 onChange={(e) => setReminderTime(e.target.value)}
                 disabled={!reminderActive}
-                className="bg-slate-900/50 border border-slate-700/50 text-orange-400 font-bold px-4 py-2 rounded-xl text-[15px] outline-none appearance-none hover:bg-slate-800 transition-colors cursor-pointer"
+                className="bg-slate-900/80 border border-slate-700/50 text-orange-400 font-bold px-4 py-2 rounded-xl text-[15px] outline-none appearance-none hover:bg-slate-800 transition-colors cursor-pointer"
               />
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
         {/* DATA & CADANGAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><FileText size={16} className="text-emerald-400" /> {t('dataBackup')}</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><FileText size={16} className="text-emerald-400" /> {t('dataBackup')}</h3>
           <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
             <button onClick={handleExport} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60 text-left">
               <div className="flex items-center gap-3">
@@ -208,7 +208,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-slate-200">{t('backupExport')}</span>
-                  <span className="text-[11px] font-medium text-slate-500 mt-0.5">Simpan data ke perangkat</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">Simpan data ke perangkat</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-slate-600" />
@@ -220,7 +220,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-slate-200">{t('restoreImport')}</span>
-                  <span className="text-[11px] font-medium text-slate-500 mt-0.5">Pulihkan data dari perangkat</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">Pulihkan data dari perangkat</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-slate-600" />
@@ -230,7 +230,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
         {/* PRIVASI & KEAMANAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Lock size={16} className="text-rose-400" /> {t('securityAdvanced')}</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Lock size={16} className="text-rose-400" /> {t('securityAdvanced')}</h3>
           <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
               <div className="flex items-center gap-3">
@@ -239,7 +239,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-slate-200">{t('pinLock')}</span>
-                  <span className="text-[11px] font-medium text-slate-500 mt-0.5">Kunci akses aplikasi</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">Kunci akses aplikasi</span>
                 </div>
               </div>
               <button 
@@ -289,7 +289,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-red-500">{t('reset')}</span>
-                  <span className="text-[11px] font-medium text-slate-500 mt-0.5">{t('resetConfirm')}</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">{t('resetConfirm')}</span>
                 </div>
               </div>
             </button>
@@ -298,7 +298,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
         {/* HIBURAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Gamepad2 size={16} className="text-purple-400" /> Hiburan</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Gamepad2 size={16} className="text-purple-400" /> Hiburan</h3>
           <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
             <button 
               onClick={() => onNavigate && onNavigate('games-hub')}
@@ -310,7 +310,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-slate-200">Mini Games</span>
-                  <span className="text-[11px] font-medium text-slate-500 mt-0.5">Istirahat sejenak (Snake, Tic Tac Toe, dll)</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">Istirahat sejenak (Snake, Tic Tac Toe, dll)</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-slate-600" />
@@ -320,7 +320,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
         
         {/* TENTANG APLIKASI */}
         <section className="pb-4">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Info size={16} className="text-sky-400" /> {t('aboutApp')}</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Info size={16} className="text-sky-400" /> {t('aboutApp')}</h3>
           <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
               <div className="flex items-center gap-3">
@@ -377,7 +377,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
           </div>
 
           <div className="mt-12 text-center pb-8 opacity-60 hover:opacity-100 transition-opacity">
-            <p className="text-sm font-black tracking-[0.3em] uppercase text-slate-500">NOTO</p>
+            <p className="text-sm font-black tracking-[0.3em] uppercase text-slate-400">NOTO</p>
             <p className="text-[11px] font-medium text-slate-600 mt-2">{t('madeWithSimplicity')}</p>
           </div>
         </section>
@@ -481,7 +481,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                       }
                     }
                   }}
-                  className={`px-4 py-2 rounded-xl text-white text-sm font-medium transition-colors ${pinInput.length === 4 ? 'bg-indigo-500 hover:bg-indigo-600' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}
+                  className={`px-4 py-2 rounded-xl text-white text-sm font-medium transition-colors ${pinInput.length === 4 ? 'bg-indigo-500 hover:bg-indigo-600' : 'bg-slate-800 text-slate-400 cursor-not-allowed'}`}
                 >
                   {t('save')}
                 </button>
@@ -554,7 +554,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     </h5>
                     <p className="pl-6 opacity-90 text-xs">{t('privacyPolicy4')}</p>
                   </div>
-                  <div className="bg-slate-800/50 h-[1px] w-full"></div>
+                  <div className="bg-slate-800/80 h-[1px] w-full"></div>
                   <div>
                     <h5 className="font-semibold text-emerald-400 mb-1 flex items-start gap-2">
                       <Shield className="w-4 h-4 mt-0.5 shrink-0" />
@@ -562,7 +562,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     </h5>
                     <p className="pl-6 opacity-90 text-xs">{t('privacyPolicy6')}</p>
                   </div>
-                  <div className="bg-slate-800/50 h-[1px] w-full"></div>
+                  <div className="bg-slate-800/80 h-[1px] w-full"></div>
                   <div>
                     <h5 className="font-semibold text-emerald-400 mb-1 flex items-start gap-2">
                       <Shield className="w-4 h-4 mt-0.5 shrink-0" />
@@ -616,10 +616,31 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
                 <div className="mt-6 border-t border-slate-800 pt-5">
                   <h4 className="font-bold text-slate-50 text-lg mb-3">{t('auditChecklistTitle')}</h4>
-                  <ul className="space-y-2 list-disc pl-5 text-emerald-400 text-xs font-medium">
-                    <li><span className="text-slate-300">{t('auditChecklist1')}</span></li>
-                    <li><span className="text-slate-300">{t('auditChecklist2')}</span></li>
-                    <li><span className="text-slate-300">{t('auditChecklist3')}</span></li>
+                  <ul className="space-y-3">
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 font-bold">✅</span>
+                      <span className="text-slate-300 text-xs">{t('auditChecklist1')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 font-bold">✅</span>
+                      <span className="text-slate-300 text-xs">{t('auditChecklist2')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 font-bold">✅</span>
+                      <span className="text-slate-300 text-xs">{t('auditChecklist3')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 font-bold">✅</span>
+                      <span className="text-slate-300 text-xs">{t('auditChecklist4')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 font-bold">✅</span>
+                      <span className="text-slate-300 text-xs">{t('auditChecklist5')}</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-400 font-bold">✅</span>
+                      <span className="text-slate-300 text-xs">{t('auditChecklist6')}</span>
+                    </li>
                   </ul>
                 </div>
 
@@ -672,7 +693,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                   <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat10')}</strong> <span>{t('aboutAppFeat10Desc')}</span></li>
                 </ul>
                 
-                <div className="mt-8 pt-4 border-t border-slate-800 text-xs text-slate-500 text-center leading-relaxed">
+                <div className="mt-8 pt-4 border-t border-slate-800 text-xs text-slate-400 text-center leading-relaxed">
                   <p>{t('copyrightText')}</p>
                 </div>
               </div>

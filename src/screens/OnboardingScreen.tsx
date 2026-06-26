@@ -46,7 +46,7 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && handleNext()}
         placeholder={t('yourName') as string}
-        className="w-full bg-slate-900 border border-slate-700/50 rounded-2xl px-6 py-4 text-slate-100 placeholder-slate-500 text-center text-2xl outline-none focus:border-indigo-500/50 focus:bg-slate-800/80 transition-all mb-8 shadow-inner"
+        className="w-full bg-slate-900 border border-slate-700/50 rounded-2xl px-6 py-4 text-slate-100 placeholder-slate-400 text-center text-2xl outline-none focus:border-indigo-500/50 focus:bg-slate-800/80 transition-all mb-8 shadow-inner"
         autoFocus
       />
     </motion.div>,

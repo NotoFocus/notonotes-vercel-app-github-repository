@@ -128,12 +128,12 @@ export default function PuzzleScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
-      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+    <div className="flex flex-col h-full bg-slate-950">
+      <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 shrink-0">
+        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
+          <ArrowLeft className="w-5 h-5 text-slate-300" />
         </button>
-        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+        <h2 className="font-bold text-lg text-slate-100 flex items-center gap-2">
           <Gamepad2 className={themeColors.split(' ')[0]} /> Sliding Puzzle
         </h2>
         <div className="w-9" />
@@ -142,17 +142,17 @@ export default function PuzzleScreen({ onBack }: { onBack: () => void }) {
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-[320px] flex flex-col items-center gap-8 pb-10">
           
-          <div className="flex items-center justify-between w-full px-4 text-slate-500">
+          <div className="flex items-center justify-between w-full px-4 text-slate-400">
             <span className="font-bold uppercase tracking-wider text-sm">Moves: {moves}</span>
             <button 
               onClick={initGame}
-              className="font-bold flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+              className="font-bold flex items-center gap-1 hover:text-slate-200 transition-colors"
             >
               <RotateCcw size={16} /> Acak
             </button>
           </div>
 
-          <div className="bg-slate-300 dark:bg-slate-800 p-2 rounded-3xl w-full aspect-square relative z-10 shadow-inner">
+          <div className="bg-slate-800 p-2 rounded-3xl w-full aspect-square relative z-10 shadow-inner">
             <div className="grid grid-cols-3 gap-2 w-full h-full">
               {board.map((cell, index) => (
                 <button
@@ -162,7 +162,7 @@ export default function PuzzleScreen({ onBack }: { onBack: () => void }) {
                   className={`flex flex-col items-center justify-center text-3xl font-black rounded-2xl transition-all aspect-square 
                     ${cell === 0 
                       ? 'invisible' 
-                      : 'bg-white dark:bg-slate-700 shadow-sm border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:scale-[0.98] active:scale-95 cursor-pointer'
+                      : 'bg-slate-700 shadow-sm border border-slate-600 text-slate-200 hover:scale-[0.98] active:scale-95 cursor-pointer'
                     }`}
                 >
                   {cell !== 0 && cell}
@@ -173,14 +173,14 @@ export default function PuzzleScreen({ onBack }: { onBack: () => void }) {
 
           {isWon && (
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] flex flex-col items-center justify-center z-20">
-              <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300 transform scale-100 border-[4px] border-emerald-100 dark:border-slate-700 min-w-[280px]">
-                 <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 text-3xl bg-slate-100 dark:bg-slate-700">
+              <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300 transform scale-100 border-[4px] border-emerald-100  min-w-[280px]">
+                 <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 text-3xl bg-slate-700">
                     🎉
                  </div>
-                 <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2 tracking-tight text-center">
+                 <h3 className="text-2xl font-black text-slate-100 mb-2 tracking-tight text-center">
                    Selesai!
                  </h3>
-                 <p className="text-slate-500 dark:text-slate-400 font-medium mb-8 text-sm text-center">
+                 <p className="text-slate-400 font-medium mb-8 text-sm text-center">
                    Kamu berhasil dalam {moves} langkah.
                  </p>
                  <button 

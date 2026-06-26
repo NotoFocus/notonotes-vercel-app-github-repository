@@ -17,11 +17,11 @@ async function startServer() {
       contentSecurityPolicy: process.env.NODE_ENV === "production" ? {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://va.vercel-scripts.com"], // Removed unsafe-eval for strict CSP
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           imgSrc: ["'self'", "data:", "blob:", "https:"],
-          connectSrc: ["'self'", "https:", "wss:"],
+          connectSrc: ["'self'", "https:", "wss:", "https://vitals.vercel-insights.com"], // Restricted connect sources
           objectSrc: ["'none'"],
           upgradeInsecureRequests: [],
         },
@@ -30,6 +30,7 @@ async function startServer() {
       crossOriginOpenerPolicy: false,
       crossOriginResourcePolicy: false,
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+      xssFilter: true, // Explicit XSS Protection
       hsts: {
         maxAge: 31536000,
         includeSubDomains: true,
@@ -41,7 +42,6 @@ async function startServer() {
       ieNoOpen: true,
       noSniff: true,
       permittedCrossDomainPolicies: { permittedPolicies: "none" },
-      xssFilter: true,
     })
   );
 

@@ -40,7 +40,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
     >
       <div className="flex-1 overflow-hidden">
          <h4 className="font-bold text-slate-50 leading-tight mb-1 truncate">{note.title || 'Untitled Note'}</h4>
-         <p className="text-xs text-slate-500 line-clamp-2">{note.content ? note.content.replace(/<[^>]*>?/gm, '') : '...'}</p>
+         <p className="text-xs text-slate-400 line-clamp-2">{note.content ? note.content.replace(/<[^>]*>?/gm, '') : '...'}</p>
          {note.tags && note.tags.length > 0 && (
            <div className="flex gap-1 overflow-x-hidden flex-wrap max-w-full mt-2">
              {note.tags.map(tag => (
@@ -54,7 +54,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
       <div className="flex gap-1 flex-shrink-0">
         <button 
           onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
-          className="p-3 flex items-center justify-center rounded-xl transition-colors hover:bg-slate-800 text-slate-500 hover:text-red-400 opacity-100"
+          className="p-3 flex items-center justify-center rounded-xl transition-colors hover:bg-slate-800 text-slate-400 hover:text-red-400 opacity-100"
         >
           <Trash2 className="w-5 h-5" />
         </button>
@@ -62,7 +62,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
           onClick={(e) => handleTogglePinNote(e, note)}
           className="p-3 flex items-center justify-center rounded-xl transition-colors hover:bg-slate-800"
         >
-          <Pin className={`w-5 h-5 ${note.pinned ? 'fill-orange-400 text-orange-400' : 'text-slate-500 hover:text-orange-400'}`} />
+          <Pin className={`w-5 h-5 ${note.pinned ? 'fill-orange-400 text-orange-400' : 'text-slate-400 hover:text-orange-400'}`} />
         </div>
       </div>
     </div>
@@ -81,7 +81,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
                 <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
                   {lang === 'id' ? 'Fokus Disiplin' : 'Discipline'}
                 </span>
-                <span className="text-[10px] font-mono text-slate-500">
+                <span className="text-[10px] font-mono text-slate-400">
                    {task.disciplineData?.targetDate ? `Target: ${task.disciplineData.targetDate}` : ''}
                 </span>
               </div>
@@ -102,7 +102,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
                 disabled={task.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0])}
                 className={`flex-none px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all ${
                   task.disciplineData?.dailyCheckins?.includes(new Date().toISOString().split('T')[0])
-                    ? 'bg-slate-800/80 text-slate-500 cursor-not-allowed border border-white/5'
+                    ? 'bg-slate-800/80 text-slate-400 cursor-not-allowed border border-slate-800'
                     : 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30 active:scale-95'
                 }`}
               >
@@ -112,9 +112,9 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
              </button>
              <button 
                onClick={(e) => handleTogglePinTask(e, task)}
-               className="p-3 -mr-3 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-slate-800/50 flex-none"
+               className="p-3 -mr-3 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-slate-800/80 flex-none"
              >
-               <Pin className={`w-5 h-5 ${task.pinned ? 'fill-indigo-400 text-indigo-400' : 'text-slate-500 hover:text-indigo-400'}`} />
+               <Pin className={`w-5 h-5 ${task.pinned ? 'fill-indigo-400 text-indigo-400' : 'text-slate-400 hover:text-indigo-400'}`} />
              </button>
            </div>
          </div>
@@ -133,11 +133,11 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
          <div className={`flex-1 ${task.completed ? 'opacity-50' : ''}`}>
             <h4 className={`text-sm font-medium ${task.completed ? 'text-slate-400 line-through' : 'text-slate-50'}`}>{task.title}</h4>
             <div className="flex flex-wrap items-center gap-2 mt-1">
-              <span className="text-[10px] text-slate-500 font-mono">
+              <span className="text-[10px] text-slate-400 font-mono">
                 {task.date && task.date.includes('-') && task.date !== new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0] ? `${task.date} • ` : ''}{task.time}
               </span>
               {task.alarmTime && (
-                <span className="text-[10px] flex gap-1 items-center font-bold text-slate-400 bg-slate-800/50 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] flex gap-1 items-center font-bold text-slate-400 bg-slate-800/80 px-1.5 py-0.5 rounded">
                   <Bell className="w-3 h-3" />
                   {task.alarmTime}
                 </span>
@@ -160,15 +160,15 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
          <div className="flex gap-1 flex-shrink-0 opacity-100">
            <button 
              onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
-             className="p-3 -mr-2 text-slate-500 hover:text-red-400 transition-colors flex items-center justify-center"
+             className="p-3 -mr-2 text-slate-400 hover:text-red-400 transition-colors flex items-center justify-center"
            >
              <Trash2 className="w-5 h-5" />
            </button>
            <button 
              onClick={(e) => handleTogglePinTask(e, task)}
-             className="p-3 text-slate-500 hover:text-orange-400 transition-colors flex items-center justify-center"
+             className="p-3 text-slate-400 hover:text-orange-400 transition-colors flex items-center justify-center"
            >
-             <Pin className={`w-5 h-5 ${task.pinned ? 'fill-orange-400 text-orange-400' : 'text-slate-500 hover:text-orange-400'}`} />
+             <Pin className={`w-5 h-5 ${task.pinned ? 'fill-orange-400 text-orange-400' : 'text-slate-400 hover:text-orange-400'}`} />
            </button>
          </div>
        </div>
@@ -256,15 +256,15 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
     <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
       <div className="flex-none bg-slate-950 px-6 pt-6 pb-4 flex flex-col gap-4 border-b border-slate-800/60 sticky top-0 z-10">
         <div className="relative w-full">
-           <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+           <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
            <input 
              value={searchQuery}
              onChange={e => setSearchQuery(e.target.value)}
              placeholder={t('search') || "Cari catatan, tugas, atau tag..."}
-             className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl h-12 pl-12 pr-10 text-sm text-slate-50 placeholder-slate-500 outline-none focus:border-indigo-500/50 focus:bg-slate-900 transition-all font-medium shadow-sm"
+             className="w-full bg-slate-900/80 border border-slate-800 rounded-2xl h-12 pl-12 pr-10 text-sm text-slate-50 placeholder-slate-400 outline-none focus:border-indigo-500/50 focus:bg-slate-900 transition-all font-medium shadow-sm"
            />
            {searchQuery && (
-             <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-50 transition-colors">
+             <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-50 transition-colors">
                <X className="w-4 h-4" />
              </button>
            )}
@@ -292,7 +292,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24 w-full">
         <div className="w-full px-6 py-6 space-y-8">
           {groupBy === 'Semua' && filteredNotes.length === 0 && filteredTasks.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
               <SearchIcon className="w-12 h-12 md:w-16 md:h-16 mb-4 text-slate-700 opacity-50" />
               <div className="text-center font-medium text-sm md:text-base">
                 {searchQuery ? `${t('noMatchData')} "${searchQuery}"` : `${t('noNotes')} & ${t('noTasks')}`}
@@ -300,13 +300,13 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
             </div>
           )}
           {groupBy === 'Level Tugas' && filteredTasks.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
               <CheckSquare className="w-12 h-12 md:w-16 md:h-16 mb-4 text-slate-700 opacity-50" />
               <div className="text-center font-medium text-sm md:text-base">{t('noMatchTasks')}</div>
             </div>
           )}
           {groupBy === 'Tag Catatan' && filteredNotes.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
               <Tag className="w-12 h-12 md:w-16 md:h-16 mb-4 text-slate-700 opacity-50" />
               <div className="text-center font-medium text-sm md:text-base">{t('noMatchNotes')}</div>
             </div>

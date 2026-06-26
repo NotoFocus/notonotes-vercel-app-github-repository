@@ -412,7 +412,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
 
                   return (
                     <div key={dateKey} className="space-y-3">
-                      <h4 className={`text-xs font-bold ml-2 mb-1 text-slate-500 uppercase tracking-wider`}>{dateLabel}</h4>
+                      <h4 className={`text-xs font-bold ml-2 mb-1 text-slate-400 uppercase tracking-wider`}>{dateLabel}</h4>
                       {displayData.groups[dateKey].map(t => (
                         <div key={t.id} className={`flex items-center justify-between p-3 sm:p-4 rounded-2xl border transition-all hover:-translate-y-0.5 hover:shadow-lg bg-slate-900 border-slate-800 shadow-sm hover:shadow-black/50 gap-2`}>
                           <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
@@ -433,13 +433,13 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                             <div className="flex items-center gap-0.5 sm:gap-1">
                               <button 
                                 onClick={() => handleEditClick(t)}
-                                className="p-1.5 sm:p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-xl transition-colors"
+                                className="p-1.5 sm:p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-xl transition-colors"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
                               </button>
                               <button 
                                 onClick={() => setShowDeleteConfirm(t.id)}
-                                className="p-1.5 sm:p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors"
+                                className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors"
                               >
                                 <Trash2 className="w-4 h-4 sm:w-4 sm:h-4" />
                               </button>
@@ -473,7 +473,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
 
           <div className="space-y-6">
             {/* Savings Goal Card */}
-            <div className="p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm transition-all hover:bg-slate-800/50">
+            <div className="p-4 rounded-2xl border bg-slate-900 border-slate-800 shadow-sm transition-all hover:bg-slate-800/80">
               <div className="flex items-center justify-between mb-4 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
@@ -652,7 +652,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                             </div>
                             <div className="flex items-center gap-2">
                               <span className={`font-semibold text-slate-400`}>Rp {c.amount.toLocaleString('id-ID')}</span>
-                              <span className="text-xs text-slate-500 w-10 text-right">{c.perc.toFixed(1)}%</span>
+                              <span className="text-xs text-slate-400 w-10 text-right">{c.perc.toFixed(1)}%</span>
                             </div>
                           </div>
                         );
@@ -824,7 +824,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                  <AlertTriangle size={24} />
               </div>
               
-              <h3 className="text-xl font-bold text-center mb-2 text-white">
+              <h3 className="text-xl font-bold text-center mb-2 text-slate-50">
                 {lang === 'id' ? 'Hapus Target?' : 'Delete Target?'}
               </h3>
               

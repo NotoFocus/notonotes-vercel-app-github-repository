@@ -5,13 +5,13 @@ const ROWS = 20;
 const COLS = 10;
 
 const SHAPES = [
-  { shape: [[1, 1, 1, 1]], color: 'bg-cyan-400 dark:bg-cyan-500' }, // I
-  { shape: [[1, 0, 0], [1, 1, 1]], color: 'bg-blue-500 dark:bg-blue-600' }, // J
-  { shape: [[0, 0, 1], [1, 1, 1]], color: 'bg-orange-500 dark:bg-orange-600' }, // L
-  { shape: [[1, 1], [1, 1]], color: 'bg-yellow-400 dark:bg-yellow-500' }, // O
-  { shape: [[0, 1, 1], [1, 1, 0]], color: 'bg-green-500 dark:bg-green-600' }, // S
-  { shape: [[0, 1, 0], [1, 1, 1]], color: 'bg-purple-500 dark:bg-purple-600' }, // T
-  { shape: [[1, 1, 0], [0, 1, 1]], color: 'bg-red-500 dark:bg-red-600' }  // Z
+  { shape: [[1, 1, 1, 1]], color: 'bg-cyan-500' }, // I
+  { shape: [[1, 0, 0], [1, 1, 1]], color: 'bg-blue-600' }, // J
+  { shape: [[0, 0, 1], [1, 1, 1]], color: 'bg-orange-600' }, // L
+  { shape: [[1, 1], [1, 1]], color: 'bg-yellow-500' }, // O
+  { shape: [[0, 1, 1], [1, 1, 0]], color: 'bg-green-600' }, // S
+  { shape: [[0, 1, 0], [1, 1, 1]], color: 'bg-purple-600' }, // T
+  { shape: [[1, 1, 0], [0, 1, 1]], color: 'bg-red-600' }  // Z
 ];
 
 let audioCtx: AudioContext | null = null;
@@ -285,15 +285,15 @@ export default function TetrisScreen({ onBack }: { onBack: () => void }) {
         {/* Score Board */}
         <div className="w-full max-w-[280px] flex justify-between items-center mb-4 px-2">
            <div className="flex flex-col">
-             <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Score</span>
+             <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Score</span>
              <span className="font-mono text-xl text-cyan-400">{score.toString().padStart(6, '0')}</span>
            </div>
            <div className="flex flex-col items-center">
-             <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Level</span>
+             <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Level</span>
              <span className="font-mono text-xl text-slate-200">{level}</span>
            </div>
            <div className="flex flex-col items-end">
-             <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Best</span>
+             <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Best</span>
              <span className="font-mono text-xl text-amber-400 flex items-center gap-1"><Trophy size={14} className="text-amber-500"/> {highScore}</span>
            </div>
         </div>
@@ -302,7 +302,7 @@ export default function TetrisScreen({ onBack }: { onBack: () => void }) {
         <div className="relative">
           <div className="bg-slate-900 border-4 border-slate-800/80 rounded-xl p-1 shadow-2xl">
             <div 
-              className="bg-slate-950/50 rounded-md overflow-hidden"
+              className="bg-slate-950/80 rounded-md overflow-hidden"
               style={{
                 display: 'grid',
                 gridTemplateRows: `repeat(${ROWS}, 1fr)`,

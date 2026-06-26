@@ -144,12 +144,12 @@ export default function TicTacToeScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
-      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+    <div className="flex flex-col h-full bg-slate-950">
+      <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 shrink-0">
+        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
+          <ArrowLeft className="w-5 h-5 text-slate-300" />
         </button>
-        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+        <h2 className="font-bold text-lg text-slate-100 flex items-center gap-2">
           <Gamepad2 className={themeColors.split(' ')[0]} /> Tic Tac Toe
         </h2>
         <div className="w-9" />
@@ -158,16 +158,16 @@ export default function TicTacToeScreen({ onBack }: { onBack: () => void }) {
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-[320px] flex flex-col items-center gap-8 pb-10">
           
-          <div className="flex items-center bg-white dark:bg-slate-800 p-1 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 w-full mb-2">
+          <div className="flex items-center bg-slate-800 p-1 rounded-full shadow-sm border border-slate-700 w-full mb-2">
             <button 
               onClick={() => { setGameMode('PvE'); resetGame(); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-bold transition-all ${gameMode === 'PvE' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-bold transition-all ${gameMode === 'PvE' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 '}`}
             >
               <Cpu size={16} /> Lawan Bot
             </button>
             <button 
               onClick={() => { setGameMode('PvP'); resetGame(); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-bold transition-all ${gameMode === 'PvP' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-bold transition-all ${gameMode === 'PvP' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 '}`}
             >
               <User size={16} /> 2 Pemain
             </button>
@@ -176,11 +176,11 @@ export default function TicTacToeScreen({ onBack }: { onBack: () => void }) {
           <div className="flex items-center justify-between w-full px-4">
             <div className={`flex flex-col items-center transition-opacity ${!winner && isXNext ? 'opacity-100 scale-110' : 'opacity-40'}`}>
                <span className={`text-3xl font-black ${colorX}`}>X</span>
-               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{gameMode === 'PvE' ? 'Kamu' : 'Pemain 1'}</span>
+               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{gameMode === 'PvE' ? 'Kamu' : 'Pemain 1'}</span>
             </div>
             <div className={`flex flex-col items-center transition-opacity ${!winner && !isXNext ? 'opacity-100 scale-110' : 'opacity-40'}`}>
                <span className={`text-3xl font-black ${colorO}`}>O</span>
-               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{gameMode === 'PvE' ? 'Bot' : 'Pemain 2'}</span>
+               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{gameMode === 'PvE' ? 'Bot' : 'Pemain 2'}</span>
             </div>
           </div>
 
@@ -201,7 +201,7 @@ export default function TicTacToeScreen({ onBack }: { onBack: () => void }) {
                   }
                 }}
                 disabled={!!cell || !!winner || (gameMode === 'PvE' && !isXNext)}
-                className={`bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-5xl font-black leading-none transition-all active:scale-95 hover:bg-slate-50 dark:hover:bg-slate-700 aspect-square w-full h-full p-0 overflow-hidden ${cell === 'X' ? colorX : colorO} ${!cell && !winner && (gameMode === 'PvP' || isXNext) ? 'active:shadow-inner cursor-pointer' : 'cursor-default'}`}
+                className={`bg-slate-800 rounded-2xl shadow-sm border border-slate-700 flex items-center justify-center text-5xl font-black leading-none transition-all active:scale-95 hover:bg-slate-700 aspect-square w-full h-full p-0 overflow-hidden ${cell === 'X' ? colorX : colorO} ${!cell && !winner && (gameMode === 'PvP' || isXNext) ? 'active:shadow-inner cursor-pointer' : 'cursor-default'}`}
               >
                 <span className={cell ? "animate-in zoom-in duration-200 block" : "invisible block"}>
                   {cell || 'X'}
@@ -212,14 +212,14 @@ export default function TicTacToeScreen({ onBack }: { onBack: () => void }) {
 
           {winner && (
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] flex flex-col items-center justify-center z-20">
-              <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300 transform scale-100 border-[4px] border-indigo-100 dark:border-slate-700 min-w-[280px]">
-                 <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 text-3xl bg-slate-100 dark:bg-slate-700">
+              <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300 transform scale-100 border-[4px] border-indigo-100  min-w-[280px]">
+                 <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 text-3xl bg-slate-700">
                     {winner === 'Draw' ? '🤝' : '🎉'}
                  </div>
-                 <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2 tracking-tight text-center">
+                 <h3 className="text-2xl font-black text-slate-100 mb-2 tracking-tight text-center">
                    {winner === 'Draw' ? 'Seri!' : `${winner} Menang!`}
                  </h3>
-                 <p className="text-slate-500 dark:text-slate-400 font-medium mb-8 text-sm text-center">
+                 <p className="text-slate-400 font-medium mb-8 text-sm text-center">
                    {winner === 'Draw' ? 'Pertandingan yang seimbang.' : 'Kerja bagus!'}
                  </p>
                  <button 

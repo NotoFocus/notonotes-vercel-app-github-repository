@@ -85,7 +85,7 @@ export default function CalendarScreen() {
        case 'neutral': return 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30';
        case 'bad': return 'text-orange-400 bg-orange-500/10 border-orange-500/30';
        case 'terrible': return 'text-rose-500 bg-rose-500/10 border-rose-500/30';
-       default: return 'text-slate-500 bg-slate-800/30 border-slate-700/30';
+       default: return 'text-slate-400 bg-slate-800/30 border-slate-700/30';
     }
   };
 
@@ -236,7 +236,7 @@ export default function CalendarScreen() {
                 {/* Days Header */}
                 <div className="grid grid-cols-7 mb-4 md:mb-6">
                   {daysOfWeek.map((day, i) => (
-                    <div key={i} className="text-center text-[10px] md:text-xs uppercase font-bold text-slate-500 tracking-widest">
+                    <div key={i} className="text-center text-[10px] md:text-xs uppercase font-bold text-slate-400 tracking-widest">
                       {day}
                     </div>
                   ))}
@@ -294,7 +294,7 @@ export default function CalendarScreen() {
                      </div>
                   </div>
                   <div className="mt-auto">
-                     <span className={`text-xl md:text-2xl font-black tracking-tighter ${avgMood ? getMoodColorClass(avgMood).split(' ')[0] : 'text-slate-500'}`}>
+                     <span className={`text-xl md:text-2xl font-black tracking-tighter ${avgMood ? getMoodColorClass(avgMood).split(' ')[0] : 'text-slate-400'}`}>
                        {getMoodLabel(avgMood)}
                      </span>
                   </div>
@@ -313,7 +313,7 @@ export default function CalendarScreen() {
                     <button 
                       key={type}
                       onClick={() => setViewType(type as any)}
-                      className={`flex-1 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${viewType === type ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/50'}`}
+                      className={`flex-1 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${viewType === type ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80'}`}
                     >
                       {displayType[idx]}
                     </button>
@@ -341,7 +341,7 @@ export default function CalendarScreen() {
                   <div className="flex gap-4">
                     <div className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center">
                       <div className="text-2xl md:text-3xl font-bold text-slate-50 mb-1">{selectedTasks.length}</div>
-                      <div className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-slate-500">{t('total') || 'Total'}</div>
+                      <div className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-slate-400">{t('total') || 'Total'}</div>
                     </div>
                     <div className="flex-1 bg-slate-950 border border-emerald-900/50 rounded-2xl p-4 text-center">
                       <div className="text-2xl md:text-3xl font-bold text-emerald-400 mb-1">{completedCount}</div>
@@ -397,12 +397,12 @@ export default function CalendarScreen() {
                         {selectedTasks.map(task => (
                            <div key={task.id} className="flex items-center gap-3 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
                              <div className={`w-3.5 h-3.5 rounded-full border-2 ${task.completed || (task.completedDates && task.completedDates.includes(selectedDateStr)) ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent border-slate-600'}`}></div>
-                             <span className={`text-sm font-medium ${task.completed || (task.completedDates && task.completedDates.includes(selectedDateStr)) ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{task.title}</span>
+                             <span className={`text-sm font-medium ${task.completed || (task.completedDates && task.completedDates.includes(selectedDateStr)) ? 'text-slate-400 line-through' : 'text-slate-200'}`}>{task.title}</span>
                            </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-6 text-slate-500 text-sm">
+                      <div className="text-center py-6 text-slate-400 text-sm">
                         {t('emptyCalendar') || 'Tidak ada tugas atau catatan di tanggal ini.'}
                       </div>
                     )}
@@ -436,9 +436,9 @@ export default function CalendarScreen() {
                           <div key={task.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-4 min-w-[240px] max-w-[240px] snap-center shrink-0">
                             <div>
                                <h4 className="font-bold text-slate-50 line-clamp-1">{task.title}</h4>
-                               <p className="text-[10px] text-slate-500 font-mono mt-1">{lang === 'id' ? 'Aktif sejak:' : 'Active since:'} {createdStr}</p>
+                               <p className="text-[10px] text-slate-400 font-mono mt-1">{lang === 'id' ? 'Aktif sejak:' : 'Active since:'} {createdStr}</p>
                             </div>
-                            <div className="flex justify-between items-center bg-slate-900/50 border border-slate-800 rounded-xl p-2.5">
+                            <div className="flex justify-between items-center bg-slate-900/80 border border-slate-800 rounded-xl p-2.5">
                                <div className="flex flex-col items-center flex-1">
                                  <div className="text-[10px] uppercase tracking-wider font-bold text-emerald-500">{lang === 'id' ? 'Selesai' : 'Done'}</div>
                                  <div className="text-xl font-black text-emerald-400 mt-0.5">{completedCount}</div>

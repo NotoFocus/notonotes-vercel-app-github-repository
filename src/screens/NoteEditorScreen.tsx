@@ -241,7 +241,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
             type="text"
             value={title}
             onChange={handleTitleChange}
-            className="w-full text-3xl font-bold bg-transparent border-none outline-none text-slate-50 tracking-tight placeholder-slate-700 mb-4"
+            className="w-full text-3xl font-bold bg-transparent border-none outline-none text-slate-50 tracking-tight placeholder-slate-400 mb-4"
             placeholder={t('titlePlaceholder') || "New Note Title..."}
           />
 
@@ -279,7 +279,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
               ) : (
                 <button
                   onClick={() => setIsAddingTag(true)}
-                  className="h-7 px-3 flex items-center justify-center rounded-lg border border-dashed border-slate-700 text-[10px] font-bold text-slate-500 uppercase tracking-wider hover:border-slate-500 transition-colors cursor-pointer"
+                  className="h-7 px-3 flex items-center justify-center rounded-lg border border-dashed border-slate-700 text-[10px] font-bold text-slate-400 uppercase tracking-wider hover:border-slate-500 transition-colors cursor-pointer"
                 >
                   + Tag
                 </button>
@@ -288,13 +288,13 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
 
             {suggestedTags.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Rekomendasi:</span>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Rekomendasi:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {suggestedTags.map(tag => (
                     <button
                       key={tag}
                       onClick={() => handleAddExistingTag(tag)}
-                      className="px-2 py-1 rounded-md border border-slate-800 bg-slate-900/50 text-[10px] text-slate-400 font-bold uppercase tracking-wider hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
+                      className="px-2 py-1 rounded-md border border-slate-800 bg-slate-900/80 text-[10px] text-slate-400 font-bold uppercase tracking-wider hover:bg-slate-800 hover:text-slate-200 transition-colors cursor-pointer"
                     >
                       +{tag.replace("#", "")}
                     </button>

@@ -186,7 +186,7 @@ export default function App() {
 
         // Check if the task is scheduled for today
         let isToday = false;
-        if (task.date === 'Hari ini' || (task.date && task.date.toLowerCase() === 'today') || task.date === todayDate || task.repeat === 'daily') {
+        if (task.date === 'Hari ini' || (task.date && task.date.toLowerCase() === 'today') || task.date === todayDate || task.repeat === 'daily' || task.isDiscipline) {
           isToday = true;
         }
 
@@ -259,7 +259,7 @@ export default function App() {
              <div className="w-20 h-20 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center mb-6 animate-pulse shadow-[0_0_40px_rgba(99,102,241,0.4)]">
                <Bell className="w-10 h-10 animate-bounce" />
              </div>
-             <h3 className="text-2xl font-bold text-white mb-2">{inAppAlarm.title}</h3>
+             <h3 className="text-2xl font-bold text-slate-50 mb-2">{inAppAlarm.title}</h3>
              <p className="text-slate-400 font-medium mb-8">{inAppAlarm.body}</p>
              <button onClick={() => { setInAppAlarm(null); stopGlobalAudio(); }} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg transition-transform active:scale-95 shadow-lg shadow-indigo-600/20">
                {lang === 'id' ? 'Tutup Pengingat' : 'Dismiss Alarm'}
@@ -329,7 +329,7 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
     <button 
       onClick={onClick}
       className={`relative flex items-center group transition-all rounded-2xl md:w-full md:px-5 md:py-4 md:justify-start flex-col md:flex-row justify-center min-w-[64px] min-h-[64px] md:min-h-0 md:min-w-0 md:mb-1 ${
-        active ? 'text-indigo-400 bg-transparent md:bg-indigo-500/10 md:text-indigo-400 md:shadow-inner md:border md:border-indigo-500/20' : 'text-slate-500 hover:text-indigo-300 md:hover:bg-slate-800/40 md:border md:border-transparent'
+        active ? 'text-indigo-400 bg-transparent md:bg-indigo-500/10 md:text-indigo-400 md:shadow-inner md:border md:border-indigo-500/20' : 'text-slate-400 hover:text-indigo-300 md:hover:bg-slate-800/40 md:border md:border-transparent'
       }`}
     >
       <div className={`md:hidden absolute top-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-indigo-500 rounded-b-full opacity-0 transition-all ${active ? '!opacity-100 top-0' : ''}`}></div>
@@ -401,7 +401,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
       <div className="w-full max-w-[480px] min-h-[100dvh] relative flex flex-col items-center justify-center text-slate-200 font-sans p-8 shadow-2xl sm:border-x border-slate-800 bg-slate-950">
         <Lock className="w-12 h-12 text-indigo-500 mb-6" />
         <h2 className="text-xl font-bold tracking-tight mb-2">{t('pinLocked')}</h2>
-        <p className="text-slate-500 text-sm mb-12">{t('enterPin')}</p>
+        <p className="text-slate-400 text-sm mb-12">{t('enterPin')}</p>
         
         <div className={`flex gap-4 mb-20 ${error ? 'animate-pulse' : ''}`}>
           {[0, 1, 2, 3].map(i => (
@@ -428,7 +428,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
           </button>
           <button 
             onClick={handleDelete}
-            className="h-16 rounded-full bg-slate-900 flex items-center justify-center text-sm font-bold text-slate-500 hover:bg-slate-800 hover:text-slate-50 transition-all uppercase tracking-widest"
+            className="h-16 rounded-full bg-slate-900 flex items-center justify-center text-sm font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-50 transition-all uppercase tracking-widest"
           >
             Del
           </button>
@@ -436,7 +436,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
 
         <button 
           onClick={() => setForgotModalVisible(true)}
-          className="mt-8 text-sm text-slate-500 hover:text-indigo-400 transition-colors font-medium border-b border-transparent hover:border-indigo-400"
+          className="mt-8 text-sm text-slate-400 hover:text-indigo-400 transition-colors font-medium border-b border-transparent hover:border-indigo-400"
         >
           {t('forgotPin') || 'Lupa PIN?'}
         </button>

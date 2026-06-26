@@ -112,49 +112,49 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
     excellent: {
       head: "bg-emerald-500",
       body: "bg-emerald-400 text-emerald-900",
-      text: "text-emerald-500 dark:text-emerald-400",
-      dpadColor: "group-active:text-emerald-500 text-slate-400 dark:text-slate-500",
-      dpadBg: "bg-emerald-50 dark:bg-emerald-500/10",
+      text: "text-emerald-400",
+      dpadColor: "group-active:text-emerald-500 text-slate-400",
+      dpadBg: "bg-emerald-500/10",
       boardDot: "#10b981", // emerald-500
     },
     good: {
       head: "bg-teal-500",
       body: "bg-teal-400 text-teal-900",
-      text: "text-teal-500 dark:text-teal-400",
-      dpadColor: "group-active:text-teal-500 text-slate-400 dark:text-slate-500",
-      dpadBg: "bg-teal-50 dark:bg-teal-500/10",
+      text: "text-teal-400",
+      dpadColor: "group-active:text-teal-500 text-slate-400",
+      dpadBg: "bg-teal-500/10",
       boardDot: "#14b8a6", // teal-500
     },
     neutral: {
       head: "bg-indigo-500",
       body: "bg-indigo-400 text-indigo-900",
-      text: "text-indigo-500 dark:text-indigo-400",
-      dpadColor: "group-active:text-indigo-500 text-slate-400 dark:text-slate-500",
-      dpadBg: "bg-indigo-50 dark:bg-indigo-500/10",
+      text: "text-indigo-400",
+      dpadColor: "group-active:text-indigo-500 text-slate-400",
+      dpadBg: "bg-indigo-500/10",
       boardDot: "#6366f1", // indigo-500
     },
     bad: {
       head: "bg-orange-500",
       body: "bg-orange-400 text-orange-900",
-      text: "text-orange-500 dark:text-orange-400",
-      dpadColor: "group-active:text-orange-500 text-slate-400 dark:text-slate-500",
-      dpadBg: "bg-orange-50 dark:bg-orange-500/10",
+      text: "text-orange-400",
+      dpadColor: "group-active:text-orange-500 text-slate-400",
+      dpadBg: "bg-orange-500/10",
       boardDot: "#f97316", // orange-500
     },
     terrible: {
       head: "bg-rose-500",
       body: "bg-rose-400 text-rose-900",
-      text: "text-rose-500 dark:text-rose-400",
-      dpadColor: "group-active:text-rose-500 text-slate-400 dark:text-slate-500",
-      dpadBg: "bg-rose-50 dark:bg-rose-500/10",
+      text: "text-rose-400",
+      dpadColor: "group-active:text-rose-500 text-slate-400",
+      dpadBg: "bg-rose-500/10",
       boardDot: "#f43f5e", // rose-500
     }
   }[todayMood] || {
       head: "bg-indigo-500",
       body: "bg-indigo-400 text-indigo-900",
-      text: "text-indigo-500 dark:text-indigo-400",
-      dpadColor: "group-active:text-indigo-500 text-slate-400 dark:text-slate-500",
-      dpadBg: "bg-indigo-50 dark:bg-indigo-500/10",
+      text: "text-indigo-400",
+      dpadColor: "group-active:text-indigo-500 text-slate-400",
+      dpadBg: "bg-indigo-500/10",
       boardDot: "#6366f1", // indigo-500
   };
 
@@ -300,25 +300,25 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
-      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+    <div className="flex flex-col h-full bg-slate-950">
+      <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
+        <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
+          <ArrowLeft className="w-5 h-5 text-slate-300" />
         </button>
-        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
+        <h2 className="font-bold text-lg text-slate-100 flex items-center gap-2">
           <Gamepad2 className="text-emerald-500" /> Snake Game
         </h2>
         <div className="w-9" />
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden relative bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden relative bg-slate-900">
         <div className="flex flex-col items-center justify-center p-4 min-h-[min-content] sm:min-h-full">
           <div className="w-full max-w-[320px] sm:max-w-[360px] flex flex-col gap-4 sm:gap-6 pb-6">
             
             {/* Score Header */}
-            <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+            <div className="flex justify-between items-center bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-700">
               <div className="flex flex-col">
-                <span className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Skor</span>
+                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Skor</span>
                 <span className={`text-2xl sm:text-3xl font-black ${moodStyle.text} leading-none`}>{score}</span>
               </div>
               <div className="flex flex-col items-end">
@@ -331,7 +331,7 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
 
             {/* Game Board */}
             <div 
-              className={`aspect-square w-full rounded-[24px] relative overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 touch-none select-none`}
+              className={`aspect-square w-full rounded-[24px] relative overflow-hidden shadow-sm border border-slate-800 bg-slate-900/80 touch-none select-none`}
               onTouchStart={handleTouchStart} 
               onTouchEnd={handleTouchEnd}
               style={{
@@ -373,7 +373,7 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
                     className="flex justify-center items-center relative"
                   >
                     {/* Subtle grid dot */}
-                    <div className="absolute w-[2px] h-[2px] rounded-full bg-slate-200 dark:bg-slate-700 opacity-50" />
+                    <div className="absolute w-[2px] h-[2px] rounded-full bg-slate-700 opacity-50" />
                     
                     {isSnake && (
                       <div 
@@ -394,12 +394,12 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
               
               {gameOver && (
                 <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[4px] flex flex-col items-center justify-center z-20">
-                  <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300 transform scale-100 border-[4px] border-slate-100 dark:border-slate-700">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-4 text-3xl">
+                  <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300 transform scale-100 border-[4px] border-slate-700">
+                    <div className="w-16 h-16 bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mb-4 text-3xl">
                       😵
                     </div>
-                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2 tracking-tight">Game Over</h3>
-                    <p className="text-slate-500 dark:text-slate-400 font-medium mb-8 text-base">Skor Terakhir: <span className={`font-bold ${moodStyle.text}`}>{score}</span></p>
+                    <h3 className="text-2xl font-black text-slate-100 mb-2 tracking-tight">Game Over</h3>
+                    <p className="text-slate-400 font-medium mb-8 text-base">Skor Terakhir: <span className={`font-bold ${moodStyle.text}`}>{score}</span></p>
                     <button 
                       onClick={resetGame}
                       className={`${moodStyle.head} hover:opacity-90 text-white font-bold py-4 px-10 rounded-2xl flex items-center gap-3 shadow-lg transition-all active:scale-95`}
@@ -424,13 +424,13 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
             
             {/* D-Pad Controls (Clean layout) */}
             <div className="mt-2 flex flex-col items-center gap-3">
-              <span className="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 tracking-wide uppercase">Kontrol Arah</span>
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-400 tracking-wide uppercase">Kontrol Arah</span>
               
               <div className="grid grid-cols-3 gap-2 w-48 sm:w-[200px] mx-auto">
                 <div />
                 <button 
                   onClick={() => handleDirection({x: 0, y: -1})} 
-                  className={`bg-white dark:bg-slate-800 h-12 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 active:shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 ${moodStyle.text} group`}
+                  className={`bg-slate-800 h-12 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 active:shadow-sm border border-slate-700 hover:bg-slate-700 ${moodStyle.text} group`}
                 >
                   <ChevronUp size={28} className={`${moodStyle.dpadColor} transition-colors`} />
                 </button>
@@ -438,7 +438,7 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
                 
                 <button 
                   onClick={() => handleDirection({x: -1, y: 0})} 
-                  className={`bg-white dark:bg-slate-800 h-12 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 active:shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 ${moodStyle.text} group`}
+                  className={`bg-slate-800 h-12 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 active:shadow-sm border border-slate-700 hover:bg-slate-700 ${moodStyle.text} group`}
                 >
                   <ChevronLeft size={28} className={`${moodStyle.dpadColor} transition-colors`} />
                 </button>
@@ -451,7 +451,7 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
                 
                 <button 
                   onClick={() => handleDirection({x: 1, y: 0})} 
-                  className={`bg-white dark:bg-slate-800 h-12 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 active:shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 ${moodStyle.text} group`}
+                  className={`bg-slate-800 h-12 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 active:shadow-sm border border-slate-700 hover:bg-slate-700 ${moodStyle.text} group`}
                 >
                   <ChevronRight size={28} className={`${moodStyle.dpadColor} transition-colors`} />
                 </button>
@@ -459,7 +459,7 @@ export default function GameScreen({ onBack }: { onBack: () => void }) {
                 <div />
                 <button 
                   onClick={() => handleDirection({x: 0, y: 1})} 
-                  className={`bg-white dark:bg-slate-800 h-12 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 active:shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 ${moodStyle.text} group`}
+                  className={`bg-slate-800 h-12 sm:h-14 rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 active:shadow-sm border border-slate-700 hover:bg-slate-700 ${moodStyle.text} group`}
                 >
                   <ChevronDown size={28} className={`${moodStyle.dpadColor} transition-colors`} />
                 </button>
