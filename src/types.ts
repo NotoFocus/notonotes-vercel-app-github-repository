@@ -22,6 +22,7 @@ export interface Note {
   content: string;
   pinned?: boolean;
   isArchived?: boolean;
+  reminder?: string; // ISO datetime string: YYYY-MM-DDTHH:mm
 }
 
 export interface DisciplineData {
@@ -39,6 +40,7 @@ export interface DisciplineData {
   usedRestDates?: string[];
   milestones?: { id: string; title: string; completed: boolean }[];
   journeyLog?: { id: string; date: string; content: string }[];
+  punishmentCompletedDates?: string[];
 }
 
 export interface Task {

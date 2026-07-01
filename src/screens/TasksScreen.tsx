@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Plus, Trash2, ClipboardList, Repeat, Bell, X, Target, Image as ImageIcon, Calendar, CheckSquare, Pencil, Camera, ChevronRight, Flame, Gift, AlertTriangle, Pin } from 'lucide-react';
+import { Plus, Trash2, ClipboardList, Repeat, Bell, X, Target, Image as ImageIcon, Calendar, CheckSquare, Pencil, Camera, ChevronRight, Flame, Gift, AlertTriangle, Pin, Check } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { Task } from '../types';
@@ -514,6 +514,7 @@ const TaskCard = React.memo<{ task: Task, last?: boolean, onToggle: (id: string)
 
 const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, lang: string }>(({ task, onSelectExisting, lang }) => {
   const { updateTask, checkInDaily, deleteTask } = useAppStore();
+  const t = useTranslation(lang as 'id' | 'en');
   const [fullScreenImage, setFullScreenImage] = useState<{ url: string, type: 'beforePhotoUrl' | 'afterPhotoUrl' | 'after1MonthPhotoUrl' | 'after6MonthsPhotoUrl' | 'after1YearPhotoUrl' } | null>(null);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [activeTab, setActiveTab] = useState<'Aksi' | 'Jurnal' | 'Galeri'>('Aksi');
@@ -791,16 +792,42 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
             
             {/* Missed / Success Status */}
             {isMissedDay && d.punishment && !task.completed && (
-              <div className="bg-rose-500/10 border border-rose-500/20 rounded-3xl p-5 shadow-lg shadow-rose-900/10 flex items-start gap-4 backdrop-blur-sm relative overflow-hidden">
+              <div className="bg-rose-500/10 border border-rose-500/20 rounded-3xl p-5 shadow-lg shadow-rose-900/10 flex flex-col md:flex-row items-start gap-4 backdrop-blur-sm relative overflow-hidden text-left">
                 <div className="w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0 border border-rose-500/30 relative z-10">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
-                <div className="relative z-10">
+                <div className="relative z-10 flex-1">
                   <h3 className="text-base font-bold text-rose-400 mb-1">{lang === 'id' ? 'Anda Melewatkan Hari!' : 'You Missed a Day!'}</h3>
-                  <p className="text-sm text-slate-400 mb-3 leading-relaxed pr-6">{lang === 'id' ? 'Sesuai komitmen awal, Anda harus menerima konsekuensi:' : 'As per your commitment, you must accept the consequence:'}</p>
-                  <div className="bg-rose-500/10 rounded-2xl p-4 border border-rose-500/20 shadow-inner">
+                  <p className="text-xs text-slate-400 mb-3 leading-relaxed pr-6">{lang === 'id' ? 'Sesuai komitmen awal, Anda harus menerima konsekuensi:' : 'As per your commitment, you must accept the consequence:'}</p>
+                  <div className="bg-rose-500/10 rounded-2xl p-4 border border-rose-500/20 shadow-inner mb-3">
                     <span className="text-sm font-bold text-slate-100">{d.punishment}</span>
                   </div>
+                  {!(d.punishmentCompletedDates || []).includes(today) ? (
+                    <button
+                      onClick={() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const completedPunishments = d.punishmentCompletedDates || [];
+                        if (!completedPunishments.includes(todayStr)) {
+                          updateTask({
+                            ...task,
+                            disciplineData: {
+                              ...d,
+                              punishmentCompletedDates: [...completedPunishments, todayStr]
+                            }
+                          });
+                        }
+                      }}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-md shadow-rose-600/10 flex items-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      {t('punishmentCompletedBtn')}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl w-fit text-emerald-400 text-xs font-bold">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>{t('punishmentCompletedStatus')}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

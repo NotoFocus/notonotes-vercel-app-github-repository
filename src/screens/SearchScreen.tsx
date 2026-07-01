@@ -3,7 +3,7 @@ import { Search as SearchIcon, X, FileText, Pin, Trash2, Bell, Folder, CheckSqua
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { Note, Task } from '../types';
-import { generateId } from '../utils';
+import { generateId, formatReminderDate } from '../utils';
 
 export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) => void }) {
   const { notes, tasks, toggleTask, updateTask, deleteTask, updateNote, deleteNote, searchQuery, setSearchQuery, lang, checkInDaily } = useAppStore();
@@ -75,6 +75,12 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
       <div className="flex-1 overflow-hidden pr-6">
          <h4 className="font-bold text-slate-50 leading-tight mb-1.5 truncate">{note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note')}</h4>
          <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{note.content ? note.content.replace(/<[^>]*>?/gm, '') : '...'}</p>
+         {note.reminder && (
+           <div className="flex items-center gap-1.5 mt-2.5 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/10 rounded-md w-fit text-indigo-400 text-[10px] font-bold">
+             <Bell className="w-3 h-3 text-indigo-400 animate-pulse" />
+             <span>{formatReminderDate(note.reminder, lang)}</span>
+           </div>
+         )}
       </div>
       
       <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-800/50">

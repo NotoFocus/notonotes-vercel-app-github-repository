@@ -69,12 +69,12 @@ export default function CalendarScreen() {
 
   const getMoodLabel = (id: string | null) => {
     switch (id) {
-       case 'excellent': return 'Sangat Baik';
-       case 'good': return 'Baik';
-       case 'neutral': return 'Biasa';
-       case 'bad': return 'Buruk';
-       case 'terrible': return 'Sangat Buruk';
-       default: return 'Tidak Ada Data';
+       case 'excellent': return lang === 'id' ? 'Sangat Baik' : 'Excellent';
+       case 'good': return lang === 'id' ? 'Baik' : 'Good';
+       case 'neutral': return lang === 'id' ? 'Biasa' : 'Neutral';
+       case 'bad': return lang === 'id' ? 'Buruk' : 'Bad';
+       case 'terrible': return lang === 'id' ? 'Sangat Buruk' : 'Terrible';
+       default: return lang === 'id' ? 'Tidak Ada Data' : 'No Data';
     }
   };
 
@@ -95,8 +95,16 @@ export default function CalendarScreen() {
   const blanks = Array(firstDayOfMonth).fill(null);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const handlePrevMonth = () => setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
-  const handleNextMonth = () => setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
+  const handlePrevMonth = () => {
+    const prev = new Date(currentYear, currentMonth - 1, 1);
+    setCurrentDate(prev);
+    setSelectedDate(prev);
+  };
+  const handleNextMonth = () => {
+    const next = new Date(currentYear, currentMonth + 1, 1);
+    setCurrentDate(next);
+    setSelectedDate(next);
+  };
 
   const isTodayDate = (day: number) => {
     const today = new Date();
@@ -127,12 +135,13 @@ export default function CalendarScreen() {
   };
 
   const { selectedTasks, startOfWeek, endOfWeek } = useMemo(() => {
-    const startOfWeek = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+    const startOfWeek = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0, 0, 0);
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day; // Start on Sunday
     startOfWeek.setDate(diff);
     
-    const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 6);
+    const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate(), 23, 59, 59, 999);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
 
     const sTasks = tasks.filter(t => {
        if (t.isDiscipline) return false;
@@ -142,9 +151,9 @@ export default function CalendarScreen() {
        const createdDateStr = t.createdAt || tDateStr;
        
        const [y, m, d] = tDateStr.split('-').map(Number);
-       const tD = new Date(y, m - 1, d);
+       const tD = new Date(y, m - 1, d, 12, 0, 0, 0); // Noon to avoid timezone shifts
        const [cy, cm, cd] = createdDateStr.split('-').map(Number);
-       const cD = new Date(cy, cm - 1, cd);
+       const cD = new Date(cy, cm - 1, cd, 12, 0, 0, 0); // Noon to avoid timezone shifts
 
        if (viewType === 'Harian') {
          if (t.repeat === 'daily' && selectedDateStr >= createdDateStr && selectedDateStr <= todayStr) return true;
@@ -154,14 +163,16 @@ export default function CalendarScreen() {
          return tD >= startOfWeek && tD <= endOfWeek;
        } else if (viewType === 'Bulanan') {
          if (t.repeat === 'daily') {
-           const monthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-           return monthStart <= todayDate && new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0) >= cD;
+           const monthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 0, 0, 0, 0);
+           const monthEnd = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59, 999);
+           return monthStart <= todayDate && monthEnd >= cD;
          }
          return tD.getMonth() === selectedDate.getMonth() && tD.getFullYear() === selectedDate.getFullYear();
        } else if (viewType === 'Tahunan') {
          if (t.repeat === 'daily') {
-           const yearStart = new Date(selectedDate.getFullYear(), 0, 1);
-           return yearStart <= todayDate && new Date(selectedDate.getFullYear(), 11, 31) >= cD;
+           const yearStart = new Date(selectedDate.getFullYear(), 0, 1, 0, 0, 0, 0);
+           const yearEnd = new Date(selectedDate.getFullYear(), 11, 31, 23, 59, 59, 999);
+           return yearStart <= todayDate && yearEnd >= cD;
          }
          return tD.getFullYear() === selectedDate.getFullYear();
        }
@@ -175,27 +186,102 @@ export default function CalendarScreen() {
     return new Date(2023, i, 1).toLocaleDateString(locale, { month: 'long' });
   });
 
-  let completedCount = 0;
-  let activeCount = 0;
-  
-  if (viewType === 'Harian') {
-    selectedTasks.forEach(t => {
-      if ((t.completedDates || []).includes(selectedDateStr)) {
-        completedCount++;
-      } else {
-        if (selectedDateStr === todayStr) {
-           if (t.completed) completedCount++;
-           else activeCount++;
+  const { completedCount, activeCount } = useMemo(() => {
+    let completed = 0;
+    let active = 0;
+
+    // Helper to get local YYYY-MM-DD string for a Date object
+    const getLocalDateStr = (dObj: Date) => {
+      return new Date(dObj.getTime() - (dObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    };
+
+    if (viewType === 'Harian') {
+      selectedTasks.forEach(tk => {
+        const compDates = tk.completedDates || [];
+        if (compDates.includes(selectedDateStr)) {
+          completed++;
         } else {
-           activeCount++;
+          if (selectedDateStr === todayStr) {
+             if (tk.completed) completed++;
+             else active++;
+          } else {
+             active++;
+          }
         }
+      });
+    } else {
+      // Determine the range of dates for the period
+      let startDate: Date;
+      let endDate: Date;
+
+      if (viewType === 'Mingguan') {
+        startDate = new Date(startOfWeek);
+        endDate = new Date(endOfWeek);
+      } else if (viewType === 'Bulanan') {
+        startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+      } else { // Tahunan
+        startDate = new Date(selectedDate.getFullYear(), 0, 1);
+        endDate = new Date(selectedDate.getFullYear(), 11, 31);
       }
-    });
-  } else {
-    // For weekly, monthly, yearly, we'll just check if it's completed Today or use a simplified logic, but ideally we check current status if active.
-    completedCount = selectedTasks.filter(t => t.completed).length;
-    activeCount = selectedTasks.filter(t => !t.completed).length;
-  }
+
+      // We will iterate through each day in the period (capped up to todayStr so we don't count future active/missed days)
+      const currentIter = new Date(startDate);
+      const capDateStr = todayStr; // do not calculate future days
+
+      // Ensure we don't loop infinitely in case of timezone/DST edge cases
+      const maxDays = viewType === 'Tahunan' ? 366 : (viewType === 'Bulanan' ? 31 : 7);
+      let daysCounted = 0;
+
+      while (currentIter <= endDate && daysCounted < maxDays) {
+        const iterStr = getLocalDateStr(currentIter);
+        
+        // Only count up to today
+        if (iterStr <= capDateStr) {
+          selectedTasks.forEach(tk => {
+            const tDateStr = getTaskDateStr(tk.date);
+            const createdDateStr = tk.createdAt || tDateStr;
+
+            // If the task wasn't created yet on this day, skip it
+            if (iterStr < createdDateStr) {
+              return;
+            }
+
+            if (tk.repeat === 'daily') {
+              // Daily task/habit
+              const compDates = tk.completedDates || [];
+              if (compDates.includes(iterStr)) {
+                completed++;
+              } else {
+                if (iterStr === todayStr) {
+                  if (tk.completed) completed++;
+                  else active++;
+                } else {
+                  active++;
+                }
+              }
+            } else {
+              // One-time task
+              // It is only relevant on its specific due date (tDateStr)
+              if (tDateStr === iterStr) {
+                if (tk.completed || (tk.completedDates || []).includes(iterStr)) {
+                  completed++;
+                } else {
+                  active++;
+                }
+              }
+            }
+          });
+        }
+        
+        // Move to next day
+        currentIter.setDate(currentIter.getDate() + 1);
+        daysCounted++;
+      }
+    }
+
+    return { completedCount: completed, activeCount: active };
+  }, [selectedTasks, viewType, selectedDate, selectedDateStr, startOfWeek, endOfWeek, todayStr, getTaskDateStr]);
   
   // Prevent Recharts visual glitch by removing padding angle if only one data type exists
   const safePaddingAngle = (completedCount > 0 && activeCount > 0) ? 5 : 0;
@@ -205,9 +291,8 @@ export default function CalendarScreen() {
     { name: t('active') || 'Aktif', value: activeCount, color: '#fb923c' }
   ].filter(d => d.value > 0);
 
-
-
-  const completionPercentageNumber = selectedTasks.length > 0 ? Math.round((completedCount / selectedTasks.length) * 100) : 0;
+  const totalCount = completedCount + activeCount;
+  const completionPercentageNumber = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
     <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
@@ -341,7 +426,7 @@ export default function CalendarScreen() {
 
                   <div className="flex gap-4">
                     <div className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center">
-                      <div className="text-2xl md:text-3xl font-bold text-slate-50 mb-1">{selectedTasks.length}</div>
+                      <div className="text-2xl md:text-3xl font-bold text-slate-50 mb-1">{totalCount}</div>
                       <div className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-slate-400">{t('total') || 'Total'}</div>
                     </div>
                     <div className="flex-1 bg-slate-950 border border-emerald-900/50 rounded-2xl p-4 text-center">
@@ -354,7 +439,7 @@ export default function CalendarScreen() {
                     </div>
                   </div>
 
-                  {selectedTasks.length > 0 && (
+                  {totalCount > 0 && (
                     <div className="mt-6 md:mt-8 pt-6 md:pt-8 border-t border-slate-800">
                       <h5 className="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 md:mb-6 text-center">{t('completionPercentage') || 'Persentase Selesai'}</h5>
                       <div className="h-40 md:h-56 w-full relative">

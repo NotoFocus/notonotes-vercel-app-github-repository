@@ -4,7 +4,7 @@ import { Note, Task } from '../types';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { motion, AnimatePresence } from 'motion/react';
-import { generateId } from '../utils';
+import { generateId, formatReminderDate } from '../utils';
 
 interface HomeProps {
   appTheme: string;
@@ -505,6 +505,12 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                        </div>
                        <h4 className="font-bold text-slate-50 leading-tight mb-1 truncate">{note.title || 'Untitled Note'}</h4>
                        <p className="text-xs text-slate-400 line-clamp-2">{note.content ? note.content.replace(/<[^>]*>?/gm, '') : '...'}</p>
+                       {note.reminder && (
+                         <div className="flex items-center gap-1.5 mt-2.5 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/10 rounded-md w-fit text-indigo-400 text-[10px] font-bold">
+                           <Bell className="w-3 h-3 text-indigo-400 animate-pulse" />
+                           <span>{formatReminderDate(note.reminder, lang)}</span>
+                         </div>
+                       )}
                     </div>
                   </div>
                 ))}

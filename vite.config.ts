@@ -15,7 +15,7 @@ export default defineConfig(() => {
         manifest: {
           name: 'Noto',
           short_name: 'Noto',
-          description: 'Made with simplicity',
+          description: 'Simple and private local-first notes',
           theme_color: '#020617',
           background_color: '#020617',
           display: 'standalone',
@@ -38,9 +38,7 @@ export default defineConfig(() => {
           skipWaiting: true
         },
         devOptions: {
-          enabled: true,
-          type: 'module',
-          navigateFallback: 'index.html'
+          enabled: false
         }
       })
     ],
@@ -50,10 +48,10 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      // HMR is conditionally disabled depending on the workspace environment.
+      // File watching is managed to prevent conflicts during development.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
+      // Disable file watching when DISABLE_HMR is true to save CPU during background compilations.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };

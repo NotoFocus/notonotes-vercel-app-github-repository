@@ -4,10 +4,17 @@ import {
   Trash2,
   Image as ImageIcon,
   Paperclip,
+  Bell,
+  Clock,
+  Calendar,
+  X,
+  AlertCircle,
+  Check
 } from "lucide-react";
 import { useTranslation } from '../translations';
 import { Note } from "../types";
 import { useAppStore } from "../store";
+import { formatReminderDate } from "../utils";
 
 interface NoteEditorProps {
   note: Note;
@@ -52,6 +59,15 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
   const [lastSaved, setLastSaved] = useState(Date.now());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const [reminder, setReminder] = useState<string | undefined>(note.reminder);
+  const reminderRef = useRef(note.reminder);
+  useEffect(() => {
+    reminderRef.current = reminder;
+  }, [reminder]);
+
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [customReminderVal, setCustomReminderVal] = useState("");
+
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== initialHtml) {
       editorRef.current.innerHTML = initialHtml;
@@ -64,12 +80,13 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
     const currTitle = title;
     const currContent = editorRef.current ? editorRef.current.innerHTML : contentRef.current;
     const currTags = tags;
+    const currReminder = reminderRef.current;
     
-    if (currTitle.trim() || currContent.trim() || currTags.length > 0) {
+    if (currTitle.trim() || currContent.trim() || currTags.length > 0 || currReminder) {
       if (existing) {
-        updateNote({ ...existing, title: currTitle, content: currContent, tags: currTags });
+        updateNote({ ...existing, title: currTitle, content: currContent, tags: currTags, reminder: currReminder });
       } else {
-        addNote({ ...note, title: currTitle, content: currContent, tags: currTags });
+        addNote({ ...note, title: currTitle, content: currContent, tags: currTags, reminder: currReminder });
       }
     } else {
       if (existing) {
@@ -101,12 +118,13 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
       saveNote();
     }
     
-    // Also remove if perfectly empty
+    // Also remove if perfectly empty (and no reminder set)
     const currTitle = title;
     const currContent = editorRef.current ? editorRef.current.innerHTML : contentRef.current;
     const currTags = tags;
+    const currReminder = reminderRef.current;
     
-    if (!currTitle.trim() && !currContent.trim() && currTags.length === 0) {
+    if (!currTitle.trim() && !currContent.trim() && currTags.length === 0 && !currReminder) {
       const existing = notes.find((n) => n.id === note.id);
       if (existing) deleteNote(note.id);
     }
@@ -271,9 +289,9 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
               const currTags = tagsRef.current;
               
               if (note.id && notes.some(n => n.id === note.id)) {
-                 updateNote({ ...note, title: currTitle, content: currContent, tags: currTags, isArchived: !note.isArchived });
+                 updateNote({ ...note, title: currTitle, content: currContent, tags: currTags, isArchived: !note.isArchived, reminder: reminderRef.current });
               } else {
-                 addNote({ ...note, title: currTitle, content: currContent, tags: currTags, isArchived: !note.isArchived });
+                 addNote({ ...note, title: currTitle, content: currContent, tags: currTags, isArchived: !note.isArchived, reminder: reminderRef.current });
               }
               onBack();
             }}
@@ -365,6 +383,27 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
             )}
           </div>
 
+          {/* Active Reminder Banner */}
+          {reminder && (
+            <div className="flex items-center justify-between p-3.5 mb-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl animate-in fade-in duration-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                  <Bell className="w-4 h-4 animate-swing" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-400">{t('reminderBadgeLabel')}</span>
+                  <span className="text-xs font-semibold text-slate-100">{formatReminderDate(reminder, lang)}</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setReminder(undefined); setHasUnsavedChanges(true); }}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-red-400 hover:bg-red-500/10 transition-all text-[11px] font-bold"
+              >
+                {t('clearReminder')}
+              </button>
+            </div>
+          )}
+
           {/* Content */}
           <div className="flex-grow flex flex-col bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-5">
             <div
@@ -420,9 +459,123 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar" 
               className="hidden" 
             />
+            <button
+              onPointerDown={(e) => {
+                e.preventDefault();
+                setShowReminderModal(true);
+              }}
+              className={`hover:text-indigo-400 transition-colors ${reminder ? 'text-indigo-400' : 'text-slate-400'}`}
+              title={t('setReminder')}
+            >
+              <Bell size={18} />
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Reminder Setting Modal */}
+      {showReminderModal && (
+        <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-4 z-[100] animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm flex flex-col text-left shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-50 flex items-center gap-2">
+                <Bell size={18} className="text-indigo-400" /> {t('setReminder')}
+              </h3>
+              <button 
+                onClick={() => setShowReminderModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              {t('reminderSetFor')} {reminder ? <strong className="text-indigo-400">{formatReminderDate(reminder, lang)}</strong> : <em className="text-slate-500">{t('noReminder')}</em>}
+            </p>
+
+            <div className="flex flex-col gap-2.5 mb-6">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('quickPresets')}</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    const d = new Date();
+                    d.setHours(d.getHours() + 1);
+                    const tzOffset = d.getTimezoneOffset() * 60000;
+                    const localISO = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+                    setReminder(localISO);
+                    setHasUnsavedChanges(true);
+                    setShowReminderModal(false);
+                  }}
+                  className="px-3 py-2.5 text-xs font-bold text-slate-200 bg-slate-850 border border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-xl transition-all flex items-center gap-2 justify-center"
+                >
+                  <Clock size={12} className="text-indigo-400" /> {t('preset1Hour')}
+                </button>
+                <button
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 1);
+                    d.setHours(9, 0, 0, 0); // 9 AM tomorrow
+                    const tzOffset = d.getTimezoneOffset() * 60000;
+                    const localISO = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+                    setReminder(localISO);
+                    setHasUnsavedChanges(true);
+                    setShowReminderModal(false);
+                  }}
+                  className="px-3 py-2.5 text-xs font-bold text-slate-200 bg-slate-850 border border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-xl transition-all flex items-center gap-2 justify-center"
+                >
+                  <Calendar size={12} className="text-indigo-400" /> {t('presetTomorrow')}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 mb-6">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('customReminder')}</span>
+              <input
+                type="datetime-local"
+                value={customReminderVal || (reminder ? reminder.slice(0, 16) : "")}
+                onChange={(e) => {
+                  setCustomReminderVal(e.target.value);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              {reminder && (
+                <button 
+                  onClick={() => {
+                    setReminder(undefined);
+                    setCustomReminderVal("");
+                    setHasUnsavedChanges(true);
+                    setShowReminderModal(false);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors mr-auto"
+                >
+                  {t('clearReminder')}
+                </button>
+              )}
+              <button 
+                onClick={() => setShowReminderModal(false)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-50 bg-slate-800 transition-colors"
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={() => {
+                  if (customReminderVal) {
+                    setReminder(customReminderVal);
+                    setHasUnsavedChanges(true);
+                  }
+                  setShowReminderModal(false);
+                }}
+                className="px-4 py-2 rounded-xl text-white text-sm font-bold bg-indigo-500 hover:bg-indigo-600 transition-colors"
+              >
+                {t('save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

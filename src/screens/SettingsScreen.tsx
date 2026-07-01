@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Moon, Download, Upload, Bell, Lock, FileText, Smartphone, 
-  ChevronRight, User, Globe, Clock, Key, Trash2, Info, Shield, MessageCircle, Gamepad2
+  ChevronRight, User, Globe, Clock, Key, Trash2, Info, Shield, MessageCircle, Gamepad2,
+  AlertTriangle
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -22,6 +23,43 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showUpdateNotes, setShowUpdateNotes] = useState(false);
   const [backupModalMode, setBackupModalMode] = useState<'export' | 'import' | null>(null);
+  const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
+
+  const triggerTestNotif = () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      window.Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          const title = t('notifTitleTest') || 'Uji Coba Notifikasi Noto! 🔔';
+          const body = t('notifBodyTest') || 'Hebat! Notifikasi dari aplikasi Noto berfungsi dengan benar 100%.';
+          const options = {
+            body: body,
+            icon: '/icon.png',
+            badge: '/icon.png',
+            vibrate: [200, 100, 200]
+          };
+          
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification(title, options).catch(() => {
+                new window.Notification(title, options);
+              });
+            }).catch(() => {
+              new window.Notification(title, options);
+            });
+          } else {
+            new window.Notification(title, options);
+          }
+          setTestNotifMsg(t('testNotifSuccess') || 'Uji coba sukses! Jika Anda tidak melihat spanduk sistem, silakan aktifkan izin notifikasi di browser Anda.');
+        } else {
+          setTestNotifMsg(lang === 'id' ? 'Gagal: Izin notifikasi ditolak oleh browser.' : 'Failed: Notification permission denied by the browser.');
+        }
+      }).catch(() => {
+        setTestNotifMsg(lang === 'id' ? 'Gagal: Tidak dapat meminta izin notifikasi.' : 'Failed: Could not request notification permission.');
+      });
+    } else {
+      setTestNotifMsg(lang === 'id' ? 'Browser Anda tidak mendukung Notifikasi sistem.' : 'Your browser does not support system Notifications.');
+    }
+  };
   const [backupPassword, setBackupPassword] = useState('');
   const [backupFileContent, setBackupFileContent] = useState<string | null>(null);
   const [backupError, setBackupError] = useState(false);
@@ -163,7 +201,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 type="text" 
                 value={user.name}
                 onChange={(e) => updateUser({ ...user, name: e.target.value })}
-                placeholder="Masukkan nama"
+                placeholder={t('enterNicknamePlaceholder')}
                 className="bg-transparent text-indigo-400 font-bold text-[15px] outline-none text-right w-1/2 placeholder-slate-600 focus:text-indigo-300 transition-colors"
                 maxLength={20}
               />
@@ -174,16 +212,16 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
                   <Moon size={18} />
                 </div>
-                <span className="font-bold text-[15px] text-slate-200">{lang === 'id' ? 'Tema Aplikasi' : 'App Theme'}</span>
+                <span className="font-bold text-[15px] text-slate-200">{t('appThemeLabel')}</span>
               </div>
               <select 
                 value={appTheme}
                 onChange={(e) => setAppTheme(e.target.value as 'dark' | 'light' | 'pink')}
                 className="bg-transparent text-indigo-400 font-bold text-[15px] outline-none cursor-pointer text-right appearance-none focus:text-indigo-300 transition-colors"
               >
-                <option value="dark" className="bg-slate-900">{lang === 'id' ? 'Gelap' : 'Dark'}</option>
-                <option value="light" className="bg-slate-900">{lang === 'id' ? 'Terang' : 'Light'}</option>
-                <option value="pink" className="bg-slate-900">{lang === 'id' ? 'Ecy' : 'Ecy'}</option>
+                <option value="dark" className="bg-slate-900">{t('themeDark')}</option>
+                <option value="light" className="bg-slate-900">{t('themeLight')}</option>
+                <option value="pink" className="bg-slate-900">{t('themePink')}</option>
               </select>
             </div>
 
@@ -224,8 +262,10 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               <button 
                 onClick={() => {
                   setReminderActive(!reminderActive);
-                  if (!reminderActive && 'Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-                    Notification.requestPermission().catch(() => {});
+                  if (!reminderActive && typeof window !== 'undefined' && 'Notification' in window && window.Notification && window.Notification.permission !== 'granted' && window.Notification.permission !== 'denied') {
+                    if (typeof window.Notification.requestPermission === 'function') {
+                      window.Notification.requestPermission().catch(() => {});
+                    }
                   }
                 }} 
                 className={`w-14 h-8 rounded-full flex items-center p-1 transition-colors shadow-inner ${reminderActive ? 'bg-orange-500' : 'bg-slate-700/50 border border-slate-600/30'}`}
@@ -234,7 +274,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               </button>
             </div>
 
-            <div className={`flex items-center justify-between p-4 transition-all duration-300 ${!reminderActive ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+            <div className={`flex items-center justify-between p-4 border-b border-slate-800/60 transition-all duration-300 ${!reminderActive ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
                   <Clock size={18} />
@@ -248,6 +288,22 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 disabled={!reminderActive}
                 className="bg-slate-900/80 border border-slate-700/50 text-orange-400 font-bold px-4 py-2 rounded-xl text-[15px] outline-none appearance-none hover:bg-slate-800 transition-colors cursor-pointer"
               />
+            </div>
+
+            {/* Test Notification Row */}
+            <div className="p-4 bg-slate-900/20 flex flex-col gap-2">
+              <button
+                onClick={triggerTestNotif}
+                className="w-full py-3 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 font-bold rounded-2xl text-xs border border-orange-500/20 hover:border-orange-500/30 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                <Bell size={14} className="animate-bounce" />
+                {t('sendTestNotification')}
+              </button>
+              {testNotifMsg && (
+                <p className="text-[11px] text-slate-400 leading-normal text-center px-3 py-2 mt-1 bg-slate-950/40 border border-slate-800/60 rounded-xl animate-in fade-in duration-200">
+                  {testNotifMsg}
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -263,7 +319,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-slate-200">{t('backupExport')}</span>
-                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">Simpan data ke perangkat dengan aman</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">{t('backupExportDesc')}</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-slate-600" />
@@ -275,7 +331,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-slate-200">{t('restoreImport')}</span>
-                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">Pulihkan data dari perangkat</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">{t('restoreImportDesc')}</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-slate-600" />
@@ -294,7 +350,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-slate-200">{t('pinLock')}</span>
-                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">Kunci akses aplikasi</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">{t('pinLockDesc')}</span>
                 </div>
               </div>
               <button 
@@ -353,7 +409,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
         {/* HIBURAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Gamepad2 size={16} className="text-purple-400" /> Hiburan</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Gamepad2 size={16} className="text-purple-400" /> {t('entertainment')}</h3>
           <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
             <button 
               onClick={() => onNavigate && onNavigate('games-hub')}
@@ -365,7 +421,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-[15px] text-slate-200">Mini Games</span>
-                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">Istirahat sejenak (Snake, Tic Tac Toe, dll)</span>
+                  <span className="text-[11px] font-medium text-slate-400 mt-0.5">{t('entertainmentDesc')}</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-slate-600" />
@@ -384,7 +440,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <span className="font-bold text-[15px] text-slate-200">{t('appVersion')}</span>
               </div>
-              <span className="font-black text-[15px] text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full text-center">v2.0</span>
+              <span className="font-black text-[15px] text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full text-center">v2.5</span>
             </div>
 
             <button onClick={() => setShowUpdateNotes(true)} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60 w-full text-left">
@@ -511,14 +567,14 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     value={pinQuestionInput}
                     onChange={e => setPinQuestionInput(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500 transition-colors"
-                    placeholder="Pertanyaan Keamanan (cth: Nama hewan peliharaan?)"
+                    placeholder={t('securityQuestionPlaceholder')}
                   />
                   <input
                     type="text"
                     value={pinAnswerInput}
                     onChange={e => setPinAnswerInput(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500 transition-colors"
-                    placeholder="Jawaban Anda"
+                    placeholder={t('securityAnswerPlaceholder')}
                   />
                 </div>
               )}
@@ -617,12 +673,12 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
           <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-4 z-50">
             <div className={`bg-slate-900 border border-slate-800 p-4 md:p-4 rounded-3xl w-full max-w-sm ${backupError ? 'animate-pulse border-red-500/50' : ''}`}>
               <h3 className="text-lg font-bold text-slate-50 mb-2">
-                {backupModalMode === 'export' ? 'Password Enkripsi' : 'Masukkan Password'}
+                {backupModalMode === 'export' ? t('backupPasswordTitle') : t('enterBackupPasswordTitle')}
               </h3>
               <p className="text-sm text-slate-400 mb-4">
                 {backupModalMode === 'export' 
-                  ? 'Masukkan password untuk mengamankan data cadangan ini (opsional tapi disarankan).' 
-                  : 'Jika file cadangan ini dienkripsi, masukkan password untuk membukanya.'}
+                  ? t('backupExportPasswordDesc') 
+                  : t('backupImportPasswordDesc')}
               </p>
               <input
                 type="password"
@@ -653,7 +709,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                   onClick={backupModalMode === 'export' ? processExport : processImport}
                   className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-colors bg-indigo-500 hover:bg-indigo-600"
                 >
-                  {backupModalMode === 'export' ? (backupPassword ? 'Enkripsi & Ekspor' : 'Ekspor Tanpa Enkripsi') : 'Impor'}
+                  {backupModalMode === 'export' ? (backupPassword ? t('exportWithEncryption') : t('exportWithoutEncryption')) : t('importLabel')}
                 </button>
               </div>
             </div>
@@ -750,6 +806,11 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     <div className="bg-slate-900 border border-slate-700/50 border-l-4 border-l-sky-500 rounded-xl p-3">
                       <p className="text-slate-300 text-xs leading-relaxed">{t('auditThreatModel3')}</p>
                     </div>
+                    {t('auditThreatModel4') && (
+                      <div className="bg-slate-900 border border-slate-700/50 border-l-4 border-l-amber-500 rounded-xl p-3">
+                        <p className="text-slate-300 text-xs leading-relaxed">{t('auditThreatModel4')}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -814,8 +875,17 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
             <div className="bg-slate-900 border border-slate-800 p-4 md:p-4 rounded-3xl w-full max-w-sm max-h-[80vh] flex flex-col">
               <h3 className="text-xl font-bold text-slate-50 mb-4">{t('aboutAppTitle')}</h3>
               <div className="overflow-y-auto pr-2 flex-1 space-y-4 mb-6 custom-scrollbar text-sm text-slate-300">
-                <p><strong>Noto v2.0</strong></p>
+                <p><strong>Noto v2.5</strong></p>
                 <p>{t('aboutAppDesc')}</p>
+                
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 text-amber-200">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-400 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-xs uppercase tracking-wider text-amber-400 mb-1">{t('aboutAppStorageWarningTitle')}</h4>
+                    <p className="text-[11px] md:text-xs leading-relaxed text-slate-300 whitespace-pre-line">{t('aboutAppStorageWarningDesc')}</p>
+                  </div>
+                </div>
+
                 <p><strong>{t('aboutAppWhatsNew')}</strong></p>
                 <ul className="space-y-4">
                   <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('appUpdateTitle')}</strong> <span className="text-emerald-200">{t('appUpdateBody')}</span></li>

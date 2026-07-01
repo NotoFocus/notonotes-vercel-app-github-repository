@@ -279,6 +279,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Request storage persistence so browser does not clear localStorage automatically
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then((persisted) => {
+        if (persisted) {
+          console.log("Noto storage persistence granted.");
+        } else {
+          console.log("Noto storage persistence not granted.");
+        }
+      }).catch((err) => {
+        console.warn("Storage persistence error:", err);
+      });
+    }
+  }, []);
+
   useEffect(() => { safeSetItem('noto_user', JSON.stringify(user)); }, [user]);
   useEffect(() => { safeSetItem('noto_notes', JSON.stringify(notes)); }, [notes]);
   useEffect(() => { safeSetItem('noto_tasks', JSON.stringify(tasks)); }, [tasks]);

@@ -114,3 +114,39 @@ export async function decryptData(encryptedStr: string, password: string): Promi
   
   return new TextDecoder().decode(decrypted);
 }
+
+export function formatReminderDate(isoString: string | undefined, lang: 'id' | 'en'): string {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const isSameDay = (d1: Date, d2: Date) => 
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate();
+      
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    
+    if (isSameDay(d, today)) {
+      return lang === 'id' ? `Hari ini, ${timeStr}` : `Today, ${timeStr}`;
+    } else if (isSameDay(d, tomorrow)) {
+      return lang === 'id' ? `Besok, ${timeStr}` : `Tomorrow, ${timeStr}`;
+    } else {
+      const day = d.getDate();
+      const monthNamesID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      const monthNamesEN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthName = lang === 'id' ? monthNamesID[d.getMonth()] : monthNamesEN[d.getMonth()];
+      return `${day} ${monthName} ${d.getFullYear()}, ${timeStr}`;
+    }
+  } catch (e) {
+    return isoString;
+  }
+}
+

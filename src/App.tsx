@@ -40,7 +40,7 @@ export const stopGlobalAudio = () => {
 
 export default function App() {
   const { 
-    appPin, isUnlocked, setIsUnlocked, lang, tasks, 
+    appPin, isUnlocked, setIsUnlocked, lang, tasks, notes, 
     reminderActive, reminderTime, hasCompletedOnboarding, setHasCompletedOnboarding 
   } = useAppStore();
   const t = useTranslation(lang);
@@ -80,17 +80,18 @@ export default function App() {
     } catch (e) {}
   }, [appTheme]);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
-  const [inAppAlarm, setInAppAlarm] = useState<{id: number, title: string, body: string, isAlarm?: boolean} | null>(null);
+  const [inAppAlarm, setInAppAlarm] = useState<{id: number, title: string, body: string, isAlarm?: boolean, noteId?: string} | null>(null);
 
   useEffect(() => {
     // Schedule future notifications if supported by the browser (Experimental Web API)
-    if ('serviceWorker' in navigator && typeof Notification !== 'undefined' && 'showTrigger' in Notification.prototype && Notification.permission === 'granted') {
+    if ('serviceWorker' in navigator && typeof window !== 'undefined' && 'Notification' in window && window.Notification && window.Notification.prototype && 'showTrigger' in window.Notification.prototype && window.Notification.permission === 'granted') {
       navigator.serviceWorker.ready.then(async (reg) => {
         try {
           // Attempt to schedule notifications for the next 24 hours
           const now = new Date();
           const todayDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
           
+          // 1. Task scheduling
           tasks.forEach(task => {
             if (task.completed || !task.alarmTime) return;
             
@@ -118,10 +119,32 @@ export default function App() {
               }
             }
           });
+
+          // 2. Note scheduling
+          notes.forEach(note => {
+            if (note.isArchived || !note.reminder) return;
+            try {
+              const targetTime = new Date(note.reminder);
+              if (targetTime.getTime() > now.getTime() && targetTime.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
+                const message = t('notifNoteBody')
+                  ? t('notifNoteBody').replace('{title}', note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note'))
+                  : `Ketuk untuk membuka catatan: "${note.title || 'Catatan'}"`;
+                // @ts-ignore
+                reg.showNotification(t('noteReminderTitle') || "Catatan Pengingat! 🔔", {
+                  tag: `noto_note_${note.id}`,
+                  body: message,
+                  icon: '/icon.png',
+                  badge: '/icon.png',
+                  // @ts-ignore
+                  showTrigger: new TimestampTrigger(targetTime.getTime())
+                }).catch(() => {});
+              }
+            } catch(e) {}
+          });
         } catch(e) {}
       });
     }
-  }, [tasks, lang]);
+  }, [tasks, notes, lang, t]);
 
   useEffect(() => {
     // We remove the return block here since we still might want to trigger individual task notifications
@@ -136,12 +159,12 @@ export default function App() {
       let lastNotif = '';
       try { lastNotif = localStorage.getItem('noto_last_notif_date_time') || ''; } catch(e) {}
       
-      const sendNotification = (title: string, body: string, isImportant: boolean = false) => {
+      const sendNotification = (title: string, body: string, isImportant: boolean = false, noteId?: string) => {
         const id = Date.now();
         const isVisible = document.visibilityState === 'visible';
         
         // Selalu tampilkan In-App Notification agar saat dibuka ada modalnya
-        setInAppAlarm({title, body, id, isAlarm: isImportant});
+        setInAppAlarm({title, body, id, isAlarm: isImportant, noteId});
         if (!isImportant) {
           setTimeout(() => setInAppAlarm(prev => prev && prev.id === id ? null : prev), 10000);
         }
@@ -175,7 +198,7 @@ export default function App() {
 
         } else {
           // App tertutup/minimize: Gunakan Notifikasi System, jangan play sound via audioCtx karena mungkin di-block
-          if ('Notification' in window && Notification.permission === 'granted') {
+          if (typeof window !== 'undefined' && 'Notification' in window && window.Notification && window.Notification.permission === 'granted') {
             const options: any = { 
               body: body, 
               icon: '/icon.png', 
@@ -189,10 +212,10 @@ export default function App() {
               navigator.serviceWorker.ready.then(reg => {
                 reg.showNotification(title, options);
               }).catch(() => {
-                new Notification(title, options);
+                new window.Notification(title, options);
               });
             } else {
-              new Notification(title, options);
+              new window.Notification(title, options);
             }
           }
         }
@@ -252,11 +275,40 @@ export default function App() {
            }
         }
       });
+
+      // 3. Note Reminders
+      notes.forEach(note => {
+        if (note.isArchived || !note.reminder) return;
+
+        try {
+          const reminderTimeMs = new Date(note.reminder).getTime();
+          const nowMs = now.getTime();
+          
+          // Check if reminder is due and within a 5-minute window
+          if (nowMs >= reminderTimeMs && (nowMs - reminderTimeMs) <= 5 * 60 * 1000) {
+            const reminderKey = `noto_note_reminder_${note.id}`;
+            if (!localStorage.getItem(reminderKey)) {
+              localStorage.setItem(reminderKey, 'true');
+              
+              const bodyText = t('notifNoteBody')
+                ? t('notifNoteBody').replace('{title}', note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note'))
+                : `Ketuk untuk membuka catatan: "${note.title || 'Catatan'}"`;
+              
+              sendNotification(
+                t('noteReminderTitle') || "Catatan Pengingat! 🔔",
+                bodyText,
+                true,
+                note.id
+              );
+            }
+          }
+        } catch (e) {}
+      });
       
     }, 10000); // interval is every 10s to ensure we don't miss the 1-minute window
     
     return () => clearInterval(interval);
-  }, [reminderActive, reminderTime, tasks, t]);
+  }, [reminderActive, reminderTime, tasks, notes, t, lang]);
 
   // Jika PIN ada tp belum diunlock, kita tampilkan layar kunci
   const isLocked = !!appPin && !isUnlocked;
@@ -309,21 +361,63 @@ export default function App() {
              </div>
              <h3 className="text-2xl font-bold text-slate-50 mb-2">{inAppAlarm.title}</h3>
              <p className="text-slate-400 font-medium mb-8">{inAppAlarm.body}</p>
-             <button onClick={() => { setInAppAlarm(null); stopGlobalAudio(); }} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg transition-transform active:scale-95 shadow-lg shadow-indigo-600/20">
-               {lang === 'id' ? 'Tutup Notifikasi' : 'Dismiss Notification'}
-             </button>
+             <div className="flex flex-col gap-3 w-full">
+               <button 
+                 onClick={() => { 
+                   const targetNoteId = inAppAlarm.noteId;
+                   setInAppAlarm(null); 
+                   stopGlobalAudio(); 
+                   if (targetNoteId) {
+                     const targetNote = notes.find(n => n.id === targetNoteId);
+                     if (targetNote) openNote(targetNote);
+                   }
+                 }} 
+                 className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-lg transition-transform active:scale-95 shadow-lg shadow-indigo-600/20"
+               >
+                 {inAppAlarm.noteId ? (lang === 'id' ? 'Buka Catatan' : 'Open Note') : (lang === 'id' ? 'Tutup Notifikasi' : 'Dismiss Notification')}
+               </button>
+               {inAppAlarm.noteId && (
+                 <button 
+                   onClick={() => { 
+                     setInAppAlarm(null); 
+                     stopGlobalAudio(); 
+                   }} 
+                   className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-xl font-semibold text-xs transition-colors"
+                 >
+                   {lang === 'id' ? 'Tutup Saja' : 'Dismiss Only'}
+                 </button>
+               )}
+             </div>
            </div>
         </div>
       )}
 
       {inAppAlarm && !inAppAlarm.isAlarm && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[200] max-w-sm w-[90%] md:w-full bg-indigo-600 shadow-xl shadow-indigo-600/20 rounded-2xl p-4 flex items-start gap-4 animate-in slide-in-from-top-4 fade-in duration-300">
+        <div 
+          onClick={() => {
+            if (inAppAlarm.noteId) {
+              const targetNoteId = inAppAlarm.noteId;
+              setInAppAlarm(null);
+              stopGlobalAudio();
+              const targetNote = notes.find(n => n.id === targetNoteId);
+              if (targetNote) openNote(targetNote);
+            }
+          }}
+          className={`absolute top-4 left-1/2 -translate-x-1/2 z-[200] max-w-sm w-[90%] md:w-full bg-indigo-600 shadow-xl shadow-indigo-600/20 rounded-2xl p-4 flex items-start gap-4 animate-in slide-in-from-top-4 fade-in duration-300 ${inAppAlarm.noteId ? 'cursor-pointer hover:bg-indigo-500' : ''}`}
+        >
            <Bell className="w-6 h-6 text-white shrink-0 mt-0.5" />
            <div className="flex-1">
              <h4 className="font-bold text-white text-sm mb-1">{inAppAlarm.title}</h4>
              <p className="text-white/80 text-xs leading-relaxed">{inAppAlarm.body}</p>
            </div>
-           <button onClick={() => { setInAppAlarm(null); stopGlobalAudio(); }} className="p-1 hover:bg-white/10 rounded-lg transition-colors text-white/80 hover:text-white">
+           <button 
+             onClick={(e) => { 
+               e.stopPropagation();
+               setInAppAlarm(null); 
+               stopGlobalAudio(); 
+             }} 
+             className="p-1 hover:bg-white/10 rounded-lg transition-colors text-white/80 hover:text-white"
+           >
              <X className="w-4 h-4" />
            </button>
         </div>
@@ -502,7 +596,9 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
               <p className="text-sm text-slate-400 mb-2">{t('resetPinDesc') || 'Jawab pertanyaan keamanan Anda untuk memverifikasi dan menghapus PIN.'}</p>
               {pinRecoveryQuestion && (
                 <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4">
-                  <span className="text-xs text-indigo-400 font-bold uppercase tracking-widest mb-1 block">Pertanyaan</span>
+                  <span className="text-xs text-indigo-400 font-bold uppercase tracking-widest mb-1 block">
+                    {lang === 'id' ? 'Pertanyaan' : 'Question'}
+                  </span>
                   <p className="text-sm text-slate-200">{pinRecoveryQuestion}</p>
                 </div>
               )}
@@ -513,7 +609,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
                 onChange={e => setForgotNameInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleForgotPinSubmit()}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 mb-4 outline-none focus:border-indigo-500 transition-colors"
-                placeholder={pinRecoveryQuestion ? "Jawaban Anda..." : (t('nickname') || "Nama profil Anda...")}
+                placeholder={pinRecoveryQuestion ? (lang === 'id' ? "Jawaban Anda..." : "Your Answer...") : (lang === 'id' ? "Nama profil Anda..." : "Your profile name...")}
               />
               <div className="flex justify-end gap-3">
                 <button 
@@ -526,7 +622,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
                   onClick={handleForgotPinSubmit}
                   className="px-4 py-2 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors"
                 >
-                  {t('verify') || 'Verifikasi'}
+                  {t('verify') || (lang === 'id' ? 'Verifikasi' : 'Verify')}
                 </button>
               </div>
             </div>

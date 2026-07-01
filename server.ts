@@ -14,18 +14,7 @@ async function startServer() {
   // Security Headers via Helmet
   app.use(
     helmet({
-      contentSecurityPolicy: process.env.NODE_ENV === "production" ? {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://va.vercel-scripts.com"], // Removed unsafe-eval for strict CSP
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-          fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "blob:", "https:"],
-          connectSrc: ["'self'", "https:", "wss:", "https://vitals.vercel-insights.com"], // Restricted connect sources
-          objectSrc: ["'none'"],
-          upgradeInsecureRequests: [],
-        },
-      } : false,
+      contentSecurityPolicy: false,
       crossOriginEmbedderPolicy: false,
       crossOriginOpenerPolicy: false,
       crossOriginResourcePolicy: false,
@@ -37,7 +26,7 @@ async function startServer() {
         preload: true,
       },
       dnsPrefetchControl: { allow: false },
-      frameguard: false, // Prevents Clickjacking but breaks AI Studio iframe preview
+      frameguard: false, // Prevents Clickjacking but allows nested sandbox preview rendering
       hidePoweredBy: true,
       ieNoOpen: true,
       noSniff: true,
@@ -53,8 +42,34 @@ async function startServer() {
     );
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Self-uninstalling Service Worker to clear any stuck PWA cache in user browsers
+  const uninstallSW = (req: express.Request, res: express.Response) => {
+    res.type("application/javascript");
+    res.send(`
+      self.addEventListener('install', (e) => {
+        self.skipWaiting();
+      });
+      self.addEventListener('activate', (e) => {
+        self.registration.unregister()
+          .then(() => self.clients.matchAll())
+          .then((clients) => {
+            clients.forEach(client => {
+              if (client.navigate) {
+                client.navigate(client.url);
+              }
+            });
+          });
+      });
+    `);
+  };
+
+  app.get("/sw.js", uninstallSW);
+  app.get("/dev-sw.js", uninstallSW);
+
+  // Vite middleware for development (check process.env.NODE_ENV or process.env.VITE_DEV)
+  const isDev = process.env.NODE_ENV !== "production" || process.env.VITE_DEV === "true";
+
+  if (isDev) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
