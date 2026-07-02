@@ -9,7 +9,7 @@ export default function GamesHubScreen({ onSelectGame, onBack }: { onSelectGame:
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-200">
-      <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 shrink-0 transition-colors">
+      <div className="flex items-center justify-between p-4 pt-[calc(env(safe-area-inset-top)+1rem)] bg-slate-900 border-b border-slate-800 shrink-0 transition-colors">
         <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
           <ArrowLeft className="w-5 h-5 text-slate-300" />
         </button>

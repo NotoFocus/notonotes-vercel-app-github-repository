@@ -250,7 +250,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
 
   return (
     <div className={`flex-1 h-full flex flex-col relative overflow-hidden bg-slate-950`}>
-      <div className={`px-4 sm:px-6 pt-6 pb-4 border-b z-10 relative flex justify-between items-center bg-slate-950 border-slate-800`}>
+      <div className={`px-4 sm:px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4 border-b z-10 relative flex justify-between items-center bg-slate-950 border-slate-800`}>
         <div className="flex items-center gap-2 sm:gap-3">
           <button onClick={onBack} className="p-2 -ml-2 rounded-xl hover:bg-slate-800 transition-colors text-indigo-400">
             <ArrowLeft className="w-5 h-5" />

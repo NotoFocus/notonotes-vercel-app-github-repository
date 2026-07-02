@@ -153,7 +153,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
   return (
     <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
       {/* Top Bar */}
-      <div className="flex-none pt-6 pb-2 px-6 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/80">
+      <div className="flex-none pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-2 px-6 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/80">
         <div className="flex items-center gap-4">
           <span className="font-bold text-2xl text-slate-50 tracking-tight">{t('tasksMenu')}</span>
         </div>

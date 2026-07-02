@@ -244,7 +244,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
           </p>
         </div>
       )}
-      <div className="flex-none h-16 border-b border-slate-800 bg-slate-900 px-6 flex items-center">
+      <div className="flex-none min-h-[4rem] pt-[env(safe-area-inset-top)] border-b border-slate-800 bg-slate-900 px-6 flex items-center">
         <span className="font-bold text-2xl text-slate-50 tracking-tight">{t('settingsMenu')}</span>
       </div>
 

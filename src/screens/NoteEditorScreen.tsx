@@ -250,7 +250,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
   return (
     <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
       {/* Top Bar */}
-      <div className="flex-none h-16 border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between">
+      <div className="flex-none min-h-[4rem] pt-[env(safe-area-inset-top)] border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between">
         <button
           onClick={handleBack}
           className="p-3 -ml-2 text-slate-400 hover:text-slate-50 transition-colors"

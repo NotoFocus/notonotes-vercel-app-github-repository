@@ -229,7 +229,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
   return (
     <div className="h-full flex flex-col w-full overflow-hidden relative">
       <div className="flex-1 overflow-y-auto w-full no-scrollbar">
-        <div className="pb-24 pt-6 px-4 md:px-8 max-w-4xl mx-auto space-y-6">
+        <div className="pb-24 pt-[calc(env(safe-area-inset-top)+1.5rem)] px-4 md:px-8 max-w-4xl mx-auto space-y-6">
           
           <div className="flex justify-between items-center animate-in slide-in-from-bottom-2 fade-in duration-300">
             <h1 className="text-2xl font-black text-slate-50">

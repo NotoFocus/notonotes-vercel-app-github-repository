@@ -289,7 +289,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
       </AnimatePresence>
 
       {/* Top Bar */}
-      <div className="flex-none h-16 border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between">
+      <div className="flex-none min-h-[4rem] pt-[env(safe-area-inset-top)] border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between">
         <div 
           className="flex items-center gap-2 cursor-pointer group p-2 -ml-2"
           onClick={() => onNavigate('settings')}
@@ -330,20 +330,20 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             </>
           )}
           
-          <div className="relative z-10 flex justify-between items-start mb-8 gap-3">
-            <div className="flex gap-4 items-center flex-1">
+          <div className="relative z-10 flex justify-between items-start mb-6 gap-2 sm:gap-3">
+            <div className="flex gap-2.5 sm:gap-4 items-center flex-1 min-w-0">
               {currentUser.avatarUrl && (
-                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
                   <img src={currentUser.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                 </div>
               )}
 
               <div className="flex-1 min-w-0">
-                <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase mb-2 drop-shadow-sm truncate">{getGreeting()}</p>
-                <h2 className="text-3xl sm:text-4xl font-black mb-1 tracking-tight text-white drop-shadow-sm">{t('focusToday')}</h2>
-                <p className="text-indigo-50 text-sm font-medium mt-3 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
-                  <span>{activeTasksCount} {t('remainingTask')}</span>
+                <p className="text-indigo-100 text-[10px] sm:text-[11px] font-bold tracking-widest uppercase mb-1 sm:mb-2 drop-shadow-sm truncate">{getGreeting()}</p>
+                <h2 className="text-2xl xs:text-3xl sm:text-4xl font-black mb-1 tracking-tight text-white drop-shadow-sm break-words leading-tight">{t('focusToday')}</h2>
+                <p className="text-indigo-50 text-xs sm:text-sm font-medium mt-1.5 sm:mt-3 flex items-center gap-1.5 sm:gap-2">
+                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
+                  <span className="truncate">{activeTasksCount} {t('remainingTask')}</span>
                 </p>
               </div>
             </div>
@@ -351,12 +351,12 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             {/* Streak Badge */}
             <div 
               onClick={() => setShowStreakSplash(true)}
-              className="flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl px-5 py-4 cursor-pointer transition-all hover:scale-105 shadow-sm" 
+              className="flex-none shrink-0 flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl px-3 py-2.5 sm:px-5 sm:py-4 cursor-pointer transition-all hover:scale-105 shadow-sm min-w-[64px] sm:min-w-[80px]" 
               title={`${streak} hari berturut-turut!`}
             >
-              <Flame className="w-6 h-6 text-orange-400 fill-orange-400 drop-shadow-sm mb-1" />
-              <span className="text-xl font-black text-white leading-none mb-1">{streak}</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Streak</span>
+              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400 fill-orange-400 drop-shadow-sm mb-1" />
+              <span className="text-lg sm:text-xl font-black text-white leading-none mb-0.5 sm:mb-1">{streak}</span>
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Streak</span>
             </div>
           </div>
           
@@ -401,7 +401,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
               {t('dailyMood') || 'Mood Hari Ini'}
             </h3>
           </div>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-1 xs:gap-1.5 sm:gap-2">
             {[
               { id: 'excellent', label: 'Sangat Baik', colors: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20' },
               { id: 'good', label: 'Baik', colors: 'bg-teal-500/10 text-teal-400 border-teal-500/30 hover:bg-teal-500/20' },
@@ -417,11 +417,11 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 <button
                   key={m.id}
                   onClick={() => setMood(todayStr, m.id as any)}
-                  className={`flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border-2 font-bold transition-all disabled:opacity-50 ${m.colors} ${isSelected ? 'scale-105 shadow-md border-current bg-opacity-20' : 'border-transparent'} ${notSelectedOpacity}`}
+                  className={`flex-1 flex flex-col items-center justify-center py-2 px-0.5 xs:py-2.5 xs:px-1 sm:p-3 rounded-2xl border-2 font-bold transition-all disabled:opacity-50 ${m.colors} ${isSelected ? 'scale-105 shadow-md border-current bg-opacity-20' : 'border-transparent'} ${notSelectedOpacity}`}
                   title={m.label}
                 >
-                  <div className={`${isSelected ? 'mb-1.5' : ''} transition-all`}>{getMoodIcon(m.id, isSelected ? "w-7 h-7" : "w-6 h-6")}</div>
-                  {isSelected && <span className="text-[9px] whitespace-nowrap text-current uppercase tracking-wider">{m.label}</span>}
+                  <div className={`${isSelected ? 'mb-1.5' : ''} transition-all`}>{getMoodIcon(m.id, isSelected ? "w-6.5 h-6.5 sm:w-7 sm:h-7" : "w-5.5 h-5.5 sm:w-6 sm:h-6")}</div>
+                  {isSelected && <span className="text-[8px] xs:text-[9px] whitespace-nowrap text-current uppercase tracking-wider truncate max-w-full px-0.5">{m.label}</span>}
                 </button>
               )
             })}
