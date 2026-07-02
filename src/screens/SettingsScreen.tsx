@@ -1,17 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Moon, Download, Upload, Bell, Lock, FileText, Smartphone, 
   ChevronRight, User, Globe, Clock, Key, Trash2, Info, Shield, MessageCircle, Gamepad2,
-  AlertTriangle
+  AlertTriangle, Image as ImageIcon
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { ScreenItem } from '../App';
 import { generateId, encryptData, decryptData, hashPin } from '../utils';
+import { getLargeItem, setLargeItem, deleteLargeItem } from '../utils/db';
 
-export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { appTheme: string, setAppTheme: (t: 'dark' | 'light' | 'pink') => void, onNavigate?: (s: ScreenItem) => void }) {
+export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { appTheme: string, setAppTheme: (t: any) => void, onNavigate?: (s: ScreenItem) => void }) {
   const { transactions, notes, tasks, user, updateUser, appPin, setAppPin, pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer, setIsUnlocked, importData, clearAllData, lang, setLang, streak, reminderActive, setReminderActive, reminderTime, setReminderTime } = useAppStore();
   const t = useTranslation(lang);
+
+  const [localCustomWallpaper, setLocalCustomWallpaper] = useState<string | null>(null);
+  const [localBannerWallpaper, setLocalBannerWallpaper] = useState<string | null>(null);
+
+  useEffect(() => {
+    getLargeItem('noto_custom_wallpaper').then(setLocalCustomWallpaper);
+    getLargeItem('noto_banner_wallpaper').then(setLocalBannerWallpaper);
+  }, []);
+
+  const handleWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setLargeItem('noto_custom_wallpaper', dataUrl)
+        .then(() => {
+          setLocalCustomWallpaper(dataUrl);
+          window.dispatchEvent(new Event('noto_wallpaper_changed'));
+          setToastMessage(lang === 'id' ? 'Wallpaper berhasil diperbarui!' : 'Wallpaper updated successfully!');
+          setTimeout(() => setToastMessage(null), 3000);
+        })
+        .catch(() => {
+          setToastMessage(lang === 'id' ? 'Gagal menyimpan wallpaper!' : 'Failed to save wallpaper!');
+          setTimeout(() => setToastMessage(null), 3000);
+        });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleBannerWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setLargeItem('noto_banner_wallpaper', dataUrl)
+        .then(() => {
+          setLocalBannerWallpaper(dataUrl);
+          window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+          setToastMessage(lang === 'id' ? 'Wallpaper kotak utama berhasil diperbarui!' : 'Main box wallpaper updated successfully!');
+          setTimeout(() => setToastMessage(null), 3000);
+        })
+        .catch(() => {
+          setToastMessage(lang === 'id' ? 'Gagal menyimpan wallpaper!' : 'Failed to save wallpaper!');
+          setTimeout(() => setToastMessage(null), 3000);
+        });
+    };
+    reader.readAsDataURL(file);
+  };
 
   const [pinModalMode, setPinModalMode] = useState<'create' | 'verify' | 'change' | 'remove' | null>(null);
   const [pinInput, setPinInput] = useState('');
@@ -19,6 +72,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
   const [pinAnswerInput, setPinAnswerInput] = useState('');
   const [pinError, setPinError] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showUpdateNotes, setShowUpdateNotes] = useState(false);
@@ -179,6 +233,17 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
   return (
     <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
+      {isResetting && (
+        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
+          <p className="text-slate-200 font-bold text-lg">
+            {lang === 'id' ? 'Mengatur Ulang Aplikasi...' : 'Resetting Application...'}
+          </p>
+          <p className="text-slate-400 text-xs mt-2">
+            {lang === 'id' ? 'Mohon tunggu sebentar, halaman akan dimuat ulang.' : 'Please wait, the page will reload shortly.'}
+          </p>
+        </div>
+      )}
       <div className="flex-none h-16 border-b border-slate-800 bg-slate-900 px-6 flex items-center">
         <span className="font-bold text-2xl text-slate-50 tracking-tight">{t('settingsMenu')}</span>
       </div>
@@ -190,6 +255,49 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
         <section>
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Smartphone size={16} className="text-indigo-400" /> {t('appearance')}</h3>
           <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
+            <div className="flex flex-col border-b border-slate-800/60 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner overflow-hidden">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={18} />
+                    )}
+                  </div>
+                  <span className="font-bold text-[15px] text-slate-200">{lang === 'id' ? 'Foto Profil' : 'Profile Photo'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="py-1.5 px-3 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl font-bold text-xs cursor-pointer transition-colors">
+                    {lang === 'id' ? 'Pilih' : 'Choose'}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const dataUrl = event.target?.result as string;
+                          updateUser({ ...user, avatarUrl: dataUrl });
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                  {user.avatarUrl && (
+                    <button 
+                      onClick={() => updateUser({ ...user, avatarUrl: '' })}
+                      className="py-1.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl font-bold text-xs transition-colors"
+                    >
+                      {lang === 'id' ? 'Hapus' : 'Delete'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
               <div className="flex items-center gap-3 w-1/2">
                 <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
@@ -207,22 +315,107 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               />
             </div>
             
-            <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
-                  <Moon size={18} />
+            <div className="flex flex-col border-b border-slate-800/60">
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
+                    <Moon size={18} />
+                  </div>
+                  <span className="font-bold text-[15px] text-slate-200">{t('appThemeLabel')}</span>
                 </div>
-                <span className="font-bold text-[15px] text-slate-200">{t('appThemeLabel')}</span>
+                <select 
+                  value={appTheme}
+                  onChange={(e) => setAppTheme(e.target.value as any)}
+                  className="bg-transparent text-indigo-400 font-bold text-[15px] outline-none cursor-pointer text-right appearance-none focus:text-indigo-300 transition-colors"
+                >
+                  <option value="dark" className="bg-slate-900">{t('themeDark')}</option>
+                  <option value="light" className="bg-slate-900">{t('themeLight')}</option>
+                  <option value="pink" className="bg-slate-900">{t('themePink')}</option>
+                  <option value="cool" className="bg-slate-900">{t('themeCool')}</option>
+                  <option value="cute" className="bg-slate-900">{t('themeCute')}</option>
+                  <option value="wallpaper" className="bg-slate-900">{t('themeWallpaper')}</option>
+                </select>
               </div>
-              <select 
-                value={appTheme}
-                onChange={(e) => setAppTheme(e.target.value as 'dark' | 'light' | 'pink')}
-                className="bg-transparent text-indigo-400 font-bold text-[15px] outline-none cursor-pointer text-right appearance-none focus:text-indigo-300 transition-colors"
-              >
-                <option value="dark" className="bg-slate-900">{t('themeDark')}</option>
-                <option value="light" className="bg-slate-900">{t('themeLight')}</option>
-                <option value="pink" className="bg-slate-900">{t('themePink')}</option>
-              </select>
+
+              {appTheme === 'wallpaper' && (
+                <div className="px-4 pb-4 pt-1 flex flex-col gap-3 bg-slate-900/30 border-t border-slate-800/30 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <p className="text-xs text-slate-400">
+                    {t('uploadWallpaperDesc')}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <label className="flex-1 py-2.5 px-4 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl font-bold text-xs text-center cursor-pointer transition-colors">
+                      {t('uploadWallpaper')}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleWallpaperUpload} 
+                        className="hidden" 
+                      />
+                    </label>
+                    {localCustomWallpaper && (
+                      <button 
+                        onClick={() => {
+                          deleteLargeItem('noto_custom_wallpaper')
+                            .then(() => {
+                              setLocalCustomWallpaper(null);
+                              window.dispatchEvent(new Event('noto_wallpaper_changed'));
+                              setToastMessage(lang === 'id' ? 'Wallpaper kustom dihapus.' : 'Custom wallpaper removed.');
+                              setTimeout(() => setToastMessage(null), 3000);
+                            });
+                        }}
+                        className="py-2.5 px-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl font-bold text-xs transition-colors"
+                      >
+                        {t('removeWallpaper')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col border-b border-slate-800/60">
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
+                    <ImageIcon size={18} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[15px] text-slate-200">{t('bannerWallpaperLabel')}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="py-1.5 px-3 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl font-bold text-xs cursor-pointer transition-colors">
+                    {lang === 'id' ? 'Pilih' : 'Choose'}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleBannerWallpaperUpload} 
+                    />
+                  </label>
+                  {localBannerWallpaper && (
+                    <button 
+                      onClick={() => {
+                        deleteLargeItem('noto_banner_wallpaper')
+                          .then(() => {
+                            setLocalBannerWallpaper(null);
+                            window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+                            setToastMessage(lang === 'id' ? 'Wallpaper kotak utama dihapus.' : 'Main box wallpaper removed.');
+                            setTimeout(() => setToastMessage(null), 3000);
+                          });
+                      }}
+                      className="py-1.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl font-bold text-xs transition-colors"
+                    >
+                      {lang === 'id' ? 'Hapus' : 'Delete'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="px-4 pb-4 pt-1 flex flex-col gap-1 bg-slate-900/10">
+                <p className="text-xs text-slate-400">
+                  {t('uploadBannerWallpaperDesc')}
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center justify-between p-4">
@@ -440,7 +633,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <span className="font-bold text-[15px] text-slate-200">{t('appVersion')}</span>
               </div>
-              <span className="font-black text-[15px] text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full text-center">v2.5</span>
+              <span className="font-black text-[15px] text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full text-center">v3.0</span>
             </div>
 
             <button onClick={() => setShowUpdateNotes(true)} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60 w-full text-left">
@@ -653,12 +846,13 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                   {t('cancel')}
                 </button>
                 <button 
-                  onClick={() => {
-                    clearAllData();
+                  onClick={async () => {
+                    setIsResetting(true);
                     setShowResetConfirm(false);
+                    await clearAllData();
                     setTimeout(() => {
                       window.location.reload();
-                    }, 100);
+                    }, 800);
                   }}
                   className="px-4 py-2 rounded-xl text-white text-sm font-bold bg-red-500 hover:bg-red-600 transition-colors"
                 >
@@ -875,7 +1069,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
             <div className="bg-slate-900 border border-slate-800 p-4 md:p-4 rounded-3xl w-full max-w-sm max-h-[80vh] flex flex-col">
               <h3 className="text-xl font-bold text-slate-50 mb-4">{t('aboutAppTitle')}</h3>
               <div className="overflow-y-auto pr-2 flex-1 space-y-4 mb-6 custom-scrollbar text-sm text-slate-300">
-                <p><strong>Noto v2.5</strong></p>
+                <p><strong>Noto v3.0</strong></p>
                 <p>{t('aboutAppDesc')}</p>
                 
                 <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 text-amber-200">

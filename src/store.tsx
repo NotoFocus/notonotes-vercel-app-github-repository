@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Note, Task, User, Transaction, MoodEntry } from './types';
 import { currentUser, recentNotes, allTasks } from './data';
 import { generateId } from './utils';
+import { getLargeItem, setLargeItem, deleteLargeItem } from './utils/db';
 
 interface AppContextType {
   notes: Note[];
@@ -24,7 +25,7 @@ interface AppContextType {
   clearAllTransactions: () => void;
   importTransactions: (transactions: Transaction[]) => void;
   importData: (notes: Note[], tasks: Task[], transactions?: Transaction[]) => void;
-  clearAllData: () => void;
+  clearAllData: () => Promise<void>;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   appPin: string | null;
@@ -77,6 +78,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return currentUser;
   });
 
+  useEffect(() => {
+    const initAvatar = async () => {
+      try {
+        const avatar = await getLargeItem('user_avatar');
+        if (avatar) {
+          setUser(prev => {
+            if (prev.avatarUrl === 'indexeddb:user_avatar' || prev.avatarUrl === '') {
+              return { ...prev, avatarUrl: avatar };
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        console.error("Failed to load user avatar from IndexedDB:", e);
+      }
+    };
+    initAvatar();
+  }, []);
+
   const [notes, setNotes] = useState<Note[]>(() => {
     try { 
       const s = localStorage.getItem('noto_notes'); 
@@ -94,6 +114,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch(e){}
     return recentNotes;
   });
+
+  useEffect(() => {
+    getLargeItem('noto_notes').then(s => {
+      if (s) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) {
+            const seen = new Set();
+            setNotes(parsed.map((n: Note) => {
+              if (seen.has(n.id)) n.id = generateId();
+              seen.add(n.id);
+              return n;
+            }));
+          }
+        } catch(e){}
+      }
+    });
+  }, []);
   
   const [tasks, setTasks] = useState<Task[]>(() => {
     try { 
@@ -120,6 +158,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return allTasks;
   });
 
+  useEffect(() => {
+    getLargeItem('noto_tasks').then(s => {
+      if (s) {
+        try {
+          const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) {
+            const seen = new Set();
+            setTasks(parsed.map((t: Task) => {
+              if (seen.has(t.id)) t.id = generateId();
+              seen.add(t.id);
+              if (t.repeat === 'daily' && t.date && t.date < todayStr) {
+                t.date = todayStr;
+                t.completed = false;
+              }
+              return t;
+            }));
+          }
+        } catch(e){}
+      }
+    });
+  }, []);
+
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
       const s = localStorage.getItem('noto_transactions');
@@ -131,6 +192,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
 
+  useEffect(() => {
+    getLargeItem('noto_transactions').then(s => {
+      if (s) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) setTransactions(parsed);
+        } catch(e){}
+      }
+    });
+  }, []);
+
   const [moods, setMoods] = useState<MoodEntry[]>(() => {
     try {
       const s = localStorage.getItem('noto_moods');
@@ -141,6 +213,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch(e){}
     return [];
   });
+
+  useEffect(() => {
+    getLargeItem('noto_moods').then(s => {
+      if (s) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) setMoods(parsed);
+        } catch(e){}
+      }
+    });
+  }, []);
 
   const [archivedTags, setArchivedTags] = useState<string[]>(() => {
     try {
@@ -294,11 +377,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => { safeSetItem('noto_user', JSON.stringify(user)); }, [user]);
-  useEffect(() => { safeSetItem('noto_notes', JSON.stringify(notes)); }, [notes]);
-  useEffect(() => { safeSetItem('noto_tasks', JSON.stringify(tasks)); }, [tasks]);
-  useEffect(() => { safeSetItem('noto_transactions', JSON.stringify(transactions)); }, [transactions]);
-  useEffect(() => { safeSetItem('noto_moods', JSON.stringify(moods)); }, [moods]);
+  useEffect(() => {
+    const lightweightUser = { ...user };
+    if (user.avatarUrl && user.avatarUrl.startsWith('data:image/')) {
+      setLargeItem('user_avatar', user.avatarUrl).catch(e => console.error(e));
+      lightweightUser.avatarUrl = 'indexeddb:user_avatar';
+    } else if (user.avatarUrl === '') {
+      deleteLargeItem('user_avatar').catch(e => console.error(e));
+    }
+    safeSetItem('noto_user', JSON.stringify(lightweightUser));
+  }, [user]);
+  useEffect(() => { 
+    const str = JSON.stringify(notes);
+    safeSetItem('noto_notes', str); 
+    setLargeItem('noto_notes', str).catch(e => console.error(e));
+  }, [notes]);
+  useEffect(() => { 
+    const str = JSON.stringify(tasks);
+    safeSetItem('noto_tasks', str); 
+    setLargeItem('noto_tasks', str).catch(e => console.error(e));
+  }, [tasks]);
+  useEffect(() => { 
+    const str = JSON.stringify(transactions);
+    safeSetItem('noto_transactions', str); 
+    setLargeItem('noto_transactions', str).catch(e => console.error(e));
+  }, [transactions]);
+  useEffect(() => { 
+    const str = JSON.stringify(moods);
+    safeSetItem('noto_moods', str); 
+    setLargeItem('noto_moods', str).catch(e => console.error(e));
+  }, [moods]);
   useEffect(() => {
     try {
       if (appPin) safeSetItem('noto_pin', appPin); else localStorage.removeItem('noto_pin');
@@ -427,18 +535,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (importedTransactions) setTransactions(importedTransactions);
   };
 
-  const clearAllData = () => {
-    // Securely wipe all data from local storage by overwriting with null bytes before removing
-    const keys = ['noto_user', 'noto_notes', 'noto_tasks', 'noto_transactions', 'noto_moods', 'noto_streak', 'noto_last_task_completed', 'noto_pin', 'noto_pin_question', 'noto_pin_answer', 'noto_onboarding_completed', 'noto_archived_tags', 'noto_theme', 'noto_lang', 'noto_reminder_active', 'noto_reminder_time'];
-    keys.forEach(key => {
+  const clearAllData = async () => {
+    // Securely wipe all data from local storage by dynamically finding all keys, overwriting, and clearing
+    try {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        try {
+          const val = localStorage.getItem(key);
+          if (val) {
+            localStorage.setItem(key, '0'.repeat(val.length || 10));
+          }
+        } catch (e) {}
+      });
+      localStorage.clear();
+    } catch (e) {
+      console.error("Error securely wiping localStorage:", e);
+    }
+
+    // Delete large items stored in IndexedDB
+    const largeKeys = [
+      'noto_notes', 'noto_tasks', 'noto_transactions', 'noto_moods', 
+      'user_avatar', 'noto_custom_wallpaper', 'noto_banner_wallpaper'
+    ];
+    for (const key of largeKeys) {
       try {
-        const val = localStorage.getItem(key);
-        if (val) {
-          safeSetItem(key, '0'.repeat(val.length || 1000));
-          localStorage.removeItem(key);
-        }
-      } catch (e) {}
-    });
+        await deleteLargeItem(key);
+      } catch (e) {
+        console.error("Failed to delete IndexedDB item during reset:", key, e);
+      }
+    }
 
     setNotes([]);
     setTasks([]);
@@ -451,6 +576,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPinRecoveryAnswer(null);
     setHasCompletedOnboarding(false);
     setUser({ name: 'Pengguna', avatarUrl: '' });
+    setReminderActive(true);
+    setReminderTime('09:00');
+    setSavingsTarget(null);
+    setSavingsTargetTitle('');
+    setSavingsBalance(0);
   };
 
   const contextValue = React.useMemo(() => ({

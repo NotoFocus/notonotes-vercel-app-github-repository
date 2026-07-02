@@ -998,8 +998,8 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
               >
                 {d.beforePhotoUrl ? (
                   <>
-                    <img src={d.beforePhotoUrl} alt="Before" className="w-full h-full object-cover" />
-                    <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10">
+                    <img src={d.beforePhotoUrl} alt="Before" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded-lg border border-white/10">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? 'Sebelum' : 'Before'}</span>
                     </div>
                   </>
@@ -1017,8 +1017,8 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
               >
                 {d.afterPhotoUrl ? (
                   <>
-                    <img src={d.afterPhotoUrl} alt="After" className="w-full h-full object-cover" />
-                    <div className="absolute bottom-2 right-2 bg-indigo-500/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/20">
+                    <img src={d.afterPhotoUrl} alt="After" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <div className="absolute bottom-2 right-2 bg-indigo-500/80 px-2 py-1 rounded-lg border border-white/20">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? 'Sesudah' : 'After'}</span>
                     </div>
                   </>
@@ -1046,8 +1046,8 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
                 >
                   {d.after1MonthPhotoUrl ? (
                     <>
-                      <img src={d.after1MonthPhotoUrl} alt="1 Month" className="w-full h-full object-cover" />
-                      <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10">
+                      <img src={d.after1MonthPhotoUrl} alt="1 Month" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-1 rounded-lg border border-white/10">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? '1 Bulan' : '1 Month'}</span>
                       </div>
                     </>
@@ -1065,8 +1065,8 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
                 >
                   {d.after6MonthsPhotoUrl ? (
                     <>
-                      <img src={d.after6MonthsPhotoUrl} alt="6 Months" className="w-full h-full object-cover" />
-                      <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10">
+                      <img src={d.after6MonthsPhotoUrl} alt="6 Months" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-1 rounded-lg border border-white/10">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-white">{lang === 'id' ? '6 Bulan' : '6 Months'}</span>
                       </div>
                     </>
@@ -1091,9 +1091,9 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
              </span>
              <button onClick={() => setFullScreenImage(null)} className="p-2 bg-slate-800/80 text-slate-300 rounded-full hover:bg-slate-700">
                <X className="w-5 h-5" />
-             </button>
+              </button>
           </div>
-          <img src={fullScreenImage.url} alt="Transformation Full" className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl" />
+          <img src={fullScreenImage.url} alt="Transformation Full" className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl" referrerPolicy="no-referrer" />
           <button 
              onClick={(e) => { 
                e.stopPropagation();

@@ -21,6 +21,7 @@ import GamesHubScreen from './screens/GamesHubScreen';
 import { Note } from './types';
 import { useAppStore } from './store';
 import { useTranslation } from './translations';
+import { getLargeItem } from './utils/db';
 
 export type ScreenItem = 'home' | 'tasks' | 'search' | 'calendar' | 'finance' | 'settings' | 'note-editor' | 'game' | 'tictactoe' | 'puzzle' | 'tetris' | 'games-hub';
 
@@ -66,19 +67,33 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const [appTheme, setAppTheme] = useState<'dark' | 'light' | 'pink'>(() => {
+  const [appTheme, setAppTheme] = useState<'dark' | 'light' | 'pink' | 'cool' | 'cute' | 'wallpaper'>(() => {
     try {
-      return (localStorage.getItem('noto_theme') as 'dark' | 'light' | 'pink') || 'dark';
+      return (localStorage.getItem('noto_theme') as 'dark' | 'light' | 'pink' | 'cool' | 'cute' | 'wallpaper') || 'dark';
     } catch (e) {
       return 'dark';
     }
   });
+
+  const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
+  
+  useEffect(() => {
+    getLargeItem('noto_custom_wallpaper').then(setCustomWallpaper);
+  }, []);
   
   useEffect(() => {
     try {
       localStorage.setItem('noto_theme', appTheme);
     } catch (e) {}
   }, [appTheme]);
+
+  useEffect(() => {
+    const handleWallpaperChange = () => {
+      getLargeItem('noto_custom_wallpaper').then(setCustomWallpaper);
+    };
+    window.addEventListener('noto_wallpaper_changed', handleWallpaperChange);
+    return () => window.removeEventListener('noto_wallpaper_changed', handleWallpaperChange);
+  }, []);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [inAppAlarm, setInAppAlarm] = useState<{id: number, title: string, body: string, isAlarm?: boolean, noteId?: string} | null>(null);
 
@@ -147,8 +162,7 @@ export default function App() {
   }, [tasks, notes, lang, t]);
 
   useEffect(() => {
-    // We remove the return block here since we still might want to trigger individual task notifications
-    const interval = setInterval(() => {
+    const checkNotifications = () => {
       const now = new Date();
       const currentHour = now.getHours().toString().padStart(2, '0');
       const currentMinute = now.getMinutes().toString().padStart(2, '0');
@@ -227,7 +241,7 @@ export default function App() {
       const [remHour, remMin] = (reminderTime || '00:00').split(':').map(Number);
       const remTotalMinutes = remHour * 60 + remMin;
 
-      if (reminderActive && reminderTime && currentTotalMinutes >= remTotalMinutes && (currentTotalMinutes - remTotalMinutes) <= 5 && lastNotif !== `${todayDate}_${reminderTime}`) {
+      if (reminderActive && reminderTime && currentTotalMinutes >= remTotalMinutes && lastNotif !== `${todayDate}_${reminderTime}`) {
         try { localStorage.setItem('noto_last_notif_date_time', `${todayDate}_${reminderTime}`); } catch(e){}
         const todayTasks = tasks.filter(t => {
             if (t.date === 'Hari ini' || (t.date && t.date.toLowerCase() === 'today') || t.repeat === 'daily') return true;
@@ -263,7 +277,7 @@ export default function App() {
            const [alarmHour, alarmMinute] = task.alarmTime.split(':').map(Number);
            const alarmTotalMinutes = alarmHour * 60 + alarmMinute;
 
-           if (currentTotalMinutes >= alarmTotalMinutes && (currentTotalMinutes - alarmTotalMinutes) <= 5) {
+           if (currentTotalMinutes >= alarmTotalMinutes) {
              const alarmKey = `noto_alarm_${task.id}_${todayDate}`;
              try {
                if (!localStorage.getItem(alarmKey)) {
@@ -284,8 +298,8 @@ export default function App() {
           const reminderTimeMs = new Date(note.reminder).getTime();
           const nowMs = now.getTime();
           
-          // Check if reminder is due and within a 5-minute window
-          if (nowMs >= reminderTimeMs && (nowMs - reminderTimeMs) <= 5 * 60 * 1000) {
+          // Check if reminder is due
+          if (nowMs >= reminderTimeMs) {
             const reminderKey = `noto_note_reminder_${note.id}`;
             if (!localStorage.getItem(reminderKey)) {
               localStorage.setItem(reminderKey, 'true');
@@ -305,7 +319,10 @@ export default function App() {
         } catch (e) {}
       });
       
-    }, 10000); // interval is every 10s to ensure we don't miss the 1-minute window
+    }; // End of checkNotifications
+
+    checkNotifications();
+    const interval = setInterval(checkNotifications, 10000); // interval is every 10s
     
     return () => clearInterval(interval);
   }, [reminderActive, reminderTime, tasks, notes, t, lang]);
@@ -326,13 +343,47 @@ export default function App() {
   const getThemeClass = () => {
     if (appTheme === 'light') return 'light-theme bg-slate-950';
     if (appTheme === 'pink') return 'pink-theme bg-slate-950';
+    if (appTheme === 'cool') return 'cool-theme bg-transparent';
+    if (appTheme === 'cute') return 'cute-theme bg-transparent';
+    if (appTheme === 'wallpaper') return 'wallpaper-theme bg-transparent';
     return 'bg-slate-950';
+  };
+
+  const getBackgroundStyle = () => {
+    if (appTheme === 'cool') {
+      return {
+        backgroundImage: 'url("https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1200&auto=format&fit=crop")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed' as const
+      };
+    }
+    if (appTheme === 'cute') {
+      return {
+        backgroundImage: 'url("https://images.unsplash.com/photo-1559251606-c623743a6d76?q=80&w=1200&auto=format&fit=crop")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed' as const
+      };
+    }
+    if (appTheme === 'wallpaper' && customWallpaper) {
+      return {
+        backgroundImage: `url(${customWallpaper})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed' as const
+      };
+    }
+    return undefined;
   };
 
   if (!hasCompletedOnboarding) {
     return (
-      <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
-        <div className="flex-1 w-full mx-auto max-w-[1920px]">
+      <div style={getBackgroundStyle()} className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+        {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
+          <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
+        )}
+        <div className="flex-1 w-full mx-auto max-w-[1920px] relative z-10">
           <OnboardingScreen onFinish={() => setHasCompletedOnboarding(true)} />
         </div>
       </div>
@@ -341,8 +392,11 @@ export default function App() {
 
   if (isLocked) {
     return (
-      <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
-        <div className="flex-1 w-full mx-auto max-w-[1920px]">
+      <div style={getBackgroundStyle()} className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+        {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
+          <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
+        )}
+        <div className="flex-1 w-full mx-auto max-w-[1920px] relative z-10">
           <PinScreen correctPin={appPin} onUnlock={() => setIsUnlocked(true)} appTheme={appTheme} lang={lang} />
         </div>
       </div>
@@ -350,7 +404,10 @@ export default function App() {
   }
 
   return (
-    <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+    <div style={getBackgroundStyle()} className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+      {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
+        <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
+      )}
       <OfflineIndicator lang={lang} />
       
       {inAppAlarm && inAppAlarm.isAlarm && (
@@ -425,7 +482,7 @@ export default function App() {
 
       {/* Desktop Sidebar / Mobile Bottom Nav */}
       {currentScreen !== 'note-editor' && currentScreen !== 'game' && currentScreen !== 'tictactoe' && currentScreen !== 'puzzle' && currentScreen !== 'tetris' && currentScreen !== 'games-hub' && currentScreen !== 'finance' && (
-        <nav className="flex-none order-last md:order-first w-full md:w-[240px] lg:w-[280px] bg-slate-900/80 backdrop-blur-xl border-t md:border-t-0 md:border-r border-slate-800 flex md:flex-col justify-between md:justify-start z-50 relative pb-[calc(env(safe-area-inset-bottom)+8px)] pt-1 md:pb-0 min-h-[80px] md:min-h-screen md:pt-8 md:px-4 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] md:shadow-[10px_0_30px_rgba(0,0,0,0.2)]">
+        <nav className="flex-none order-last md:order-first w-full md:w-[240px] lg:w-[280px] bg-slate-900/95 md:bg-slate-900/80 md:backdrop-blur-md border-t md:border-t-0 md:border-r border-slate-800 flex md:flex-col justify-between md:justify-start z-50 relative pb-[calc(env(safe-area-inset-bottom)+8px)] pt-1 md:pb-0 min-h-[80px] md:min-h-screen md:pt-8 md:px-4 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] md:shadow-[10px_0_30px_rgba(0,0,0,0.2)]">
           
           {/* Logo only visible on Desktop */}
           <div className="hidden md:flex items-center gap-3 px-4 mb-8">
@@ -540,13 +597,16 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   const getThemeClass = () => {
     if (appTheme === 'light') return 'light-theme bg-slate-950';
     if (appTheme === 'pink') return 'pink-theme bg-slate-950';
+    if (appTheme === 'cool') return 'cool-theme bg-transparent';
+    if (appTheme === 'cute') return 'cute-theme bg-transparent';
+    if (appTheme === 'wallpaper') return 'wallpaper-theme bg-transparent';
     return 'bg-slate-950';
   };
 
   return (
     <div className={`min-h-screen flex justify-center items-center ${getThemeClass()} relative`}>
       <OfflineIndicator lang={lang} />
-      <div className="w-full max-w-[480px] min-h-[100dvh] relative flex flex-col items-center justify-center text-slate-200 font-sans p-8 shadow-2xl sm:border-x border-slate-800 bg-slate-950">
+      <div className="w-full max-w-[480px] min-h-[100dvh] relative flex flex-col items-center justify-center text-slate-200 font-sans p-8 shadow-2xl sm:border-x border-slate-800 bg-slate-950 backdrop-blur-md">
         <Lock className="w-12 h-12 text-indigo-500 mb-6" />
         <h2 className="text-xl font-bold tracking-tight mb-2">{t('pinLocked')}</h2>
         <p className="text-slate-400 text-sm mb-12">{t('enterPin')}</p>

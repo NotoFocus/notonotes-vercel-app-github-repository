@@ -5,10 +5,11 @@ import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateId, formatReminderDate } from '../utils';
+import { getLargeItem } from '../utils/db';
 
 interface HomeProps {
   appTheme: string;
-  setAppTheme: (theme: 'dark' | 'light' | 'pink') => void;
+  setAppTheme: (theme: any) => void;
   onOpenNote: (note: Note) => void;
   onNavigate: (screen: 'home' | 'tasks' | 'search' | 'calendar' | 'settings' | 'finance') => void;
 }
@@ -58,6 +59,19 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
     }
   });
   const [splashAnim, setSplashAnim] = useState(false);
+  const [bannerWallpaper, setBannerWallpaper] = useState<string | null>(null);
+
+  useEffect(() => {
+    getLargeItem('noto_banner_wallpaper').then(setBannerWallpaper);
+  }, []);
+
+  useEffect(() => {
+    const handleBannerWallpaperChange = () => {
+      getLargeItem('noto_banner_wallpaper').then(setBannerWallpaper);
+    };
+    window.addEventListener('noto_banner_wallpaper_changed', handleBannerWallpaperChange);
+    return () => window.removeEventListener('noto_banner_wallpaper_changed', handleBannerWallpaperChange);
+  }, []);
 
   useEffect(() => {
     if (showStreakSplash) {
@@ -76,6 +90,23 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
   const [timerDuration, setTimerDuration] = useState(25 * 60);
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [hideChallenge, setHideChallenge] = useState(() => {
+    try {
+      const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+      const hideDate = localStorage.getItem('noto_hide_challenge_date');
+      return hideDate === today;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleHideChallenge = () => {
+    setHideChallenge(true);
+    try {
+      const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+      localStorage.setItem('noto_hide_challenge_date', today);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -146,9 +177,9 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
   };
 
   const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [hasSeenUpdate121, setHasSeenUpdate121] = useState(() => {
+  const [hasSeenUpdate300, setHasSeenUpdate121] = useState(() => {
     try {
-      return localStorage.getItem('noto_update_1_2_1') === 'true';
+      return localStorage.getItem('noto_update_3_0_0') === 'true';
     } catch(e) {
       return true; // Skip if fails
     }
@@ -277,26 +308,44 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           </button>
           <button className="p-3 -mr-2 text-slate-400 hover:text-slate-50 transition-colors relative" onClick={() => setShowNotificationModal(true)}>
             <Bell className="w-5 h-5" />
-            {!hasSeenUpdate121 && <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></span>}
+            {!hasSeenUpdate300 && <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></span>}
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar pb-32 w-full max-w-lg mx-auto">
         {/* Greeting & Focus Card */}
-        <div className="relative w-full rounded-[2rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-6 sm:p-8 flex flex-col justify-between mb-8 text-white shadow-lg shadow-indigo-500/20 overflow-hidden">
+        <div 
+          style={bannerWallpaper ? { backgroundImage: `url(${bannerWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+          className="relative w-full rounded-[2rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-6 sm:p-8 flex flex-col justify-between mb-8 text-white shadow-lg shadow-indigo-500/20 overflow-hidden"
+        >
+          {bannerWallpaper && (
+            <div className="absolute inset-0 bg-slate-950/35 backdrop-blur-[0.5px] z-0 pointer-events-none" />
+          )}
           {/* Subtle decoration elements */}
-          <div className="absolute -top-16 -right-16 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+          {!bannerWallpaper && (
+            <>
+              <div className="absolute -top-16 -right-16 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+            </>
+          )}
           
           <div className="relative z-10 flex justify-between items-start mb-8 gap-3">
-            <div className="flex-1">
-              <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase mb-2 drop-shadow-sm">{getGreeting()}</p>
-              <h2 className="text-3xl sm:text-4xl font-black mb-1 tracking-tight text-white drop-shadow-sm">{t('focusToday')}</h2>
-              <p className="text-indigo-50 text-sm font-medium mt-3 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
-                <span>{activeTasksCount} {t('remainingTask')}</span>
-              </p>
+            <div className="flex gap-4 items-center flex-1">
+              {currentUser.avatarUrl && (
+                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
+                  <img src={currentUser.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0">
+                <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase mb-2 drop-shadow-sm truncate">{getGreeting()}</p>
+                <h2 className="text-3xl sm:text-4xl font-black mb-1 tracking-tight text-white drop-shadow-sm">{t('focusToday')}</h2>
+                <p className="text-indigo-50 text-sm font-medium mt-3 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
+                  <span>{activeTasksCount} {t('remainingTask')}</span>
+                </p>
+              </div>
             </div>
             
             {/* Streak Badge */}
@@ -326,6 +375,24 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             </div>
           </div>
         </div>
+
+        {/* Challenge Card */}
+        {!hideChallenge && (
+          <div className="mb-8 pl-4 border-l-2 border-indigo-500/40 relative group py-1">
+            <p className="text-slate-400 text-xs italic leading-relaxed pr-8">
+              {lang === 'id' 
+                ? '"Riset menunjukkan sekitar 85–90% pengguna berhenti menggunakan aplikasi produktivitas setelah minggu pertama. Mari kita lihat... apakah kamu akan menjadi bagian dari mereka?"' 
+                : '"Research shows around 85–90% of users stop using productivity apps after the first week. Let\'s see... will you be part of them?"'}
+            </p>
+            <button 
+              onClick={handleHideChallenge}
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity rounded-full hover:bg-slate-850"
+              title={lang === 'id' ? 'Sembunyikan' : 'Hide'}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Mood Tracker */}
         <div className="mb-8 rounded-3xl bg-slate-900 border border-slate-800 p-5 shadow-sm">
@@ -637,9 +704,15 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 <X className="w-5 h-5" />
               </button>
               
-              <div className="w-20 h-20 bg-indigo-500/10 text-indigo-400 rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm border border-indigo-500/20">
-                 <Sparkles className="w-10 h-10" />
-              </div>
+              {currentUser.avatarUrl ? (
+                <div className="w-20 h-20 rounded-3xl overflow-hidden mb-6 z-10 shadow-sm border border-indigo-500/20 relative">
+                  <img src={currentUser.avatarUrl} alt="Welcome Avatar" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="w-20 h-20 bg-indigo-500/10 text-indigo-400 rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm border border-indigo-500/20">
+                   <Sparkles className="w-10 h-10" />
+                </div>
+              )}
               
               <h3 className="text-2xl font-black text-slate-50 mb-3 tracking-tight z-10">
                 {lang === 'id' ? 'Selamat Datang' : 'Welcome'}
@@ -651,7 +724,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
               
               <div className="bg-indigo-500/10 rounded-2xl p-5 w-full mb-8 relative border border-indigo-500/20 z-10">
                  <p className="text-indigo-300 font-medium text-[14px] leading-relaxed italic">
-                   {lang === 'id' ? '"Jangan paksakan apapun. Jujur pada dirimu sendiri."' : '"Don\'t force anything. Be honest with yourself."'}
+                   {lang === 'id' ? '"Ini hanyalah sebuah aplikasi. yang bisa merubah mu hanyalah dirimu sendiri"' : '"This is just an app. The only one who can change you is yourself."'}
                  </p>
               </div>
               
@@ -676,8 +749,8 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-4" 
             onClick={() => {
               setShowNotificationModal(false);
-              if (!hasSeenUpdate121) {
-                try { localStorage.setItem('noto_update_1_2_1', 'true'); } catch(e){}
+              if (!hasSeenUpdate300) {
+                try { localStorage.setItem('noto_update_3_0_0', 'true'); } catch(e){}
                 setHasSeenUpdate121(true);
               }
             }}
@@ -694,8 +767,8 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 <button 
                   onClick={() => {
                     setShowNotificationModal(false);
-                    if (!hasSeenUpdate121) {
-                      try { localStorage.setItem('noto_update_1_2_1', 'true'); } catch(e){}
+                    if (!hasSeenUpdate300) {
+                      try { localStorage.setItem('noto_update_3_0_0', 'true'); } catch(e){}
                       setHasSeenUpdate121(true);
                     }
                   }}
@@ -703,16 +776,16 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 >
                   <X className="w-5 h-5" />
                 </button>
-                <div className={`w-16 h-16 ${!hasSeenUpdate121 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'} rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm`}>
+                <div className={`w-16 h-16 ${!hasSeenUpdate300 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'} rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm`}>
                   <Bell className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-black text-slate-50 mb-3 z-10 tracking-tight">{!hasSeenUpdate121 ? t('appUpdateTitle') : t('noNotification')}</h3>
-                <p className="text-[15px] text-slate-400 mb-8 font-medium z-10 leading-relaxed px-2">{!hasSeenUpdate121 ? t('appUpdateBody') : t('allNotificationRead')}</p>
+                <h3 className="text-xl font-black text-slate-50 mb-3 z-10 tracking-tight">{!hasSeenUpdate300 ? t('appUpdateTitle') : t('noNotification')}</h3>
+                <p className="text-[15px] text-slate-400 mb-8 font-medium z-10 leading-relaxed px-2">{!hasSeenUpdate300 ? t('appUpdateBody') : t('allNotificationRead')}</p>
                 <button 
                   onClick={() => {
                     setShowNotificationModal(false);
-                    if (!hasSeenUpdate121) {
-                      try { localStorage.setItem('noto_update_1_2_1', 'true'); } catch(e){}
+                    if (!hasSeenUpdate300) {
+                      try { localStorage.setItem('noto_update_3_0_0', 'true'); } catch(e){}
                       setHasSeenUpdate121(true);
                     }
                   }}
