@@ -426,11 +426,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (lastTaskCompleted) safeSetItem('noto_last_task_completed', lastTaskCompleted); }, [lastTaskCompleted]);
   useEffect(() => { safeSetItem('noto_archived_tags', JSON.stringify(archivedTags)); }, [archivedTags]);
 
-  const addNote = (note: Note) => setNotes(prev => [note, ...prev]);
+  const addNote = (note: Note) => setNotes(prev => {
+    if (prev.some(n => n.id === note.id)) return prev.map(n => n.id === note.id ? note : n);
+    return [note, ...prev];
+  });
   const updateNote = (note: Note) => setNotes(prev => prev.map(n => n.id === note.id ? note : n));
   const deleteNote = (id: string) => setNotes(prev => prev.filter(n => n.id !== id));
 
-  const addTask = (task: Task) => setTasks(prev => [task, ...prev]);
+  const addTask = (task: Task) => setTasks(prev => {
+    if (prev.some(t => t.id === task.id)) return prev.map(t => t.id === task.id ? task : t);
+    return [task, ...prev];
+  });
   const updateTask = (task: Task) => setTasks(prev => prev.map(t => t.id === task.id ? task : t));
   const toggleTask = (id: string) => {
     const task = tasks.find(t => t.id === id);

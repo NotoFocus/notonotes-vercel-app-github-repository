@@ -64,7 +64,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
       key={`note-${note.id}`} 
       onClick={() => onOpenNote(note)}
       role="button"
-      className="w-full text-left flex flex-col justify-between gap-3 p-4 bg-slate-900 border border-slate-800 rounded-2xl hover:bg-slate-800 hover:border-indigo-500/30 transition-all cursor-pointer group shadow-sm relative overflow-hidden"
+      className="w-full text-left flex flex-col justify-between gap-3 p-4 bg-slate-900 border border-slate-800 rounded-2xl hover:bg-slate-800 hover:border-indigo-500/30 transition-all cursor-pointer group shadow-sm relative overflow-hidden min-w-0"
     >
       {note.pinned && (
         <div className="absolute top-0 right-0 w-8 h-8 bg-orange-500/10 rounded-bl-xl flex items-center justify-center">
@@ -72,9 +72,9 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
         </div>
       )}
       
-      <div className="flex-1 overflow-hidden pr-6">
-         <h4 className="font-bold text-slate-50 leading-tight mb-1.5 truncate">{note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note')}</h4>
-         <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{note.content ? note.content.replace(/<[^>]*>?/gm, '') : '...'}</p>
+      <div className="flex-1 overflow-hidden pr-6 min-w-0 flex flex-col">
+         <h4 className="font-bold text-slate-50 leading-tight mb-1.5 truncate w-full">{note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note')}</h4>
+         <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed break-words">{note.content ? note.content.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim() : '...'}</p>
          {note.reminder && (
            <div className="flex items-center gap-1.5 mt-2.5 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/10 rounded-md w-fit text-indigo-400 text-[10px] font-bold">
              <Bell className="w-3 h-3 text-indigo-400 animate-pulse" />
@@ -83,20 +83,20 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
          )}
       </div>
       
-      <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-800/50">
-        <div className="flex items-center gap-1.5 overflow-x-hidden">
+      <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-800/50 gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-hidden min-w-0">
           {note.tags && note.tags.length > 0 ? (
             note.tags.slice(0, 3).map(tag => (
               <span 
                 key={tag} 
                 onClick={(e) => { e.stopPropagation(); setActiveFilter(tag); setSearchQuery(''); }}
-                className="cursor-pointer hover:bg-indigo-500 hover:text-white transition-colors text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-indigo-300 bg-indigo-500/10 flex-shrink-0"
+                className="cursor-pointer hover:bg-indigo-500 hover:text-white transition-colors text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded text-indigo-300 bg-indigo-500/10 flex-shrink-0 truncate max-w-full"
               >
-                #{tag}
+                #{tag.replace('#', '')}
               </span>
             ))
           ) : (
-            <span className="text-[10px] text-slate-500 font-mono">{note.date}</span>
+            <span className="text-[10px] text-slate-500 font-mono truncate">{note.date}</span>
           )}
         </div>
         

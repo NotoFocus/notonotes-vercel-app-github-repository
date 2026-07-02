@@ -77,9 +77,9 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
   const saveNote = () => {
     setIsSaving(true);
     const existing = notes.find((n) => n.id === note.id);
-    const currTitle = title;
-    const currContent = editorRef.current ? editorRef.current.innerHTML : contentRef.current;
-    const currTags = tags;
+    const currTitle = title || '';
+    const currContent = (editorRef.current ? editorRef.current.innerHTML : contentRef.current) || '';
+    const currTags = tags || [];
     const currReminder = reminderRef.current;
     
     if (currTitle.trim() || currContent.trim() || currTags.length > 0 || currReminder) {
@@ -119,9 +119,9 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
     }
     
     // Also remove if perfectly empty (and no reminder set)
-    const currTitle = title;
-    const currContent = editorRef.current ? editorRef.current.innerHTML : contentRef.current;
-    const currTags = tags;
+    const currTitle = title || '';
+    const currContent = (editorRef.current ? editorRef.current.innerHTML : contentRef.current) || '';
+    const currTags = tags || [];
     const currReminder = reminderRef.current;
     
     if (!currTitle.trim() && !currContent.trim() && currTags.length === 0 && !currReminder) {

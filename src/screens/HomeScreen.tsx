@@ -330,19 +330,19 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             </>
           )}
           
-          <div className="relative z-10 flex justify-between items-start mb-6 gap-2 sm:gap-3">
-            <div className="flex gap-2.5 sm:gap-4 items-center flex-1 min-w-0">
+          <div className="relative z-10 flex justify-between items-start mb-6 gap-3">
+            <div className="flex gap-4 items-center flex-1">
               {currentUser.avatarUrl && (
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0 hidden xs:block">
                   <img src={currentUser.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                 </div>
               )}
 
               <div className="flex-1 min-w-0">
-                <p className="text-indigo-100 text-[10px] sm:text-[11px] font-bold tracking-widest uppercase mb-1 sm:mb-2 drop-shadow-sm truncate">{getGreeting()}</p>
-                <h2 className="text-2xl xs:text-3xl sm:text-4xl font-black mb-1 tracking-tight text-white drop-shadow-sm break-words leading-tight">{t('focusToday')}</h2>
-                <p className="text-indigo-50 text-xs sm:text-sm font-medium mt-1.5 sm:mt-3 flex items-center gap-1.5 sm:gap-2">
-                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
+                <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase mb-1 drop-shadow-sm truncate">{getGreeting()}</p>
+                <h2 className="text-3xl sm:text-4xl font-black mb-1 tracking-tight text-white drop-shadow-sm truncate">{t('focusToday')}</h2>
+                <p className="text-indigo-50 text-sm font-medium mt-2 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
                   <span className="truncate">{activeTasksCount} {t('remainingTask')}</span>
                 </p>
               </div>
@@ -351,12 +351,12 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             {/* Streak Badge */}
             <div 
               onClick={() => setShowStreakSplash(true)}
-              className="flex-none shrink-0 flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl px-3 py-2.5 sm:px-5 sm:py-4 cursor-pointer transition-all hover:scale-105 shadow-sm min-w-[64px] sm:min-w-[80px]" 
+              className="flex-none flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 sm:px-5 sm:py-4 cursor-pointer transition-all hover:scale-105 shadow-sm" 
               title={`${streak} hari berturut-turut!`}
             >
-              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400 fill-orange-400 drop-shadow-sm mb-1" />
-              <span className="text-lg sm:text-xl font-black text-white leading-none mb-0.5 sm:mb-1">{streak}</span>
-              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Streak</span>
+              <Flame className="w-6 h-6 text-orange-400 fill-orange-400 drop-shadow-sm mb-1" />
+              <span className="text-xl font-black text-white leading-none mb-1">{streak}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Streak</span>
             </div>
           </div>
           
@@ -420,7 +420,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                   className={`flex-1 flex flex-col items-center justify-center py-2 px-0.5 xs:py-2.5 xs:px-1 sm:p-3 rounded-2xl border-2 font-bold transition-all disabled:opacity-50 ${m.colors} ${isSelected ? 'scale-105 shadow-md border-current bg-opacity-20' : 'border-transparent'} ${notSelectedOpacity}`}
                   title={m.label}
                 >
-                  <div className={`${isSelected ? 'mb-1.5' : ''} transition-all`}>{getMoodIcon(m.id, isSelected ? "w-6.5 h-6.5 sm:w-7 sm:h-7" : "w-5.5 h-5.5 sm:w-6 sm:h-6")}</div>
+                  <div className={`${isSelected ? 'mb-1.5' : ''} transition-all`}>{getMoodIcon(m.id, isSelected ? "w-7 h-7" : "w-6 h-6")}</div>
                   {isSelected && <span className="text-[8px] xs:text-[9px] whitespace-nowrap text-current uppercase tracking-wider truncate max-w-full px-0.5">{m.label}</span>}
                 </button>
               )
@@ -557,21 +557,21 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                     role="button"
                     className="w-full text-left flex flex-col items-start gap-4 p-4 bg-slate-800/30 border border-slate-800/60 rounded-2xl hover:bg-slate-800 hover:border-indigo-500/30 transition-all cursor-pointer group"
                   >
-                    <div className="flex-1 overflow-hidden w-full">
+                    <div className="flex-1 overflow-hidden w-full min-w-0 flex flex-col">
                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-1 overflow-x-hidden min-w-0" onClick={(e) => e.stopPropagation()}>
                             {(note.tags || []).slice(0,2).map(tag => (
                               <span key={tag} onClick={(e) => {
                                  e.stopPropagation();
                                  setSearchQuery(tag);
                                  onNavigate('search');
-                              }} className="px-2 py-1 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-colors text-[9px] font-bold rounded uppercase tracking-wider cursor-pointer">{tag.replace('#', '')}</span>
+                              }} className="px-2 py-1 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-colors text-[9px] font-bold rounded uppercase tracking-wider cursor-pointer truncate max-w-full">{tag.replace('#', '')}</span>
                             ))}
                           </div>
                           <span className="text-[10px] text-slate-400 font-mono flex-shrink-0 ml-2">{note.date}</span>
                        </div>
-                       <h4 className="font-bold text-slate-50 leading-tight mb-1 truncate">{note.title || 'Untitled Note'}</h4>
-                       <p className="text-xs text-slate-400 line-clamp-2">{note.content ? note.content.replace(/<[^>]*>?/gm, '') : '...'}</p>
+                       <h4 className="font-bold text-slate-50 leading-tight mb-1 truncate w-full">{note.title || 'Untitled Note'}</h4>
+                       <p className="text-xs text-slate-400 line-clamp-2 break-words">{note.content ? note.content.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim() : '...'}</p>
                        {note.reminder && (
                          <div className="flex items-center gap-1.5 mt-2.5 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/10 rounded-md w-fit text-indigo-400 text-[10px] font-bold">
                            <Bell className="w-3 h-3 text-indigo-400 animate-pulse" />
