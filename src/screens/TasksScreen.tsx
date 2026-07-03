@@ -151,7 +151,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
+    <div className="flex flex-col h-full font-sans text-slate-200">
       {/* Top Bar */}
       <div className="flex-none pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-2 px-6 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/80">
         <div className="flex items-center gap-4">
@@ -432,10 +432,9 @@ const TaskCard = React.memo<{ task: Task, last?: boolean, onToggle: (id: string)
   let dailyStats = null;
   if (task.repeat === 'daily' && task.createdAt) {
     const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-    const startDate = new Date(task.createdAt);
-    const todayDate = new Date(today);
-    const diffTime = todayDate.getTime() - startDate.getTime();
-    const diffDays = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+    const createdDate = task.createdAt.split('T')[0];
+    const diffTime = new Date(today).getTime() - new Date(createdDate).getTime();
+    const diffDays = Math.max(1, Math.floor(diffTime / 86400000) + 1);
     
     const allCompletedDates = new Set(task.completedDates || []);
     if (task.completed) allCompletedDates.add(today);
@@ -546,8 +545,27 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
   
   const d = task.disciplineData || {};
   const checkins = d.dailyCheckins || [];
-  const lastCheckin = checkins.length > 0 ? checkins[checkins.length - 1] : null;
-  const isMissedDay = lastCheckin && lastCheckin !== today && lastCheckin !== yesterdayDate;
+  const rests = d.usedRestDates || [];
+  
+  let missedDatesCount = 0;
+  const actualStartDate = d.startDate || task.date;
+  if (actualStartDate) {
+    let curr = new Date(actualStartDate);
+
+    curr.setHours(0,0,0,0);
+    const todayObj = new Date(today);
+    todayObj.setHours(0,0,0,0);
+    while (curr < todayObj) {
+      const currStr = curr.toISOString().split('T')[0];
+      if (!checkins.includes(currStr) && !rests.includes(currStr)) {
+        missedDatesCount++;
+      }
+      curr.setDate(curr.getDate() + 1);
+    }
+  }
+  const isPunishmentClearedToday = (d.punishmentCompletedDates || []).includes(today);
+  const isMissedDay = missedDatesCount > 0 && !isPunishmentClearedToday;
+  
   const hasStarted = checkins.length > 0;
   
   const handlePhotoUpload = (type: 'beforePhotoUrl' | 'afterPhotoUrl' | 'after1MonthPhotoUrl' | 'after6MonthsPhotoUrl' | 'after1YearPhotoUrl') => {
@@ -589,7 +607,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
   const pastDays = daysSinceStart - 1;
   const pastCheckins = checkins.includes(today) ? checkins.length - 1 : checkins.length;
   const pastRests = (d.usedRestDates || []).includes(today) ? (d.usedRestDates || []).length - 1 : (d.usedRestDates || []).length;
-  const daysMissed = Math.max(0, pastDays - pastCheckins - pastRests);
+  const daysMissed = missedDatesCount;
   
   const daysDone = checkins.length;
   

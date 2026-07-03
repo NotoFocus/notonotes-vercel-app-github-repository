@@ -8,14 +8,14 @@ import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { ScreenItem } from '../App';
 import { generateId, encryptData, decryptData, hashPin } from '../utils';
-import { getLargeItem, setLargeItem, deleteLargeItem } from '../utils/db';
+import { getLargeItem, getLargeItemSync, setLargeItem, deleteLargeItem } from '../utils/db';
 
 export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { appTheme: string, setAppTheme: (t: any) => void, onNavigate?: (s: ScreenItem) => void }) {
   const { transactions, notes, tasks, user, updateUser, appPin, setAppPin, pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer, setIsUnlocked, importData, clearAllData, lang, setLang, streak, reminderActive, setReminderActive, reminderTime, setReminderTime } = useAppStore();
   const t = useTranslation(lang);
 
-  const [localCustomWallpaper, setLocalCustomWallpaper] = useState<string | null>(null);
-  const [localBannerWallpaper, setLocalBannerWallpaper] = useState<string | null>(null);
+  const [localCustomWallpaper, setLocalCustomWallpaper] = useState<string | null>(() => getLargeItemSync("noto_custom_wallpaper"));
+  const [localBannerWallpaper, setLocalBannerWallpaper] = useState<string | null>(() => getLargeItemSync("noto_banner_wallpaper"));
 
   useEffect(() => {
     getLargeItem('noto_custom_wallpaper').then(setLocalCustomWallpaper);
@@ -232,7 +232,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
+    <div className="flex flex-col h-full font-sans text-slate-200">
       {isResetting && (
         <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-6 text-center">
           <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
@@ -259,7 +259,9 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner overflow-hidden">
-                    {user.avatarUrl ? (
+                    {user.avatarUrl === 'indexeddb:user_avatar' ? (
+                      <div className="w-full h-full bg-slate-700/50 animate-pulse"></div>
+                    ) : user.avatarUrl ? (
                       <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       <User size={18} />
@@ -286,7 +288,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                       }}
                     />
                   </label>
-                  {user.avatarUrl && (
+                  {user.avatarUrl && user.avatarUrl !== 'indexeddb:user_avatar' && (
                     <button 
                       onClick={() => updateUser({ ...user, avatarUrl: '' })}
                       className="py-1.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl font-bold text-xs transition-colors"

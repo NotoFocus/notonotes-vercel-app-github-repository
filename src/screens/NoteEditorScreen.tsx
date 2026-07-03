@@ -248,7 +248,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
+    <div className="flex flex-col h-full font-sans text-slate-200">
       {/* Top Bar */}
       <div className="flex-none min-h-[4rem] pt-[env(safe-area-inset-top)] border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between">
         <button
@@ -413,7 +413,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
               suppressContentEditableWarning
               onInput={handleInput}
               onBlur={handleInput}
-              className="w-full flex-grow text-slate-300 text-sm leading-relaxed bg-transparent border-none outline-none overflow-y-auto note-editor-area"
+              className="w-full flex-grow text-slate-300 text-sm leading-relaxed bg-transparent border-none outline-none overflow-y-auto overflow-x-hidden note-editor-area break-words "
               style={{ minHeight: "200px" }}
               data-placeholder={t('notePlaceholder') || "Mulai menulis di sini..."}
             />

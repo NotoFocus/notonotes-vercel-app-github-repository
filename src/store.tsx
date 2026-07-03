@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Note, Task, User, Transaction, MoodEntry } from './types';
 import { currentUser, recentNotes, allTasks } from './data';
 import { generateId } from './utils';
-import { getLargeItem, setLargeItem, deleteLargeItem } from './utils/db';
+import { getLargeItem, getLargeItemSync, setLargeItem, deleteLargeItem } from './utils/db';
 
 interface AppContextType {
   notes: Note[];
@@ -67,39 +67,29 @@ const safeSetItem = (key: string, value: string) => {
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(() => {
-    try { 
-      const s = localStorage.getItem('noto_user'); 
+  const [user, setUser] = useState<any>(() => {
+    try {
+      const dbStr = getLargeItemSync('noto_user');
+      const s = dbStr || localStorage.getItem('noto_user');
       if (s) {
         const parsed = JSON.parse(s);
-        if (parsed && typeof parsed === 'object') return parsed;
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.avatarUrl === 'indexeddb:user_avatar') {
+            const cached = getLargeItemSync('user_avatar');
+            if (cached) parsed.avatarUrl = cached;
+          }
+          return parsed;
+        }
       }
     } catch(e){}
     return currentUser;
   });
 
-  useEffect(() => {
-    const initAvatar = async () => {
-      try {
-        const avatar = await getLargeItem('user_avatar');
-        if (avatar) {
-          setUser(prev => {
-            if (prev.avatarUrl === 'indexeddb:user_avatar' || prev.avatarUrl === '') {
-              return { ...prev, avatarUrl: avatar };
-            }
-            return prev;
-          });
-        }
-      } catch (e) {
-        console.error("Failed to load user avatar from IndexedDB:", e);
-      }
-    };
-    initAvatar();
-  }, []);
 
   const [notes, setNotes] = useState<Note[]>(() => {
-    try { 
-      const s = localStorage.getItem('noto_notes'); 
+    try {
+      const dbStr = getLargeItemSync('noto_notes');
+      const s = dbStr || localStorage.getItem('noto_notes');
       if (s) {
         const parsed = JSON.parse(s);
         if (Array.isArray(parsed)) {
@@ -110,80 +100,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return n;
           });
         }
-      } 
+      }
     } catch(e){}
     return recentNotes;
   });
 
-  useEffect(() => {
-    getLargeItem('noto_notes').then(s => {
-      if (s) {
-        try {
-          const parsed = JSON.parse(s);
-          if (Array.isArray(parsed)) {
-            const seen = new Set();
-            setNotes(parsed.map((n: Note) => {
-              if (seen.has(n.id)) n.id = generateId();
-              seen.add(n.id);
-              return n;
-            }));
-          }
-        } catch(e){}
-      }
-    });
-  }, []);
   
   const [tasks, setTasks] = useState<Task[]>(() => {
-    try { 
-      const s = localStorage.getItem('noto_tasks'); 
+    try {
+      const dbStr = getLargeItemSync('noto_tasks');
+      const s = dbStr || localStorage.getItem('noto_tasks');
       if (s) {
-        const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         const parsed = JSON.parse(s);
-        if (Array.isArray(parsed)) {
-          const seen = new Set();
-          return parsed.map((t: Task) => {
-            if (seen.has(t.id)) t.id = generateId();
-            seen.add(t.id);
-            
-            if (t.repeat === 'daily' && t.date && t.date < todayStr) {
-              t.date = todayStr;
-              t.completed = false;
-            }
-            
-            return t;
-          });
-        }
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch(e){}
     return allTasks;
   });
 
-  useEffect(() => {
-    getLargeItem('noto_tasks').then(s => {
-      if (s) {
-        try {
-          const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-          const parsed = JSON.parse(s);
-          if (Array.isArray(parsed)) {
-            const seen = new Set();
-            setTasks(parsed.map((t: Task) => {
-              if (seen.has(t.id)) t.id = generateId();
-              seen.add(t.id);
-              if (t.repeat === 'daily' && t.date && t.date < todayStr) {
-                t.date = todayStr;
-                t.completed = false;
-              }
-              return t;
-            }));
-          }
-        } catch(e){}
-      }
-    });
-  }, []);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
-      const s = localStorage.getItem('noto_transactions');
+      const dbStr = getLargeItemSync('noto_transactions');
+      const s = dbStr || localStorage.getItem('noto_transactions');
       if (s) {
         const parsed = JSON.parse(s);
         if (Array.isArray(parsed)) return parsed;
@@ -192,20 +131,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
 
-  useEffect(() => {
-    getLargeItem('noto_transactions').then(s => {
-      if (s) {
-        try {
-          const parsed = JSON.parse(s);
-          if (Array.isArray(parsed)) setTransactions(parsed);
-        } catch(e){}
-      }
-    });
-  }, []);
 
   const [moods, setMoods] = useState<MoodEntry[]>(() => {
     try {
-      const s = localStorage.getItem('noto_moods');
+      const dbStr = getLargeItemSync('noto_moods');
+      const s = dbStr || localStorage.getItem('noto_moods');
       if (s) {
         const parsed = JSON.parse(s);
         if (Array.isArray(parsed)) return parsed;
@@ -214,16 +144,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
 
-  useEffect(() => {
-    getLargeItem('noto_moods').then(s => {
-      if (s) {
-        try {
-          const parsed = JSON.parse(s);
-          if (Array.isArray(parsed)) setMoods(parsed);
-        } catch(e){}
-      }
-    });
-  }, []);
 
   const [archivedTags, setArchivedTags] = useState<string[]>(() => {
     try {

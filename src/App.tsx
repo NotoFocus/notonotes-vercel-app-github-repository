@@ -21,7 +21,7 @@ import GamesHubScreen from './screens/GamesHubScreen';
 import { Note } from './types';
 import { useAppStore } from './store';
 import { useTranslation } from './translations';
-import { getLargeItem } from './utils/db';
+import { getLargeItem, getLargeItemSync } from './utils/db';
 
 export type ScreenItem = 'home' | 'tasks' | 'search' | 'calendar' | 'finance' | 'settings' | 'note-editor' | 'game' | 'tictactoe' | 'puzzle' | 'tetris' | 'games-hub';
 
@@ -75,7 +75,7 @@ export default function App() {
     }
   });
 
-  const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
+  const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => getLargeItemSync("noto_custom_wallpaper"));
   
   useEffect(() => {
     getLargeItem('noto_custom_wallpaper').then(setCustomWallpaper);
@@ -349,37 +349,23 @@ export default function App() {
     return 'bg-slate-950';
   };
 
-  const getBackgroundStyle = () => {
+  const getBackgroundImageUrl = () => {
     if (appTheme === 'cool') {
-      return {
-        backgroundImage: 'url("https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1200&auto=format&fit=crop")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed' as const
-      };
+      return "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1200&auto=format&fit=crop";
     }
     if (appTheme === 'cute') {
-      return {
-        backgroundImage: 'url("https://images.unsplash.com/photo-1559251606-c623743a6d76?q=80&w=1200&auto=format&fit=crop")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed' as const
-      };
+      return "https://images.unsplash.com/photo-1559251606-c623743a6d76?q=80&w=1200&auto=format&fit=crop";
     }
     if (appTheme === 'wallpaper' && customWallpaper) {
-      return {
-        backgroundImage: `url(${customWallpaper})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed' as const
-      };
+      return customWallpaper;
     }
     return undefined;
   };
 
   if (!hasCompletedOnboarding) {
     return (
-      <div style={getBackgroundStyle()} className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+      <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+        {getBackgroundImageUrl() && <img src={getBackgroundImageUrl()} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" referrerPolicy="no-referrer" />}
         {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
           <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
         )}
@@ -392,7 +378,8 @@ export default function App() {
 
   if (isLocked) {
     return (
-      <div style={getBackgroundStyle()} className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+      <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+        {getBackgroundImageUrl() && <img src={getBackgroundImageUrl()} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" referrerPolicy="no-referrer" />}
         {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
           <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
         )}
@@ -404,7 +391,8 @@ export default function App() {
   }
 
   return (
-    <div style={getBackgroundStyle()} className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+    <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
+        {getBackgroundImageUrl() && <img src={getBackgroundImageUrl()} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" referrerPolicy="no-referrer" />}
       {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
         <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
       )}

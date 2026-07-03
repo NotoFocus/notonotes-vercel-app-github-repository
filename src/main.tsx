@@ -17,6 +17,7 @@ import { Analytics } from '@vercel/analytics/react';
 import App from './App.tsx';
 import './index.css';
 import { AppProvider } from './store.tsx';
+import { preloadLargeItems } from './utils/db';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 window.addEventListener('error', (e) => {
@@ -51,12 +52,14 @@ window.addEventListener('unhandledrejection', (e) => {
   console.error('Unhandled Promise Rejection:', e.reason);
 });
 
-createRoot(document.getElementById('root')!).render(
+preloadLargeItems().then(() => {
+  createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <AppProvider>
         <App />
       </AppProvider>
     </ErrorBoundary>
-  </StrictMode>,
-);
+  </StrictMode>
+  );
+});

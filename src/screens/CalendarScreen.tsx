@@ -295,7 +295,7 @@ export default function CalendarScreen() {
   const completionPercentageNumber = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200">
+    <div className="flex flex-col h-full font-sans text-slate-200">
       {/* Top Bar */}
       <div className="flex-none min-h-[4rem] pt-[env(safe-area-inset-top)] border-b border-slate-800 bg-slate-900 px-6 flex items-center gap-4">
         <span className="font-bold text-2xl text-slate-50 tracking-tight flex-1">{t('calendar')}</span>

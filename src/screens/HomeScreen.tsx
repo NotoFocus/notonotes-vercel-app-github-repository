@@ -5,7 +5,7 @@ import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateId, formatReminderDate } from '../utils';
-import { getLargeItem } from '../utils/db';
+import { getLargeItem, getLargeItemSync } from '../utils/db';
 
 interface HomeProps {
   appTheme: string;
@@ -59,7 +59,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
     }
   });
   const [splashAnim, setSplashAnim] = useState(false);
-  const [bannerWallpaper, setBannerWallpaper] = useState<string | null>(null);
+  const [bannerWallpaper, setBannerWallpaper] = useState<string | null>(() => getLargeItemSync("noto_banner_wallpaper"));
 
   useEffect(() => {
     getLargeItem('noto_banner_wallpaper').then(setBannerWallpaper);
@@ -225,7 +225,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
 
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 font-sans text-slate-200 relative">
+    <div className="flex flex-col h-full font-sans text-slate-200 relative">
       {/* Streak Splash Overlay */}
       <AnimatePresence>
         {showStreakSplash && (
@@ -332,11 +332,14 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           
           <div className="relative z-10 flex justify-between items-start mb-6 gap-3">
             <div className="flex gap-4 items-center flex-1">
-              {currentUser.avatarUrl && (
-                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0 hidden xs:block">
+              {currentUser.avatarUrl === 'indexeddb:user_avatar' ? (
+                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0  bg-slate-800/50 animate-pulse">
+                </div>
+              ) : currentUser.avatarUrl ? (
+                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0 ">
                   <img src={currentUser.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                 </div>
-              )}
+              ) : null}
 
               <div className="flex-1 min-w-0">
                 <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase mb-1 drop-shadow-sm truncate">{getGreeting()}</p>
@@ -704,7 +707,10 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 <X className="w-5 h-5" />
               </button>
               
-              {currentUser.avatarUrl ? (
+              {currentUser.avatarUrl === 'indexeddb:user_avatar' ? (
+                <div className="w-20 h-20 bg-slate-800/50 rounded-3xl mb-6 z-10 shadow-sm border border-indigo-500/20 animate-pulse">
+                </div>
+              ) : currentUser.avatarUrl ? (
                 <div className="w-20 h-20 rounded-3xl overflow-hidden mb-6 z-10 shadow-sm border border-indigo-500/20 relative">
                   <img src={currentUser.avatarUrl} alt="Welcome Avatar" className="w-full h-full object-cover" />
                 </div>

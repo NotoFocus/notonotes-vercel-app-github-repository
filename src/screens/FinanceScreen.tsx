@@ -249,8 +249,8 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
   }, [monthlyTransactions, totalExpense, totalIncome, lang, chartType]);
 
   return (
-    <div className={`flex-1 h-full flex flex-col relative overflow-hidden bg-slate-950`}>
-      <div className={`px-4 sm:px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4 border-b z-10 relative flex justify-between items-center bg-slate-950 border-slate-800`}>
+    <div className={`flex-1 h-full flex flex-col relative overflow-hidden`}>
+      <div className={`px-4 sm:px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4 border-b z-10 relative flex justify-between items-center border-slate-800`}>
         <div className="flex items-center gap-2 sm:gap-3">
           <button onClick={onBack} className="p-2 -ml-2 rounded-xl hover:bg-slate-800 transition-colors text-indigo-400">
             <ArrowLeft className="w-5 h-5" />
@@ -701,7 +701,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
 
                 <div>
                   <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`} htmlFor="txAmountInput">{t('amount') as string}</label>
-                  <label htmlFor="txAmountInput" className={`flex items-center px-3 py-2.5 rounded-xl border ${'bg-slate-950 border-slate-800'} focus-within:border-indigo-500/50 cursor-text`}>
+                  <label htmlFor="txAmountInput" className={`flex items-center px-3 py-2.5 rounded-xl border ${'border-slate-800'} focus-within:border-indigo-500/50 cursor-text`}>
                     <select 
                       value={currency} 
                       onChange={e => setCurrency(e.target.value as 'IDR' | 'USD')}
@@ -768,7 +768,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                 <div className="flex gap-3">
                   <div className="flex-1">
                     <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`}>{t('date') as string}</label>
-                    <div className={`flex items-center px-3 py-2.5 rounded-xl border ${'bg-slate-950 border-slate-800'} focus-within:border-indigo-500/50`}>
+                    <div className={`flex items-center px-3 py-2.5 rounded-xl border ${'border-slate-800'} focus-within:border-indigo-500/50`}>
                       <Calendar className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
                       <input 
                         type="date"
@@ -781,7 +781,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
 
                   <div className="flex-1">
                     <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`}>{t('description') as string}</label>
-                    <div className={`flex px-3 py-2.5 rounded-xl border ${'bg-slate-950 border-slate-800'} focus-within:border-indigo-500/50`}>
+                    <div className={`flex px-3 py-2.5 rounded-xl border ${'border-slate-800'} focus-within:border-indigo-500/50`}>
                       <FileText className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0 mt-0.5" />
                       <input 
                         type="text"
@@ -870,7 +870,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
               <div className="space-y-4 mb-5">
                 <div>
                   <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`}>{lang === 'id' ? 'Nama Target (Opsional)' : 'Target Name (Optional)'}</label>
-                  <div className={`flex items-center px-3 py-2.5 rounded-xl border bg-slate-950 border-slate-800 focus-within:border-indigo-500/50`}>
+                  <div className={`flex items-center px-3 py-2.5 rounded-xl border border-slate-800 focus-within:border-indigo-500/50`}>
                     <input 
                       type="text"
                       value={targetInputTitle}
@@ -883,7 +883,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                 </div>
                 <div>
                   <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`} htmlFor="txTargetAmount">{t('targetAmount') as string}</label>
-                  <label htmlFor="txTargetAmount" className={`flex items-center px-3 py-2.5 rounded-xl border bg-slate-950 border-slate-800 focus-within:border-indigo-500/50 cursor-text`}>
+                  <label htmlFor="txTargetAmount" className={`flex items-center px-3 py-2.5 rounded-xl border border-slate-800 focus-within:border-indigo-500/50 cursor-text`}>
                     <span className="font-bold text-slate-400 mr-2 text-sm">Rp</span>
                     <input 
                       id="txTargetAmount"
@@ -1002,7 +1002,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
               <div className="space-y-4 mb-5">
                 <div>
                   <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`} htmlFor="depInput">{lang === 'id' ? 'Jumlah (Rp)' : 'Amount (Rp)'}</label>
-                  <label htmlFor="depInput" className={`flex items-center px-3 py-2.5 rounded-xl border bg-slate-950 border-slate-800 focus-within:border-emerald-500/50 cursor-text`}>
+                  <label htmlFor="depInput" className={`flex items-center px-3 py-2.5 rounded-xl border border-slate-800 focus-within:border-emerald-500/50 cursor-text`}>
                     <span className="font-bold text-slate-400 mr-2 text-sm">Rp</span>
                     <input 
                       id="depInput"
@@ -1058,7 +1058,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
               <div className="space-y-4 mb-5">
                 <div>
                   <label className={`block text-[10px] font-bold mb-1.5 uppercase tracking-wider text-slate-400`} htmlFor="wdInput">{lang === 'id' ? 'Jumlah (Rp)' : 'Amount (Rp)'}</label>
-                  <label htmlFor="wdInput" className={`flex items-center px-3 py-2.5 rounded-xl border bg-slate-950 border-slate-800 focus-within:border-rose-500/50 cursor-text`}>
+                  <label htmlFor="wdInput" className={`flex items-center px-3 py-2.5 rounded-xl border border-slate-800 focus-within:border-rose-500/50 cursor-text`}>
                     <span className="font-bold text-slate-400 mr-2 text-sm">Rp</span>
                     <input 
                       id="wdInput"
