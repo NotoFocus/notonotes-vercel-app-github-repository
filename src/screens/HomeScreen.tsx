@@ -330,21 +330,21 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             </>
           )}
           
-          <div className="relative z-10 flex justify-between items-start mb-6 gap-3">
-            <div className="flex gap-4 items-center flex-1">
+          <div className="relative z-10 flex justify-between items-center mb-6 gap-2 sm:gap-3">
+            <div className="flex gap-2 sm:gap-4 items-center flex-1 min-w-0">
               {currentUser.avatarUrl === 'indexeddb:user_avatar' ? (
-                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0  bg-slate-800/50 animate-pulse">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl overflow-hidden border-2 border-white/30 shadow-md shrink-0 bg-slate-800/50 animate-pulse">
                 </div>
               ) : currentUser.avatarUrl ? (
-                <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0 ">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
                   <img src={currentUser.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                 </div>
               ) : null}
 
               <div className="flex-1 min-w-0">
-                <p className="text-indigo-100 text-[11px] font-bold tracking-widest uppercase mb-1 drop-shadow-sm truncate">{getGreeting()}</p>
-                <h2 className="text-3xl sm:text-4xl font-black mb-1 tracking-tight text-white drop-shadow-sm truncate">{t('focusToday')}</h2>
-                <p className="text-indigo-50 text-sm font-medium mt-2 flex items-center gap-2">
+                <p className="text-indigo-100 text-[10px] sm:text-[11px] font-bold tracking-widest uppercase mb-0.5 sm:mb-1 drop-shadow-sm truncate">{getGreeting()}</p>
+                <h2 className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1 tracking-tight text-white drop-shadow-sm truncate">{t('focusToday')}</h2>
+                <p className="text-indigo-50 text-xs sm:text-sm font-medium mt-1 sm:mt-2 flex items-center gap-1.5 sm:gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
                   <span className="truncate">{activeTasksCount} {t('remainingTask')}</span>
                 </p>
@@ -354,12 +354,12 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             {/* Streak Badge */}
             <div 
               onClick={() => setShowStreakSplash(true)}
-              className="flex-none flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 sm:px-5 sm:py-4 cursor-pointer transition-all hover:scale-105 shadow-sm" 
+              className="flex-none flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl px-3 py-2 sm:px-5 sm:py-4 cursor-pointer transition-all hover:scale-105 shadow-sm" 
               title={`${streak} hari berturut-turut!`}
             >
-              <Flame className="w-6 h-6 text-orange-400 fill-orange-400 drop-shadow-sm mb-1" />
-              <span className="text-xl font-black text-white leading-none mb-1">{streak}</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Streak</span>
+              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400 fill-orange-400 drop-shadow-sm mb-1" />
+              <span className="text-lg sm:text-xl font-black text-white leading-none mb-0.5 sm:mb-1">{streak}</span>
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Streak</span>
             </div>
           </div>
           
@@ -591,7 +591,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
       </div>
 
       {/* FAB Add */}
-      <button onClick={handleCreateNote} className="absolute bottom-8 right-6 w-16 h-16 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-indigo-600/30 transition-transform active:scale-95 z-50">
+      <button onClick={handleCreateNote} className="absolute bottom-8 right-6 w-12 h-12 sm:w-16 sm:h-16 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-indigo-600/30 transition-transform active:scale-95 z-50">
         <Plus className="w-7 h-7 stroke-[2.5]" />
       </button>
 
@@ -621,7 +621,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 </button>
                 
                 <div className="flex flex-col items-center mb-8 relative z-10">
-                  <div className="w-16 h-16 flex items-center justify-center bg-indigo-500/10 text-indigo-400 rounded-3xl mb-4 border border-indigo-500/20 shadow-sm">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center bg-indigo-500/10 text-indigo-400 rounded-3xl mb-4 border border-indigo-500/20 shadow-sm">
                     <Clock className="w-8 h-8" />
                   </div>
                   <h3 className="text-xl font-black text-slate-50">{t('focusTimer')}</h3>
@@ -782,7 +782,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 >
                   <X className="w-5 h-5" />
                 </button>
-                <div className={`w-16 h-16 ${!hasSeenUpdate300 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'} rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm`}>
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 ${!hasSeenUpdate300 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'} rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm`}>
                   <Bell className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-black text-slate-50 mb-3 z-10 tracking-tight">{!hasSeenUpdate300 ? t('appUpdateTitle') : t('noNotification')}</h3>

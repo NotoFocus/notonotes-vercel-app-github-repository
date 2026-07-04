@@ -112,12 +112,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const s = dbStr || localStorage.getItem('noto_tasks');
       if (s) {
         const parsed = JSON.parse(s);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+          return parsed.map((t: Task) => {
+            if (t.repeat === 'daily') {
+              const isCompletedToday = t.completedDates && t.completedDates.includes(todayStr);
+              if (t.completed && !isCompletedToday) {
+                return { ...t, completed: false };
+              }
+            }
+            return t;
+          });
+        }
       }
     } catch(e){}
     return allTasks;
   });
 
+
+
+  useEffect(() => {
+    const checkDailyReset = () => {
+      const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+      setTasks(prev => {
+        if (!prev) return prev;
+        let needsUpdate = false;
+        const next = prev.map(t => {
+          if (t.repeat === 'daily') {
+            const isCompletedToday = t.completedDates && t.completedDates.includes(todayStr);
+            if (t.completed && !isCompletedToday) {
+              needsUpdate = true;
+              return { ...t, completed: false };
+            }
+          }
+          return t;
+        });
+        return needsUpdate ? next : prev;
+      });
+    };
+
+    checkDailyReset();
+    const interval = setInterval(checkDailyReset, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
@@ -363,9 +400,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!task) return;
     
     const wasCompleted = task.completed;
-    const taskDateStr = task.date && task.date.includes('-') 
-      ? task.date 
-      : new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    const todayIso = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    const taskDateStr = todayIso;
       
     setTasks(prev => prev.map(t => {
       if (t.id !== id) return t;
@@ -402,7 +438,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (lastTaskCompleted === today) {
         // Cek secara sinkron apakah masih ada tugas lain yang 'completed' HARI INI
         // (kita gunakan 'tasks' dengan filter, tapi ingat 'tasks' state-nya akan berubah jadi cek 't.id !== id' yang completed)
-        const hasOtherCompletedTasksToday = tasks.some(t => t.id !== id && t.completed && t.date === today);
+        const hasOtherCompletedTasksToday = tasks.some(t => {
+          if (t.id === id) return false;
+          if (t.completedDates && t.completedDates.includes(today)) return true;
+          // For backward compatibility if completedDates is not set but it was completed today
+          if (t.completed && (t.date === today || t.date === 'Hari ini')) return true;
+          return false;
+        });
         if (!hasOtherCompletedTasksToday) {
           setStreak(s => Math.max(0, s - 1));
           
