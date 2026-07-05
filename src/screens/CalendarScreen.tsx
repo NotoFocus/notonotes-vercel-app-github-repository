@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 export default function CalendarScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const { tasks, moods, lang, streak, setMood } = useAppStore();
+  const { tasks, moods, lang, streak, setMood, toggleTask } = useAppStore();
   const t = useTranslation(lang);
 
   const locale = lang === 'en' ? 'en-US' : 'id-ID';
@@ -197,15 +197,23 @@ export default function CalendarScreen() {
 
     if (viewType === 'Harian') {
       selectedTasks.forEach(tk => {
-        const compDates = tk.completedDates || [];
-        if (compDates.includes(selectedDateStr)) {
-          completed++;
-        } else {
-          if (selectedDateStr === todayStr) {
-             if (tk.completed) completed++;
-             else active++;
+        if (tk.repeat === 'daily') {
+          const compDates = tk.completedDates || [];
+          if (compDates.includes(selectedDateStr)) {
+            completed++;
           } else {
-             active++;
+            if (selectedDateStr === todayStr) {
+               if (tk.completed) completed++;
+               else active++;
+            } else {
+               active++;
+            }
+          }
+        } else {
+          if (tk.completed) {
+            completed++;
+          } else {
+            active++;
           }
         }
       });
@@ -264,7 +272,7 @@ export default function CalendarScreen() {
               // One-time task
               // It is only relevant on its specific due date (tDateStr)
               if (tDateStr === iterStr) {
-                if (tk.completed || (tk.completedDates || []).includes(iterStr)) {
+                if (tk.completed) {
                   completed++;
                 } else {
                   active++;
@@ -518,12 +526,22 @@ export default function CalendarScreen() {
                       </h3>
                       {selectedTasks.length > 0 ? (
                         <div className="space-y-3">
-                          {selectedTasks.map(task => (
-                             <div key={task.id} className="flex items-center gap-3 bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
-                               <div className={`w-3.5 h-3.5 rounded-full border-2 ${task.completed || (task.completedDates && task.completedDates.includes(selectedDateStr)) ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent border-slate-600'}`}></div>
-                               <span className={`text-sm font-medium ${task.completed || (task.completedDates && task.completedDates.includes(selectedDateStr)) ? 'text-slate-400 line-through' : 'text-slate-200'}`}>{task.title}</span>
+                          {selectedTasks.map(task => {
+                             const isTaskCompleted = task.repeat === 'daily' 
+                                 ? (task.completedDates?.includes(selectedDateStr) || (selectedDateStr === todayStr && task.completed)) 
+                                 : task.completed;
+                             return (
+                             <div key={task.id} 
+                               onClick={() => toggleTask(task.id, selectedDateStr)}
+                               className="flex items-center gap-3 bg-slate-950 p-3.5 rounded-2xl border border-slate-800 cursor-pointer hover:border-indigo-500/50 transition-colors"
+                             >
+                               <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${isTaskCompleted ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent border-slate-500'}`}>
+                                 {isTaskCompleted && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-slate-950"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                               </div>
+                               <span className={`text-sm font-medium ${isTaskCompleted ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{task.title}</span>
                              </div>
-                          ))}
+                             );
+                          })}
                         </div>
                       ) : (
                         <div className="text-center py-6 text-slate-400 text-sm">

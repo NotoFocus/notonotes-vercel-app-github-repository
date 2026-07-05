@@ -93,7 +93,7 @@
   --color-orange-500: #e05300;
 
   color-scheme: dark;
-  --color-slate-950: #04060b;   /* Deep Dark Void */
+  --color-slate-950: #0a0a0a;   /* Base dark */
   --color-slate-900: rgba(15, 23, 42, 0.75); /* Translucent Glass Dark */
   --color-slate-800: rgba(30, 41, 59, 0.7);  /* Translucent Glass Card */
   --color-slate-700: rgba(51, 65, 85, 0.6);

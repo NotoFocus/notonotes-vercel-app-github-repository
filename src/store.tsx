@@ -16,7 +16,7 @@ interface AppContextType {
   deleteNote: (id: string) => void;
   addTask: (task: Task) => void;
   updateTask: (task: Task) => void;
-  toggleTask: (id: string) => void;
+  toggleTask: (id: string, dateStr?: string) => void;
   deleteTask: (id: string) => void;
   setMood: (date: string, mood: MoodEntry['mood'], note?: string) => void;
   addTransaction: (transaction: Transaction) => void;
@@ -395,26 +395,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return [task, ...prev];
   });
   const updateTask = (task: Task) => setTasks(prev => prev.map(t => t.id === task.id ? task : t));
-  const toggleTask = (id: string) => {
+  const toggleTask = (id: string, dateStr?: string) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     
-    const wasCompleted = task.completed;
     const todayIso = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-    const taskDateStr = todayIso;
-      
+    const targetDate = dateStr || todayIso;
+    const isToday = targetDate === todayIso;
+    
+    let isNowCompleted = false;
+    let wasCompleted = false;
+
     setTasks(prev => prev.map(t => {
       if (t.id !== id) return t;
       const completedDates = new Set(t.completedDates || []);
-      if (!t.completed) {
-        completedDates.add(taskDateStr);
+      let newCompleted = t.completed;
+      
+      if (t.repeat === 'daily') {
+         if (isToday) {
+            wasCompleted = t.completed;
+            newCompleted = !t.completed;
+            if (newCompleted) completedDates.add(targetDate);
+            else completedDates.delete(targetDate);
+            isNowCompleted = newCompleted;
+         } else {
+            const wasDoneOnDate = completedDates.has(targetDate);
+            if (wasDoneOnDate) completedDates.delete(targetDate);
+            else {
+              completedDates.add(targetDate);
+              isNowCompleted = true; // For streak trigger
+            }
+         }
       } else {
-        completedDates.delete(taskDateStr);
+         wasCompleted = t.completed;
+         newCompleted = !t.completed;
+         isNowCompleted = newCompleted;
       }
-      return { ...t, completed: !t.completed, completedDates: Array.from(completedDates) };
+      
+      return { ...t, completed: newCompleted, completedDates: Array.from(completedDates) };
     }));
     
-    if (!wasCompleted) {
+    if (isNowCompleted && !wasCompleted && isToday) {
       const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
       if (lastTaskCompleted !== today) {
         if (lastTaskCompleted) {

@@ -548,7 +548,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
   const rests = d.usedRestDates || [];
   
   let missedDatesCount = 0;
-  const actualStartDate = d.startDate || task.date;
+  const actualStartDate = d.startDate || (task.date && task.date.includes('-') ? task.date : (task.createdAt ? task.createdAt.split('T')[0] : today));
   if (actualStartDate) {
     let curr = new Date(actualStartDate);
 
@@ -603,7 +603,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
   };
 
   const parseDate = (dStr: string) => new Date(dStr).getTime();
-  const daysSinceStart = Math.max(1, Math.floor((parseDate(today) - parseDate(d.startDate || task.date)) / 86400000) + 1);
+  const daysSinceStart = Math.max(1, Math.floor((parseDate(today) - parseDate(actualStartDate)) / 86400000) + 1);
   const pastDays = daysSinceStart - 1;
   const pastCheckins = checkins.includes(today) ? checkins.length - 1 : checkins.length;
   const pastRests = (d.usedRestDates || []).includes(today) ? (d.usedRestDates || []).length - 1 : (d.usedRestDates || []).length;
@@ -629,7 +629,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
       daysLeftText = `${daysLeft} ${lang === 'id' ? 'hari' : 'days'}`;
     }
     
-    totalTargetDays = Math.max(daysDone + daysMissed + daysLeft, Math.floor((targetMs - parseDate(d.startDate || task.date)) / 86400000) + 1);
+    totalTargetDays = Math.max(daysDone + daysMissed + daysLeft, Math.floor((targetMs - parseDate(actualStartDate)) / 86400000) + 1);
   }
 
   return (
@@ -866,10 +866,12 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
             <div className="grid grid-cols-2 gap-3">
                <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 block">{lang === 'id' ? 'Mulai' : 'Start'}</span>
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                    <Calendar className="w-4 h-4 text-indigo-400/70" />
-                    {d.startDate || task.date}
-                  </div>
+                  <input 
+                    type="date" 
+                    value={d.startDate || (task.date && task.date.includes('-') ? task.date : (task.createdAt ? task.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]))}
+                    onChange={(e) => updateTask({ ...task, disciplineData: { ...d, startDate: e.target.value } })}
+                    className="bg-transparent text-sm font-medium text-slate-300 focus:outline-none w-full"
+                  />
                </div>
                <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 block">{lang === 'id' ? 'Target' : 'Target'}</span>

@@ -343,19 +343,13 @@ export default function App() {
   const getThemeClass = () => {
     if (appTheme === 'light') return 'light-theme bg-slate-950';
     if (appTheme === 'pink') return 'pink-theme bg-slate-950';
-    if (appTheme === 'cool') return 'cool-theme bg-transparent';
-    if (appTheme === 'cute') return 'cute-theme bg-transparent';
+    if (appTheme === 'cool') return 'cool-theme bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950';
+    if (appTheme === 'cute') return 'cute-theme bg-gradient-to-br from-rose-50 via-slate-950 to-orange-50';
     if (appTheme === 'wallpaper') return 'wallpaper-theme bg-transparent';
     return 'bg-slate-950';
   };
 
   const getBackgroundImageUrl = () => {
-    if (appTheme === 'cool') {
-      return "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1200&auto=format&fit=crop";
-    }
-    if (appTheme === 'cute') {
-      return "https://images.unsplash.com/photo-1559251606-c623743a6d76?q=80&w=1200&auto=format&fit=crop";
-    }
     if (appTheme === 'wallpaper' && customWallpaper) {
       return customWallpaper;
     }
@@ -585,8 +579,8 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   const getThemeClass = () => {
     if (appTheme === 'light') return 'light-theme bg-slate-950';
     if (appTheme === 'pink') return 'pink-theme bg-slate-950';
-    if (appTheme === 'cool') return 'cool-theme bg-transparent';
-    if (appTheme === 'cute') return 'cute-theme bg-transparent';
+    if (appTheme === 'cool') return 'cool-theme bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950';
+    if (appTheme === 'cute') return 'cute-theme bg-gradient-to-br from-rose-50 via-slate-950 to-orange-50';
     if (appTheme === 'wallpaper') return 'wallpaper-theme bg-transparent';
     return 'bg-slate-950';
   };
