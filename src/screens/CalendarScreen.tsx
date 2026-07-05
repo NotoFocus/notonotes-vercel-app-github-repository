@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Activity, Flame, Repeat, Calendar, CheckCircle2, Smile, Clock, X, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Activity, Flame, Repeat, Calendar, CheckCircle2, Smile, Clock, X, TrendingUp, Plus, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { useAppStore } from '../store';
+import { generateId } from '../utils';
 import { useTranslation } from '../translations';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -49,7 +50,7 @@ const getHabitStats = (task: any, todayStr: string, getTaskDateStr: (d: string) 
   let diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   if (diffDays < 1) diffDays = 1;
 
-  const completedDatesArr = task.completedDates || [];
+  const completedDatesArr = task.isDiscipline ? (task.disciplineData?.dailyCheckins || []) : (task.completedDates || []);
   // Only count completions that occurred between createdStr and todayStr (inclusive)
   const validCompletions = completedDatesArr.filter((d: string) => d >= createdStr && d <= todayStr);
   const completedCount = validCompletions.length;
@@ -108,8 +109,17 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'calendar' | 'stats'>('calendar');
   const [selectedDetailTaskId, setSelectedDetailTaskId] = useState<string | null>(null);
-  const { tasks, moods, lang, streak, setMood, toggleTask } = useAppStore();
+  const [selectedDetailModalTab, setSelectedDetailModalTab] = useState<'info' | 'analytics'>('info');
+  const [habitCalendarDate, setHabitCalendarDate] = useState(new Date());
+  const { tasks, moods, lang, streak, setMood, toggleTask, addTask } = useAppStore();
   const t = useTranslation(lang);
+
+  // Quick task state
+  const [isAddingQuickTask, setIsAddingQuickTask] = useState(false);
+  const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  const [quickTaskPriority, setQuickTaskPriority] = useState<'Tinggi' | 'Sedang' | 'Rendah'>('Sedang');
+  const [quickTaskRepeat, setQuickTaskRepeat] = useState<'once' | 'daily'>('once');
+  const [quickTaskTime, setQuickTaskTime] = useState('09:00');
 
   const selectedDetailTask = useMemo(() => {
     return tasks.find(tk => tk.id === selectedDetailTaskId) || null;
@@ -240,13 +250,12 @@ export default function CalendarScreen() {
 
   const dayTasks = useMemo(() => {
     return tasks.filter(t => {
-      if (t.isDiscipline) return false;
       const tDateStr = getTaskDateStr(t.date);
       if (!tDateStr || !tDateStr.includes('-')) return false;
       
       const createdDateStr = t.createdAt || tDateStr;
       
-      if (t.repeat === 'daily') {
+      if (t.repeat === 'daily' || t.isDiscipline) {
         return selectedDateStr >= createdDateStr && selectedDateStr <= todayStr;
       }
       return tDateStr === selectedDateStr;
@@ -264,7 +273,6 @@ export default function CalendarScreen() {
     endOfWeek.setDate(endOfWeek.getDate() + 6);
 
     const sTasks = tasks.filter(t => {
-       if (t.isDiscipline) return false;
        const tDateStr = getTaskDateStr(t.date);
        if (!tDateStr || !tDateStr.includes('-')) return false;
        
@@ -276,20 +284,20 @@ export default function CalendarScreen() {
        const cD = new Date(cy, cm - 1, cd, 12, 0, 0, 0); // Noon to avoid timezone shifts
 
        if (viewType === 'Harian') {
-         if (t.repeat === 'daily' && selectedDateStr >= createdDateStr && selectedDateStr <= todayStr) return true;
+         if ((t.repeat === 'daily' || t.isDiscipline) && selectedDateStr >= createdDateStr && selectedDateStr <= todayStr) return true;
          return tDateStr === selectedDateStr;
        } else if (viewType === 'Mingguan') {
-         if (t.repeat === 'daily') return startOfWeek <= todayDate && endOfWeek >= cD;
+         if (t.repeat === 'daily' || t.isDiscipline) return startOfWeek <= todayDate && endOfWeek >= cD;
          return tD >= startOfWeek && tD <= endOfWeek;
        } else if (viewType === 'Bulanan') {
-         if (t.repeat === 'daily') {
+         if (t.repeat === 'daily' || t.isDiscipline) {
            const monthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 0, 0, 0, 0);
            const monthEnd = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59, 999);
            return monthStart <= todayDate && monthEnd >= cD;
          }
          return tD.getMonth() === selectedDate.getMonth() && tD.getFullYear() === selectedDate.getFullYear();
        } else if (viewType === 'Tahunan') {
-         if (t.repeat === 'daily') {
+         if (t.repeat === 'daily' || t.isDiscipline) {
            const yearStart = new Date(selectedDate.getFullYear(), 0, 1, 0, 0, 0, 0);
            const yearEnd = new Date(selectedDate.getFullYear(), 11, 31, 23, 59, 59, 999);
            return yearStart <= todayDate && yearEnd >= cD;
@@ -536,6 +544,31 @@ export default function CalendarScreen() {
                     </div>
                   </div>
 
+                  {/* Daily Progress Capsule (Layer 1: simple, beautiful indicator) */}
+                  {dayTasks.length > 0 && (
+                    <div className="mb-6 bg-gradient-to-br from-indigo-950/20 to-slate-950/40 border border-slate-800/60 rounded-2xl p-4 shadow-sm">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-300 mb-2">
+                        <span className="flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>{lang === 'id' ? 'Kemajuan Tugas' : 'Task Progress'}</span>
+                        </span>
+                        <span className="text-indigo-400 font-mono text-[11px] font-black">
+                          {dayTasks.filter(t => t.repeat === 'daily' ? t.completedDates?.includes(selectedDateStr) : t.completed).length} / {dayTasks.length} {lang === 'id' ? 'Selesai' : 'Done'}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-850">
+                        <div 
+                          className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500" 
+                          style={{ 
+                            width: `${Math.round(
+                              (dayTasks.filter(t => t.repeat === 'daily' ? t.completedDates?.includes(selectedDateStr) : t.completed).length / dayTasks.length) * 100
+                            )}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Mood Logger Block */}
                   {selectedDateStr <= todayStr && (
                     <div className="mb-6 bg-slate-950/40 border border-slate-800/40 rounded-2xl p-4">
@@ -590,13 +623,15 @@ export default function CalendarScreen() {
                     {dayTasks.length > 0 ? (
                       <div className="space-y-2.5">
                         {dayTasks.map(task => {
-                           const isTaskCompleted = task.repeat === 'daily' 
-                               ? (task.completedDates?.includes(selectedDateStr) || (selectedDateStr === todayStr && task.completed)) 
-                               : task.completed;
-                           return (
+                           const isTaskCompleted = task.isDiscipline
+                               ? (task.disciplineData?.dailyCheckins?.includes(selectedDateStr) || false)
+                               : (task.repeat === 'daily' 
+                                   ? (task.completedDates?.includes(selectedDateStr) || (selectedDateStr === todayStr && task.completed)) 
+                                   : task.completed);
+                            return (
                              <div 
                                key={task.id} 
-                               onClick={() => setSelectedDetailTaskId(task.id)}
+                               onClick={() => { setSelectedDetailTaskId(task.id); setSelectedDetailModalTab('info'); setHabitCalendarDate(new Date()); }}
                                className="flex items-center justify-between gap-3.5 bg-slate-950/35 hover:bg-slate-950/65 p-3.5 rounded-2xl border border-slate-800/40 cursor-pointer hover:border-indigo-500/40 transition-all duration-200 group"
                              >
                                <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -613,13 +648,16 @@ export default function CalendarScreen() {
                                      </svg>
                                    )}
                                  </div>
-                                 <span className={`text-sm font-medium transition-all truncate ${isTaskCompleted ? 'text-slate-500 line-through decoration-1' : 'text-slate-200'}`}>
-                                   {task.title}
+                                 <span className={`text-sm font-medium transition-all truncate flex items-center gap-2 ${isTaskCompleted ? 'text-slate-500 line-through decoration-1' : 'text-slate-200'}`}>
+                                   {task.isDiscipline && (
+                                     <span className="bg-orange-500/10 border border-orange-500/25 text-orange-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase flex items-center gap-0.5 shrink-0">
+                                       <span className="animate-pulse">🔥</span> {lang === 'id' ? 'Disiplin' : 'Discipline'}
+                                     </span>
+                                   )}
+                                   <span className="truncate">{task.title}</span>
                                  </span>
                                </div>
-                               <span className="text-[10px] text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20">
-                                 {lang === 'id' ? 'Detail' : 'Detail'}
-                               </span>
+
                              </div>
                            );
                         })}
@@ -629,10 +667,157 @@ export default function CalendarScreen() {
                         {t('emptyCalendar') || 'Tidak ada tugas atau catatan di tanggal ini.'}
                       </div>
                     )}
+
+                    {/* Quick Add Task Trigger / Form */}
+                    {!isAddingQuickTask ? (
+                      <button
+                        onClick={() => setIsAddingQuickTask(true)}
+                        className="w-full py-3 px-4 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 hover:text-indigo-300 rounded-2xl border border-indigo-500/15 border-dashed flex items-center justify-center gap-2 font-bold text-xs transition-all mt-4"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{lang === 'id' ? 'Tambah Tugas Baru' : 'Add New Task'}</span>
+                      </button>
+                    ) : (
+                      <form 
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (!quickTaskTitle.trim()) return;
+                          
+                          addTask({
+                            id: generateId(),
+                            title: quickTaskTitle.trim(),
+                            completed: false,
+                            priority: quickTaskPriority,
+                            date: selectedDateStr,
+                            createdAt: todayStr,
+                            time: quickTaskTime || '09:00',
+                            repeat: quickTaskRepeat,
+                          });
+                          
+                          setQuickTaskTitle('');
+                          setQuickTaskPriority('Sedang');
+                          setQuickTaskRepeat('once');
+                          setQuickTaskTime('09:00');
+                          setIsAddingQuickTask(false);
+                        }}
+                        className="mt-4 bg-slate-950/40 border border-slate-800/60 rounded-2xl p-4 space-y-3.5"
+                      >
+                        <div className="flex justify-between items-center">
+                          <h5 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">
+                            {lang === 'id' ? 'Tugas Baru' : 'New Task'} ({selectedDateStr})
+                          </h5>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddingQuickTask(false);
+                              setQuickTaskTitle('');
+                            }}
+                            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-full transition-all"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div>
+                          <input
+                            type="text"
+                            required
+                            autoFocus
+                            value={quickTaskTitle}
+                            onChange={(e) => setQuickTaskTitle(e.target.value)}
+                            placeholder={lang === 'id' ? 'Judul tugas...' : 'Task title...'}
+                            className="w-full bg-slate-900 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs outline-none focus:border-indigo-500 transition-colors"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] text-slate-500 uppercase font-bold tracking-wider block mb-1.5">
+                              {lang === 'id' ? 'Waktu' : 'Time'}
+                            </label>
+                            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800/80 rounded-xl px-3 py-2 text-slate-100 text-xs">
+                              <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                              <input
+                                type="time"
+                                value={quickTaskTime}
+                                onChange={(e) => setQuickTaskTime(e.target.value)}
+                                className="bg-transparent w-full outline-none text-[11px] text-slate-200 font-bold [color-scheme:dark]"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[9px] text-slate-500 uppercase font-bold tracking-wider block mb-1.5">
+                              {lang === 'id' ? 'Pengulangan' : 'Repeat'}
+                            </label>
+                            <div className="grid grid-cols-2 bg-slate-900 border border-slate-800/80 rounded-xl p-0.5 h-[34px]">
+                              <button
+                                type="button"
+                                onClick={() => setQuickTaskRepeat('once')}
+                                className={`rounded-lg text-[10px] font-bold transition-all ${quickTaskRepeat === 'once' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                              >
+                                {lang === 'id' ? 'Sekali' : 'Once'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setQuickTaskRepeat('daily')}
+                                className={`rounded-lg text-[10px] font-bold transition-all ${quickTaskRepeat === 'daily' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                              >
+                                {lang === 'id' ? 'Harian' : 'Daily'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[9px] text-slate-500 uppercase font-bold tracking-wider block mb-1.5">
+                            {lang === 'id' ? 'Prioritas' : 'Priority'}
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { val: 'Rendah', label: lang === 'id' ? 'Rendah' : 'Low', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', activeBg: 'bg-emerald-600 text-white border-transparent' },
+                              { val: 'Sedang', label: lang === 'id' ? 'Sedang' : 'Medium', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20', activeBg: 'bg-amber-500 text-slate-950 border-transparent' },
+                              { val: 'Tinggi', label: lang === 'id' ? 'Tinggi' : 'High', bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20', activeBg: 'bg-rose-600 text-white border-transparent' },
+                            ].map((p) => {
+                              const isSel = quickTaskPriority === p.val;
+                              return (
+                                <button
+                                  key={p.val}
+                                  type="button"
+                                  onClick={() => setQuickTaskPriority(p.val as any)}
+                                  className={`py-1.5 rounded-lg text-[10px] font-extrabold border transition-all ${isSel ? p.activeBg + ' scale-[1.02]' : p.bg + ' border-transparent hover:bg-slate-900'}`}
+                                >
+                                  {p.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2.5 pt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddingQuickTask(false);
+                              setQuickTaskTitle('');
+                            }}
+                            className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl font-bold text-[10px] border border-slate-800 transition-all"
+                          >
+                            {lang === 'id' ? 'Batal' : 'Cancel'}
+                          </button>
+                          <button
+                            type="submit"
+                            className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-[10px] shadow-md shadow-indigo-600/10 transition-all"
+                          >
+                            {lang === 'id' ? 'Simpan' : 'Save'}
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 </div>
-              </div>
 
+              </div>
             </div>
           ) : (
             /* Productivity Statistics & Habits Section */
@@ -770,7 +955,7 @@ export default function CalendarScreen() {
               </div>
 
               {/* Habits Section */}
-              {tasks.filter(t => t.repeat === 'daily' && !t.isDiscipline).length > 0 && (
+              {tasks.filter(t => t.repeat === 'daily' || t.isDiscipline).length > 0 && (
                 <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
                   <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/50">
                     <div className="w-8 h-8 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center">
@@ -782,17 +967,24 @@ export default function CalendarScreen() {
                   </div>
 
                   <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1 no-scrollbar">
-                    {tasks.filter(t => t.repeat === 'daily' && !t.isDiscipline).map(task => {
+                    {tasks.filter(t => t.repeat === 'daily' || t.isDiscipline).map(task => {
                       const { createdStr, diffDays, completedCount, missedCount, compRate, hStreak } = getHabitStats(task, todayStr, getTaskDateStr);
                       
                       return (
                         <div 
                           key={task.id} 
-                          onClick={() => setSelectedDetailTaskId(task.id)}
+                          onClick={() => { setSelectedDetailTaskId(task.id); setSelectedDetailModalTab('info'); setHabitCalendarDate(new Date()); }}
                           className="bg-slate-950/45 border border-slate-800/50 hover:bg-slate-950/70 rounded-2xl p-4 flex items-center justify-between hover:border-indigo-500/40 transition-all cursor-pointer group"
                         >
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-extrabold text-slate-100 text-xs sm:text-sm group-hover:text-indigo-400 transition-colors truncate" title={task.title}>{task.title}</h4>
+                            <h4 className="font-extrabold text-slate-100 text-xs sm:text-sm group-hover:text-indigo-400 transition-colors truncate flex items-center gap-1.5" title={task.title}>
+                              {task.isDiscipline && (
+                                <span className="bg-orange-500/10 border border-orange-500/25 text-orange-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase flex items-center gap-0.5 shrink-0">
+                                  <span>🔥</span> {lang === 'id' ? 'Disiplin' : 'Discipline'}
+                                </span>
+                              )}
+                              <span className="truncate">{task.title}</span>
+                            </h4>
                             <p className="text-[10px] text-slate-400 font-mono mt-1">
                               {lang === 'id' ? 'Aktif sejak' : 'Active since'}: {createdStr}
                             </p>
@@ -824,14 +1016,16 @@ export default function CalendarScreen() {
 
       {/* 2nd Layer: Detailed Task/Habit Modal */}
       {selectedDetailTask && (() => {
-        const isDaily = selectedDetailTask.repeat === 'daily';
+        const isDaily = selectedDetailTask.repeat === 'daily' || selectedDetailTask.isDiscipline;
         
         // Calculate stats for daily habit
         const { createdStr, diffDays, completedCount, missedCount, compRate, hStreak } = getHabitStats(selectedDetailTask, todayStr, getTaskDateStr);
 
-        const isDetailTaskCompleted = selectedDetailTask.repeat === 'daily'
-          ? (selectedDetailTask.completedDates?.includes(selectedDateStr) || false)
-          : selectedDetailTask.completed;
+        const isDetailTaskCompleted = selectedDetailTask.isDiscipline
+          ? (selectedDetailTask.disciplineData?.dailyCheckins?.includes(selectedDateStr) || false)
+          : (selectedDetailTask.repeat === 'daily'
+            ? (selectedDetailTask.completedDates?.includes(selectedDateStr) || false)
+            : selectedDetailTask.completed);
 
         const pColor = selectedDetailTask.priority === 'Tinggi' 
           ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
@@ -841,44 +1035,49 @@ export default function CalendarScreen() {
 
         const getHabitCalendar = () => {
           const list = [];
+          const year = habitCalendarDate.getFullYear();
+          const month = habitCalendarDate.getMonth();
+          
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          // We want to show a 14-day history window.
-          // Let's start from 13 days ago.
-          const rangeStart = new Date(today);
-          rangeStart.setDate(today.getDate() - 13);
+          const daysInMonth = getDaysInMonth(year, month);
+          const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sunday, 1 = Monday, etc.
 
-          // Align the start to the Sunday of that week
-          const startDayOfWeek = rangeStart.getDay(); // 0 = Sunday
-          const calendarStart = new Date(rangeStart);
-          calendarStart.setDate(rangeStart.getDate() - startDayOfWeek);
+          // Add empty/dummy items for leading blanks of the month
+          for (let i = 0; i < firstDayOfWeek; i++) {
+            list.push({
+              isDummy: true,
+              dateStr: '',
+              dayNum: null,
+              isCompleted: false,
+              isToday: false,
+              isFuture: false,
+              isBeforeCreation: false,
+            });
+          }
 
-          // Align the end to the Saturday of the current week
-          const todayDayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
-          const calendarEnd = new Date(today);
-          calendarEnd.setDate(today.getDate() + (6 - todayDayOfWeek));
-
-          const cur = new Date(calendarStart);
-          while (cur <= calendarEnd) {
+          // Add real days of the month
+          for (let day = 1; day <= daysInMonth; day++) {
+            const cur = new Date(year, month, day);
             const dateStr = getLocalIsoDate(cur);
-            const isCompleted = selectedDetailTask.completedDates?.includes(dateStr) || false;
+            const isCompleted = selectedDetailTask.isDiscipline ? (selectedDetailTask.disciplineData?.dailyCheckins?.includes(dateStr) || false) : (selectedDetailTask.completedDates?.includes(dateStr) || false);
             const isTodayDate = cur.getDate() === today.getDate() && cur.getMonth() === today.getMonth() && cur.getFullYear() === today.getFullYear();
             const isFuture = cur > today;
             const isBeforeCreation = dateStr < createdStr;
 
             list.push({
+              isDummy: false,
               dateStr,
-              dayNum: cur.getDate(),
+              dayNum: day,
               isCompleted,
               isToday: isTodayDate,
               isFuture,
               isBeforeCreation,
               dayOfWeek: cur.getDay(),
             });
-
-            cur.setDate(cur.getDate() + 1);
           }
+
           return list;
         };
 
@@ -901,68 +1100,96 @@ export default function CalendarScreen() {
                 </button>
               </div>
 
-              {/* Scrollable Body */}
+               {/* Scrollable Body */}
               <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 sm:space-y-5 no-scrollbar">
                 
-                {/* Title and Priority */}
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${pColor}`}>
-                      {selectedDetailTask.priority}
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-indigo-500/10 border-indigo-500/20 text-indigo-300">
-                      {isDaily ? (lang === 'id' ? 'Kebiasaan Harian' : 'Daily Habit') : (lang === 'id' ? 'Tugas Sekali' : 'One-time Task')}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-extrabold text-slate-50 tracking-tight leading-snug">
-                    {selectedDetailTask.title}
-                  </h3>
-                </div>
-
-                {/* Metadata Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
-                    <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Waktu' : 'Time'}</span>
-                      <span className="text-xs font-bold text-slate-200 block truncate">{selectedDetailTask.time || '--:--'}</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
-                    <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Dibuat' : 'Created'}</span>
-                      <span className="text-xs font-bold text-slate-200 block truncate">{createdStr}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Interactive Status Block */}
-                <div className="bg-slate-950/40 border border-slate-800/40 rounded-2xl p-4 flex items-center justify-between">
-                  <div>
-                    <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block mb-0.5">
-                      {lang === 'id' ? 'Status Tanggal' : 'Date Status'} ({selectedDateStr === todayStr ? (lang === 'id' ? 'Hari Ini' : 'Today') : selectedDateStr})
-                    </span>
-                    <span className={`text-sm font-extrabold ${isDetailTaskCompleted ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {isDetailTaskCompleted ? (lang === 'id' ? 'Selesai' : 'Completed') : (lang === 'id' ? 'Belum Selesai' : 'Active')}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => toggleTask(selectedDetailTask.id, selectedDateStr)}
-                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
-                      isDetailTaskCompleted 
-                        ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 scale-95' 
-                        : 'bg-transparent border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Habits Analytics (Only if Daily) */}
+                {/* Modal Tab Switcher (Layered details) */}
                 {isDaily && (
-                  <div className="space-y-4">
+                  <div className="flex bg-slate-950 border border-slate-800/80 rounded-xl p-0.5 mb-2.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDetailModalTab('info')}
+                      className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                        selectedDetailModalTab === 'info' 
+                          ? 'bg-indigo-600 text-white shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {lang === 'id' ? 'Informasi' : 'Information'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDetailModalTab('analytics')}
+                      className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
+                        selectedDetailModalTab === 'analytics' 
+                          ? 'bg-indigo-600 text-white shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      {lang === 'id' ? 'Analisis & Riwayat' : 'Analytics & History'}
+                    </button>
+                  </div>
+                )}
+
+                {(!isDaily || selectedDetailModalTab === 'info') ? (
+                  <div className="space-y-4 sm:space-y-5 animate-fadeIn">
+                    {/* Title and Priority */}
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${pColor}`}>
+                          {selectedDetailTask.priority}
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-indigo-500/10 border-indigo-500/20 text-indigo-300">
+                          {isDaily ? (lang === 'id' ? 'Kebiasaan Harian' : 'Daily Habit') : (lang === 'id' ? 'Tugas Sekali' : 'One-time Task')}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-extrabold text-slate-50 tracking-tight leading-snug">
+                        {selectedDetailTask.title}
+                      </h3>
+                    </div>
+
+                    {/* Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
+                        <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Waktu' : 'Time'}</span>
+                          <span className="text-xs font-bold text-slate-200 block truncate">{selectedDetailTask.time || '--:--'}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
+                        <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Dibuat' : 'Created'}</span>
+                          <span className="text-xs font-bold text-slate-200 block truncate">{createdStr}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Interactive Status Block */}
+                    <div className="bg-slate-950/40 border border-slate-800/40 rounded-2xl p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block mb-0.5">
+                          {lang === 'id' ? 'Status Tanggal' : 'Date Status'} ({selectedDateStr === todayStr ? (lang === 'id' ? 'Hari Ini' : 'Today') : selectedDateStr})
+                        </span>
+                        <span className={`text-sm font-extrabold ${isDetailTaskCompleted ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {isDetailTaskCompleted ? (lang === 'id' ? 'Selesai' : 'Completed') : (lang === 'id' ? 'Belum Selesai' : 'Active')}
+                        </span>
+                      </div>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${
+                        isDetailTaskCompleted 
+                          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                          : 'bg-slate-900 border-slate-800 text-slate-500'
+                      }`}>
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 sm:space-y-5 animate-fadeIn">
+                    {/* Habits Analytics */}
                     <div className="bg-slate-950/20 border border-slate-800/40 rounded-2xl p-4 space-y-3">
                       <div className="flex items-center justify-between text-xs font-bold text-slate-400">
                         <span>{lang === 'id' ? 'Tingkat Konsistensi' : 'Consistency Rate'}</span>
@@ -999,10 +1226,39 @@ export default function CalendarScreen() {
 
                     {/* Check-in History (Calendar Grid) */}
                     <div>
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                        <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>{lang === 'id' ? 'Riwayat Kebiasaan' : 'Habit History'}</span>
-                      </h4>
+                      <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-800/40">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>{lang === 'id' ? 'Riwayat Kebiasaan' : 'Habit History'}</span>
+                        </h4>
+                        
+                        {/* Mini month navigator */}
+                        <div className="flex items-center gap-2 bg-slate-950/60 px-2 py-0.5 rounded-xl border border-slate-800/50">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const prev = new Date(habitCalendarDate.getFullYear(), habitCalendarDate.getMonth() - 1, 1);
+                              setHabitCalendarDate(prev);
+                            }}
+                            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-slate-100 rounded-lg transition-all"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-[9px] font-bold text-slate-300 font-mono min-w-[70px] text-center uppercase tracking-wider">
+                            {habitCalendarDate.toLocaleDateString(locale, { month: 'short', year: 'numeric' })}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = new Date(habitCalendarDate.getFullYear(), habitCalendarDate.getMonth() + 1, 1);
+                              setHabitCalendarDate(next);
+                            }}
+                            className="p-1 hover:bg-slate-800 text-slate-400 hover:text-slate-100 rounded-lg transition-all"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                       
                       {/* Weekday Initials Row */}
                       <div className="grid grid-cols-7 mb-2 text-center text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
@@ -1013,9 +1269,15 @@ export default function CalendarScreen() {
 
                       <div className="grid grid-cols-7 gap-y-2 gap-x-1.5">
                         {getHabitCalendar().map((day, idx) => {
+                          if (day.isDummy) {
+                            return (
+                              <div key={idx} className="w-8 h-8 sm:w-9 sm:h-9" />
+                            );
+                          }
+
                           const getDayStyles = () => {
-                            if (day.isFuture) return 'bg-transparent border border-dashed border-slate-800 text-slate-700';
-                            if (day.isBeforeCreation) return 'bg-slate-950/20 text-slate-600 border border-slate-900';
+                            if (day.isFuture) return 'bg-transparent border border-dashed border-slate-800/40 text-slate-700';
+                            if (day.isBeforeCreation) return 'bg-slate-950/20 text-slate-600 border border-slate-900/40';
                             if (day.isCompleted) return 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400';
                             // Missed day
                             return 'bg-amber-500/10 border border-amber-500/25 text-amber-500/80';
