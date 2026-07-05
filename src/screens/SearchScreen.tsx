@@ -74,7 +74,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
       
       <div className="flex-1 overflow-hidden pr-6 min-w-0 flex flex-col">
          <h4 className="font-bold text-slate-50 leading-tight mb-1.5 truncate w-full">{note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note')}</h4>
-         <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed break-words">{note.content ? note.content.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/\s+/g, ' ').trim() : '...'}</p>
+         <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed break-words">{note.content ? note.content.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/&nbsp;?/gi, ' ').replace(/&bnsp;?/gi, ' ').replace(/\s+/g, ' ').trim() : '...'}</p>
          {note.reminder && (
            <div className="flex items-center gap-1.5 mt-2.5 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/10 rounded-md w-fit text-indigo-400 text-[10px] font-bold">
              <Bell className="w-3 h-3 text-indigo-400 animate-pulse" />

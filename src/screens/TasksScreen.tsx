@@ -5,6 +5,22 @@ import { useTranslation } from '../translations';
 import { Task } from '../types';
 import { generateId } from '../utils';
 
+const getLocalIsoDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getLocalDateFromStr = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+  return new Date(dateStr);
+};
+
 export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => void }) {
   const [activeTab, setActiveTab] = useState<'Biasa' | 'Disiplin'>('Biasa');
   const [showCompleted, setShowCompleted] = useState(false);
@@ -13,7 +29,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<'Tinggi' | 'Sedang' | 'Rendah'>('Sedang');
   const [newTaskRepeat, setNewTaskRepeat] = useState<'once' | 'daily'>('once');
-  const [newTaskDate, setNewTaskDate] = useState<string>(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
+  const [newTaskDate, setNewTaskDate] = useState<string>(getLocalIsoDate(new Date()));
   const [newTaskAlarm, setNewTaskAlarm] = useState<string>('');
   const [newTaskIsDiscipline, setNewTaskIsDiscipline] = useState<boolean>(false);
   const { tasks, addTask, updateTask, toggleTask, lang, checkInDaily } = useAppStore();
@@ -24,7 +40,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
     setNewTaskTitle(task.title);
     setNewTaskPriority(task.priority);
     setNewTaskRepeat(task.repeat || 'once');
-    setNewTaskDate(task.date || new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
+    setNewTaskDate(task.date || getLocalIsoDate(new Date()));
     setNewTaskAlarm(task.alarmTime || '');
     setNewTaskIsDiscipline(!!task.isDiscipline);
     setIsAddingTask(true);
@@ -41,8 +57,8 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
        const currentHour = now.getHours().toString().padStart(2, '0');
        const currentMinute = now.getMinutes().toString().padStart(2, '0');
        const currentTime = `${currentHour}:${currentMinute}`;
-       const localDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
-       const todayDate = localDate.toISOString().split('T')[0];
+       const localDate = now;
+       const todayDate = getLocalIsoDate(localDate);
 
        // Prevent immediate notification if user schedules an alarm in the past
        const isTodayTask = newTaskDate === 'Hari ini' || newTaskDate.toLowerCase() === 'today' || newTaskDate === todayDate || newTaskRepeat === 'daily';
@@ -94,7 +110,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
     setNewTaskTitle('');
     setNewTaskPriority('Sedang');
     setNewTaskRepeat('once');
-    setNewTaskDate(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
+    setNewTaskDate(getLocalIsoDate(new Date()));
     setNewTaskAlarm('');
     setNewTaskIsDiscipline(false);
     setIsAddingTask(false);
@@ -102,15 +118,14 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
   };
 
   const { todayTasks, overdueTasks, upcomingTasks, noDateTasks, completedTasks, disciplineTask, filteredTasks } = useMemo(() => {
-    const todayDate = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000));
-    const todayStr = todayDate.toISOString().split('T')[0];
+    const todayStr = getLocalIsoDate(new Date());
 
     const getTaskDateStr = (t: any) => {
         if (t.date === 'Hari ini' || t.date === 'Hari Ini') return todayStr;
         if (t.date === 'Besok') {
-            const tmr = new Date(todayDate);
-            tmr.setDate(todayDate.getDate() + 1);
-            return tmr.toISOString().split('T')[0];
+            const tmr = getLocalDateFromStr(todayStr);
+            tmr.setDate(tmr.getDate() + 1);
+            return getLocalIsoDate(tmr);
         }
         return t.date;
     };
@@ -146,7 +161,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
     setNewTaskIsDiscipline(true); 
     setNewTaskPriority('Tinggi');
     setNewTaskRepeat('daily');
-    setNewTaskDate(new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]);
+    setNewTaskDate(getLocalIsoDate(new Date()));
     setIsAddingTask(true); 
   }, []);
 
@@ -431,15 +446,20 @@ const TaskCard = React.memo<{ task: Task, last?: boolean, onToggle: (id: string)
 
   let dailyStats = null;
   if (task.repeat === 'daily' && task.createdAt) {
-    const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    const today = getLocalIsoDate(new Date());
     const createdDate = task.createdAt.split('T')[0];
-    const diffTime = new Date(today).getTime() - new Date(createdDate).getTime();
-    const diffDays = Math.max(1, Math.floor(diffTime / 86400000) + 1);
+    const start = getLocalDateFromStr(createdDate);
+    const end = getLocalDateFromStr(today);
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    
+    let diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDays < 1) diffDays = 1;
     
     const allCompletedDates = new Set(task.completedDates || []);
     if (task.completed) allCompletedDates.add(today);
     
-    const completedDays = allCompletedDates.size;
+    const completedDays = Array.from(allCompletedDates).filter(d => d >= createdDate && d <= today).length;
     const missedDays = Math.max(0, diffDays - completedDays);
     
     dailyStats = { completed: completedDays, missed: missedDays };
@@ -540,8 +560,10 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
     );
   }
 
-  const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-  const yesterdayDate = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000) - 86400000).toISOString().split('T')[0];
+  const today = getLocalIsoDate(new Date());
+  const yesterdayObj = new Date();
+  yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+  const yesterdayDate = getLocalIsoDate(yesterdayObj);
   
   const d = task.disciplineData || {};
   const checkins = d.dailyCheckins || [];
@@ -550,13 +572,14 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
   let missedDatesCount = 0;
   const actualStartDate = d.startDate || (task.date && task.date.includes('-') ? task.date : (task.createdAt ? task.createdAt.split('T')[0] : today));
   if (actualStartDate) {
-    let curr = new Date(actualStartDate);
-
+    let curr = getLocalDateFromStr(actualStartDate);
+    const todayObj = getLocalDateFromStr(today);
+    
     curr.setHours(0,0,0,0);
-    const todayObj = new Date(today);
     todayObj.setHours(0,0,0,0);
+    
     while (curr < todayObj) {
-      const currStr = curr.toISOString().split('T')[0];
+      const currStr = getLocalIsoDate(curr);
       if (!checkins.includes(currStr) && !rests.includes(currStr)) {
         missedDatesCount++;
       }
@@ -602,8 +625,15 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
     });
   };
 
-  const parseDate = (dStr: string) => new Date(dStr).getTime();
-  const daysSinceStart = Math.max(1, Math.floor((parseDate(today) - parseDate(actualStartDate)) / 86400000) + 1);
+  const getDaysDiff = (startStr: string, endStr: string) => {
+    const start = getLocalDateFromStr(startStr);
+    const end = getLocalDateFromStr(endStr);
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    return Math.round((end.getTime() - start.getTime()) / 86400000);
+  };
+
+  const daysSinceStart = Math.max(1, getDaysDiff(actualStartDate, today) + 1);
   const pastDays = daysSinceStart - 1;
   const pastCheckins = checkins.includes(today) ? checkins.length - 1 : checkins.length;
   const pastRests = (d.usedRestDates || []).includes(today) ? (d.usedRestDates || []).length - 1 : (d.usedRestDates || []).length;
@@ -615,11 +645,9 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
   let totalTargetDays = 0;
   let isTargetReached = task.completed;
   if (d.targetDate) {
-    const targetMs = parseDate(d.targetDate);
-    const todayMs = parseDate(today);
-    const daysLeft = Math.max(0, Math.floor((targetMs - todayMs) / 86400000));
+    const daysLeft = Math.max(0, getDaysDiff(today, d.targetDate));
     
-    if (todayMs >= targetMs) {
+    if (today >= d.targetDate) {
       isTargetReached = true;
     }
     
@@ -629,7 +657,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
       daysLeftText = `${daysLeft} ${lang === 'id' ? 'hari' : 'days'}`;
     }
     
-    totalTargetDays = Math.max(daysDone + daysMissed + daysLeft, Math.floor((targetMs - parseDate(actualStartDate)) / 86400000) + 1);
+    totalTargetDays = Math.max(daysDone + daysMissed + daysLeft, getDaysDiff(actualStartDate, d.targetDate) + 1);
   }
 
   return (

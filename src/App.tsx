@@ -343,8 +343,8 @@ export default function App() {
   const getThemeClass = () => {
     if (appTheme === 'light') return 'light-theme bg-slate-950';
     if (appTheme === 'pink') return 'pink-theme bg-slate-950';
-    if (appTheme === 'cool') return 'cool-theme bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950';
-    if (appTheme === 'cute') return 'cute-theme bg-gradient-to-br from-rose-50 via-slate-950 to-orange-50';
+    if (appTheme === 'cool') return 'cool-theme';
+    if (appTheme === 'cute') return 'cute-theme';
     if (appTheme === 'wallpaper') return 'wallpaper-theme bg-transparent';
     return 'bg-slate-950';
   };
@@ -579,8 +579,8 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   const getThemeClass = () => {
     if (appTheme === 'light') return 'light-theme bg-slate-950';
     if (appTheme === 'pink') return 'pink-theme bg-slate-950';
-    if (appTheme === 'cool') return 'cool-theme bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950';
-    if (appTheme === 'cute') return 'cute-theme bg-gradient-to-br from-rose-50 via-slate-950 to-orange-50';
+    if (appTheme === 'cool') return 'cool-theme';
+    if (appTheme === 'cute') return 'cute-theme';
     if (appTheme === 'wallpaper') return 'wallpaper-theme bg-transparent';
     return 'bg-slate-950';
   };

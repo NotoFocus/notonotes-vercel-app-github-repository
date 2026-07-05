@@ -1,14 +1,119 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Activity, Flame, Repeat } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Activity, Flame, Repeat, Calendar, CheckCircle2, Smile, Clock, X, TrendingUp } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
+const getLocalIsoDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getLocalDateFromStr = (dateStr: string) => {
+  if (!dateStr) return new Date();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+  return new Date(dateStr);
+};
+
+interface HabitStats {
+  createdStr: string;
+  diffDays: number;
+  completedCount: number;
+  missedCount: number;
+  compRate: number;
+  hStreak: number;
+}
+
+const getHabitStats = (task: any, todayStr: string, getTaskDateStr: (d: string) => string): HabitStats => {
+  const rawCreated = task.createdAt || getTaskDateStr(task.date);
+  let createdDateObj: Date;
+  if (typeof rawCreated === 'number') {
+    createdDateObj = new Date(rawCreated);
+  } else {
+    createdDateObj = getLocalDateFromStr(rawCreated);
+  }
+  const createdStr = getLocalIsoDate(createdDateObj);
+
+  const start = getLocalDateFromStr(createdStr);
+  const end = getLocalDateFromStr(todayStr);
+  
+  // reset hours to avoid DST anomalies during date difference calculations
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  
+  let diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  if (diffDays < 1) diffDays = 1;
+
+  const completedDatesArr = task.completedDates || [];
+  // Only count completions that occurred between createdStr and todayStr (inclusive)
+  const validCompletions = completedDatesArr.filter((d: string) => d >= createdStr && d <= todayStr);
+  const completedCount = validCompletions.length;
+  const missedCount = Math.max(0, diffDays - completedCount);
+  const compRate = Math.round((completedCount / diffDays) * 100);
+
+  // Calculate Streak
+  let hStreak = 0;
+  const datesSet = new Set(completedDatesArr);
+  const isCompletedToday = datesSet.has(todayStr);
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = getLocalIsoDate(yesterday);
+  const isCompletedYesterday = datesSet.has(yesterdayStr);
+
+  if (isCompletedToday) {
+    hStreak = 1;
+    const checkDate = new Date();
+    while (true) {
+      checkDate.setDate(checkDate.getDate() - 1);
+      const checkStr = getLocalIsoDate(checkDate);
+      if (datesSet.has(checkStr)) {
+        hStreak++;
+      } else {
+        break;
+      }
+    }
+  } else if (isCompletedYesterday) {
+    hStreak = 1;
+    const checkDate = new Date();
+    checkDate.setDate(checkDate.getDate() - 1); // Yesterday
+    while (true) {
+      checkDate.setDate(checkDate.getDate() - 1);
+      const checkStr = getLocalIsoDate(checkDate);
+      if (datesSet.has(checkStr)) {
+        hStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return {
+    createdStr,
+    diffDays,
+    completedCount,
+    missedCount,
+    compRate,
+    hStreak
+  };
+};
+
 export default function CalendarScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activeTab, setActiveTab] = useState<'calendar' | 'stats'>('calendar');
+  const [selectedDetailTaskId, setSelectedDetailTaskId] = useState<string | null>(null);
   const { tasks, moods, lang, streak, setMood, toggleTask } = useAppStore();
   const t = useTranslation(lang);
+
+  const selectedDetailTask = useMemo(() => {
+    return tasks.find(tk => tk.id === selectedDetailTaskId) || null;
+  }, [tasks, selectedDetailTaskId]);
 
   const locale = lang === 'en' ? 'en-US' : 'id-ID';
   const daysOfWeek = Array.from({ length: 7 }, (_, i) => {
@@ -120,13 +225,12 @@ export default function CalendarScreen() {
   };
 
   // Convert selected date to string comparable with task 'date'
-  const selectedDateStr = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-  const todayDate = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000));
-  const todayStr = todayDate.toISOString().split('T')[0];
+  const selectedDateStr = getLocalIsoDate(selectedDate);
+  const todayStr = getLocalIsoDate(new Date());
   
-  const tmr = new Date(todayDate);
+  const tmr = new Date();
   tmr.setDate(tmr.getDate() + 1);
-  const tomorrowStr = tmr.toISOString().split('T')[0];
+  const tomorrowStr = getLocalIsoDate(tmr);
 
   const getTaskDateStr = (dateVal: string) => {
      if (dateVal === 'Hari ini' || dateVal === 'Hari Ini') return todayStr;
@@ -134,7 +238,23 @@ export default function CalendarScreen() {
      return dateVal;
   };
 
+  const dayTasks = useMemo(() => {
+    return tasks.filter(t => {
+      if (t.isDiscipline) return false;
+      const tDateStr = getTaskDateStr(t.date);
+      if (!tDateStr || !tDateStr.includes('-')) return false;
+      
+      const createdDateStr = t.createdAt || tDateStr;
+      
+      if (t.repeat === 'daily') {
+        return selectedDateStr >= createdDateStr && selectedDateStr <= todayStr;
+      }
+      return tDateStr === selectedDateStr;
+    });
+  }, [tasks, selectedDateStr, todayStr]);
+
   const { selectedTasks, startOfWeek, endOfWeek } = useMemo(() => {
+    const todayDate = new Date();
     const startOfWeek = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0, 0, 0);
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day; // Start on Sunday
@@ -180,7 +300,7 @@ export default function CalendarScreen() {
     });
     
     return { selectedTasks: sTasks, startOfWeek, endOfWeek };
-  }, [tasks, selectedDate, viewType, selectedDateStr, todayStr, tomorrowStr, todayDate, getTaskDateStr]);
+  }, [tasks, selectedDate, viewType, selectedDateStr, todayStr, tomorrowStr, getTaskDateStr]);
 
   const monthNames = Array.from({ length: 12 }, (_, i) => {
     return new Date(2023, i, 1).toLocaleDateString(locale, { month: 'long' });
@@ -302,308 +422,664 @@ export default function CalendarScreen() {
   const totalCount = completedCount + activeCount;
   const completionPercentageNumber = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
+  const getFormattedSelectedDate = () => {
+    try {
+      const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+      return selectedDate.toLocaleDateString(locale, options);
+    } catch (e) {
+      return selectedDateStr;
+    }
+  };
+
   return (
     <div className="flex flex-col h-full font-sans text-slate-200">
       {/* Top Bar */}
-      <div className="flex-none min-h-[4rem] pt-[env(safe-area-inset-top)] border-b border-slate-800 bg-slate-900 px-6 flex items-center gap-4">
-        <span className="font-bold text-2xl text-slate-50 tracking-tight flex-1">{t('calendar')}</span>
+      <div className="flex-none pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-2 px-6 flex items-center justify-between border-b border-slate-800/50 bg-slate-900/80">
+        <div className="flex items-center gap-4">
+          <span className="font-bold text-2xl text-slate-50 tracking-tight">{t('calendar')}</span>
+        </div>
+      </div>
+
+      {/* Mode Selector (Tabs switcher) */}
+      <div className="px-4 py-3 flex-none">
+        <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 relative shadow-inner">
+          <div 
+            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg transition-transform duration-300 ease-out bg-indigo-600 shadow-sm ${activeTab === 'stats' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} 
+          />
+          <button 
+            onClick={() => setActiveTab('calendar')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-colors z-10 ${activeTab === 'calendar' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <Calendar className="w-4 h-4" />
+            {lang === 'id' ? 'Kalender & Tugas' : 'Calendar & Tasks'}
+          </button>
+          <button 
+            onClick={() => setActiveTab('stats')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-colors z-10 ${activeTab === 'stats' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <Activity className="w-4 h-4" />
+            {lang === 'id' ? 'Statistik Produktivitas' : 'Productivity Stats'}
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24 w-full">
-        <div className="w-full px-6 py-6 space-y-6">
+        <div className="w-full px-4 sm:px-6 py-4 max-w-7xl mx-auto">
           
-          {/* Month Navigation */}
-          <div className="flex justify-between items-center mb-6 px-1">
-            <button className="p-2 -ml-2 text-slate-400 hover:text-slate-50 transition-colors" onClick={handlePrevMonth}>
-              <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
-            </button>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-50 tracking-tight">{monthNames[currentMonth]} {currentYear}</h2>
-            <button className="p-2 -mr-2 text-slate-400 hover:text-slate-50 transition-colors" onClick={handleNextMonth}>
-              <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 items-start">
-            <div className="flex flex-col gap-6">
-              {/* Calendar Grid */}
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6">
-                {/* Days Header */}
-                <div className="grid grid-cols-7 mb-4 md:mb-6">
-                  {daysOfWeek.map((day, i) => (
-                    <div key={i} className="text-center text-[10px] md:text-xs uppercase font-bold text-slate-400 tracking-widest">
-                      {day}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-y-2 md:gap-y-4">
-                  {blanks.map((_, i) => (
-                    <div key={`blank-${i}`} className="flex items-center justify-center"></div>
-                  ))}
-                  {days.map((day) => {
-                    const cellDateObj = new Date(currentYear, currentMonth, day);
-                    const cellDateStr = new Date(cellDateObj.getTime() - (cellDateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                    const dayMood = (moods || []).find(m => m && m.date === cellDateStr)?.mood;
-
-                    return (
-                      <Day 
-                        key={day} 
-                        num={day.toString()} 
-                        active={isSelectedDate(day)} 
-                        isToday={isTodayDate(day)}
-                        onClick={() => handleSelectDay(day)}
-                        mood={dayMood}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Streak Info */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 flex flex-col justify-between">
-                  <div className="flex items-center gap-3 mb-4">
-                     <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-500/10 text-orange-400 rounded-2xl flex items-center justify-center shrink-0">
-                       <Flame className="w-5 h-5 md:w-6 md:h-6" />
-                     </div>
-                     <div>
-                       <h4 className="text-slate-50 font-bold">{t('streak')}</h4>
-                       <p className="text-[10px] md:text-xs text-slate-400 leading-tight">{t('streakKeep')}</p>
-                     </div>
-                  </div>
-                  <div className="flex items-end gap-2 mt-auto">
-                     <span className="text-3xl md:text-4xl font-black text-orange-400 tracking-tighter leading-none">{streak}</span>
-                     <span className="text-[10px] md:text-xs uppercase font-bold text-orange-400/70 tracking-widest mb-1">{t('days')}</span>
-                  </div>
-                </div>
-
-                {/* Monthly Average Mood */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 flex flex-col justify-between">
-                  <div className="flex items-center gap-3 mb-4">
-                     <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border border-transparent shrink-0 ${getMoodColorClass(avgMood)}`}>
-                       {getMoodIcon(avgMood || 'neutral', "w-5 h-5 md:w-6 md:h-6")}
-                     </div>
-                     <div>
-                       <h4 className="text-slate-50 font-bold leading-tight">{lang === 'id' ? 'Rata-rata Mood' : 'Average Mood'}</h4>
-                       <p className="text-[10px] md:text-xs text-slate-400 leading-tight">{lang === 'id' ? 'Bulan ini' : 'This month'}</p>
-                     </div>
-                  </div>
-                  <div className="mt-auto">
-                     <span className={`text-xl md:text-2xl font-black tracking-tighter ${avgMood ? getMoodColorClass(avgMood).split(' ')[0] : 'text-slate-400'}`}>
-                       {getMoodLabel(avgMood)}
-                     </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-6">
-              {/* Stats Section */}
-              <div className="flex flex-col">
-                {/* View Toggle */}
-                <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1.5 mb-6">
-                  {['Harian', 'Mingguan', 'Bulanan', 'Tahunan'].map((type, idx) => {
-                    const displayType = [t('daily') || 'Harian', t('weekly') || 'Mingguan', t('monthly') || 'Bulanan', t('yearly') || 'Tahunan'];
-                    return (
-                    <button 
-                      key={type}
-                      onClick={() => setViewType(type as any)}
-                      className={`flex-1 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${viewType === type ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80'}`}
-                    >
-                      {displayType[idx]}
+          {activeTab === 'calendar' ? (
+            /* Calendar & Daily Tasks Section */
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+              
+              {/* Left Column: Calendar Card */}
+              <div className="lg:col-span-7 space-y-6 animate-fadeIn">
+                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
+                  {/* Month Navigation inside Card */}
+                  <div className="flex justify-between items-center mb-6">
+                    <button className="p-2 text-slate-400 hover:text-slate-50 hover:bg-slate-800/60 rounded-full transition-all duration-200" onClick={handlePrevMonth}>
+                      <ChevronLeft className="w-5 h-5 md:w-6 h-6" />
                     </button>
-                  )})}
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-widest mb-0.5">{lang === 'id' ? 'Penjelajah Waktu' : 'Time Explorer'}</span>
+                      <h2 className="text-lg md:text-xl font-bold text-slate-50 tracking-tight">{monthNames[currentMonth]} {currentYear}</h2>
+                    </div>
+                    <button className="p-2 text-slate-400 hover:text-slate-50 hover:bg-slate-800/60 rounded-full transition-all duration-200" onClick={handleNextMonth}>
+                      <ChevronRight className="w-5 h-5 md:w-6 h-6" />
+                    </button>
+                  </div>
+
+                  {/* Days Header */}
+                  <div className="grid grid-cols-7 mb-4">
+                    {daysOfWeek.map((day, i) => (
+                      <div key={i} className="text-center text-[10px] md:text-xs uppercase font-extrabold text-slate-400 tracking-widest py-1">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Days Grid */}
+                  <div className="grid grid-cols-7 gap-y-2 md:gap-y-3.5">
+                    {blanks.map((_, i) => (
+                      <div key={`blank-${i}`} className="flex items-center justify-center"></div>
+                    ))}
+                    {days.map((day) => {
+                      const cellDateObj = new Date(currentYear, currentMonth, day);
+                      const cellDateStr = getLocalIsoDate(cellDateObj);
+                      const dayMood = (moods || []).find(m => m && m.date === cellDateStr)?.mood;
+
+                      return (
+                        <Day 
+                          key={day} 
+                          num={day.toString()} 
+                          active={isSelectedDate(day)} 
+                          isToday={isTodayDate(day)}
+                          onClick={() => handleSelectDay(day)}
+                          mood={dayMood}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
+              </div>
 
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">
-                  {t('statistics') || 'Statistik'} {viewType === 'Harian' ? `- ${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
-                            viewType === 'Mingguan' ? `- ${startOfWeek.getDate()} ${monthNames[startOfWeek.getMonth()]} - ${endOfWeek.getDate()} ${monthNames[endOfWeek.getMonth()]} ${endOfWeek.getFullYear()}` : 
-                            viewType === 'Bulanan' ? `- ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
-                            `- ${selectedDate.getFullYear()}`}
-                </h3>
-                
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6">
-                  <div className="flex items-center gap-4 mb-6 md:mb-8">
-                    <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center">
-                      <Activity className="w-6 h-6 md:w-7 md:h-7" />
-                    </div>
+              {/* Right Column: Daily Tasks & Mood Logger */}
+              <div className="lg:col-span-5 space-y-6 animate-fadeIn">
+                {/* Dynamic Day Detail Panel */}
+                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-6 border-b border-slate-800/60">
                     <div>
-                      <h4 className="text-slate-50 font-bold md:text-xl">{t('taskSummary') || 'Ringkasan Tugas'}</h4>
-                      <p className="text-xs md:text-sm text-slate-400">{t('todayAchievement') || 'Pencapaian hari ini'}</p>
+                      <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-widest">{lang === 'id' ? 'Aktivitas Harian' : 'Daily Activity'}</span>
+                      <h3 className="text-base md:text-lg font-extrabold text-slate-50 mt-0.5">{getFormattedSelectedDate()}</h3>
+                    </div>
+                    <div className="flex items-center gap-1.5 self-start sm:self-center px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-full text-xs font-semibold">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>{selectedDateStr === todayStr ? (lang === 'id' ? 'Hari Ini' : 'Today') : selectedDateStr}</span>
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
-                    <div className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center">
-                      <div className="text-2xl md:text-3xl font-bold text-slate-50 mb-1">{totalCount}</div>
-                      <div className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-slate-400">{t('total') || 'Total'}</div>
-                    </div>
-                    <div className="flex-1 bg-slate-950 border border-emerald-900/50 rounded-2xl p-4 text-center">
-                      <div className="text-2xl md:text-3xl font-bold text-emerald-400 mb-1">{completedCount}</div>
-                      <div className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-emerald-600">{t('completed') || 'Selesai'}</div>
-                    </div>
-                    <div className="flex-1 bg-slate-950 border border-orange-900/50 rounded-2xl p-4 text-center">
-                      <div className="text-2xl md:text-3xl font-bold text-orange-400 mb-1">{activeCount}</div>
-                      <div className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-orange-600">{t('active') || 'Aktif'}</div>
-                    </div>
-                  </div>
-
-                  {totalCount > 0 && (
-                    <div className="mt-6 md:mt-8 pt-6 md:pt-8 border-t border-slate-800">
-                      <h5 className="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 md:mb-6 text-center">{t('completionPercentage') || 'Persentase Selesai'}</h5>
-                      <div className="h-40 md:h-56 w-full relative">
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                          <span className="text-3xl md:text-4xl font-bold text-slate-50">{completionPercentageNumber}%</span>
-                        </div>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={pieData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={85}
-                              paddingAngle={safePaddingAngle}
-                              dataKey="value"
+                  {/* Mood Logger Block */}
+                  {selectedDateStr <= todayStr && (
+                    <div className="mb-6 bg-slate-950/40 border border-slate-800/40 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Smile className="w-4 h-4 text-emerald-400" />
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                          {lang === 'id' ? 'Bagaimana perasaanmu?' : 'How are you feeling?'}
+                        </h4>
+                      </div>
+                      
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {[
+                          { id: 'excellent', label: 'Hebat', labelEn: 'Great', colors: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20', activeColors: 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20' },
+                          { id: 'good', label: 'Baik', labelEn: 'Good', colors: 'bg-teal-500/10 text-teal-400 border-teal-500/20 hover:bg-teal-500/20', activeColors: 'bg-teal-400 text-slate-950 shadow-lg shadow-teal-500/20' },
+                          { id: 'neutral', label: 'Biasa', labelEn: 'Neutral', colors: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20', activeColors: 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' },
+                          { id: 'bad', label: 'Buruk', labelEn: 'Bad', colors: 'bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20', activeColors: 'bg-orange-500 text-slate-950 shadow-lg shadow-orange-500/20' },
+                          { id: 'terrible', label: 'Lelah', labelEn: 'Tired', colors: 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20', activeColors: 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' }
+                        ].map(m => {
+                          const selectedDayMood = (moods || []).find(x => x && x.date === selectedDateStr)?.mood;
+                          const isSelected = selectedDayMood === m.id;
+                          const notSelectedOpacity = selectedDayMood && !isSelected ? 'opacity-40 grayscale hover:grayscale-0 hover:opacity-100' : '';
+                          
+                          return (
+                            <button
+                              key={m.id}
+                              onClick={() => setMood(selectedDateStr, m.id as any)}
+                              className={`group flex flex-col items-center justify-center py-2.5 px-1 rounded-xl transition-all border shrink-0 ${isSelected ? m.activeColors + ' border-transparent scale-[1.03]' : m.colors + ' ' + notSelectedOpacity}`}
+                              title={lang === 'id' ? m.label : m.labelEn}
                             >
-                              {pieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                              itemStyle={{ color: '#f8fafc', fontSize: '14px', fontWeight: 'bold' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
+                              <div className={`transition-transform duration-200 ${isSelected ? 'scale-105 mb-1' : 'group-hover:scale-110 mb-1.5'}`}>
+                                {getMoodIcon(m.id, isSelected ? "w-6 h-6 md:w-7 h-7" : "w-5 h-5 md:w-6 h-6")}
+                              </div>
+                              <span className="text-[9px] font-bold tracking-tight text-center block truncate w-full px-0.5">
+                                {lang === 'id' ? m.label : m.labelEn}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
-                </div>
 
-                {/* Selected Tasks List (Harian view) */}
-                {viewType === 'Harian' && (
-                  <>
-                    {selectedDateStr <= todayStr && (
-                      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mt-6">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
-                          {lang === 'id' ? 'Mood pada tanggal ini' : 'Mood on this date'}
-                        </h3>
-                        <div className="flex justify-between items-center bg-slate-950 p-2 md:p-3 rounded-3xl border border-slate-800 overflow-x-auto gap-2">
-                          {[
-                            { id: 'excellent', label: 'Sangat Baik', labelEn: 'Excellent', colors: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20', activeColors: 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' },
-                            { id: 'good', label: 'Baik', labelEn: 'Good', colors: 'bg-teal-500/10 text-teal-400 border-teal-500/30 hover:bg-teal-500/20', activeColors: 'bg-teal-400 text-slate-950 shadow-lg shadow-teal-500/20' },
-                            { id: 'neutral', label: 'Biasa', labelEn: 'Neutral', colors: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20', activeColors: 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' },
-                            { id: 'bad', label: 'Buruk', labelEn: 'Bad', colors: 'bg-orange-500/10 text-orange-400 border-orange-500/30 hover:bg-orange-500/20', activeColors: 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' },
-                            { id: 'terrible', label: 'Sangat Buruk', labelEn: 'Terrible', colors: 'bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20', activeColors: 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' }
-                          ].map(m => {
-                            const selectedDayMood = (moods || []).find(x => x && x.date === selectedDateStr)?.mood;
-                            const isSelected = selectedDayMood === m.id;
-                            const notSelectedOpacity = selectedDayMood && !isSelected ? 'opacity-40 grayscale hover:grayscale-0 hover:opacity-100' : '';
-                            
-                            return (
-                              <button
-                                key={m.id}
-                                onClick={() => setMood(selectedDateStr, m.id as any)}
-                                className={`group flex-1 flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl transition-all border shrink-0 min-w-[60px] md:min-w-[70px] ${isSelected ? m.activeColors + ' border-transparent scale-105' : m.colors + ' ' + notSelectedOpacity}`}
-                                title={lang === 'id' ? m.label : m.labelEn}
-                              >
-                                <div className={`transition-transform ${isSelected ? 'scale-110 mb-1' : 'group-hover:scale-110 group-active:scale-95 mb-2'}`}>
-                                  {getMoodIcon(m.id, isSelected ? "w-7 h-7 md:w-8 md:h-8" : "w-6 h-6 md:w-7 md:h-7")}
-                                </div>
-                                <span className={`text-[10px] md:text-xs font-bold tracking-tight ${isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
-                                  {lang === 'id' ? m.label : m.labelEn}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                  {/* Tasks List Block */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                         {lang === 'id' ? 'Daftar Tugas' : 'Task List'}
+                      </h4>
+                    </div>
+
+                    {dayTasks.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {dayTasks.map(task => {
+                           const isTaskCompleted = task.repeat === 'daily' 
+                               ? (task.completedDates?.includes(selectedDateStr) || (selectedDateStr === todayStr && task.completed)) 
+                               : task.completed;
+                           return (
+                             <div 
+                               key={task.id} 
+                               onClick={() => setSelectedDetailTaskId(task.id)}
+                               className="flex items-center justify-between gap-3.5 bg-slate-950/35 hover:bg-slate-950/65 p-3.5 rounded-2xl border border-slate-800/40 cursor-pointer hover:border-indigo-500/40 transition-all duration-200 group"
+                             >
+                               <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                 <div 
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     toggleTask(task.id, selectedDateStr);
+                                   }}
+                                   className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${isTaskCompleted ? 'bg-emerald-500 border-emerald-500 scale-95' : 'bg-transparent border-slate-600 group-hover:border-indigo-500'}`}
+                                 >
+                                   {isTaskCompleted && (
+                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-slate-950">
+                                       <polyline points="20 6 9 17 4 12" />
+                                     </svg>
+                                   )}
+                                 </div>
+                                 <span className={`text-sm font-medium transition-all truncate ${isTaskCompleted ? 'text-slate-500 line-through decoration-1' : 'text-slate-200'}`}>
+                                   {task.title}
+                                 </span>
+                               </div>
+                               <span className="text-[10px] text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20">
+                                 {lang === 'id' ? 'Detail' : 'Detail'}
+                               </span>
+                             </div>
+                           );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 bg-slate-950/20 border border-dashed border-slate-800/60 rounded-2xl text-slate-400 text-sm">
+                        {t('emptyCalendar') || 'Tidak ada tugas atau catatan di tanggal ini.'}
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
 
-                    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mt-6">
-                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
-                         {lang === 'id' ? 'Tugas pada tanggal ini' : 'Tasks on this date'}
-                      </h3>
-                      {selectedTasks.length > 0 ? (
-                        <div className="space-y-3">
-                          {selectedTasks.map(task => {
-                             const isTaskCompleted = task.repeat === 'daily' 
-                                 ? (task.completedDates?.includes(selectedDateStr) || (selectedDateStr === todayStr && task.completed)) 
-                                 : task.completed;
-                             return (
-                             <div key={task.id} 
-                               onClick={() => toggleTask(task.id, selectedDateStr)}
-                               className="flex items-center gap-3 bg-slate-950 p-3.5 rounded-2xl border border-slate-800 cursor-pointer hover:border-indigo-500/50 transition-colors"
-                             >
-                               <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${isTaskCompleted ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent border-slate-500'}`}>
-                                 {isTaskCompleted && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5 text-slate-950"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                               </div>
-                               <span className={`text-sm font-medium ${isTaskCompleted ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{task.title}</span>
-                             </div>
-                             );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-center py-6 text-slate-400 text-sm">
-                          {t('emptyCalendar') || 'Tidak ada tugas atau catatan di tanggal ini.'}
-                        </div>
-                      )}
+            </div>
+          ) : (
+            /* Productivity Statistics & Habits Section */
+            <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
+              
+              {/* Period Switcher */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1 flex gap-1 shadow-md">
+                {['Harian', 'Mingguan', 'Bulanan', 'Tahunan'].map((type, idx) => {
+                  const displayType = [t('daily') || 'Harian', t('weekly') || 'Mingguan', t('monthly') || 'Bulanan', t('yearly') || 'Tahunan'];
+                  const isActive = viewType === type;
+                  return (
+                    <button 
+                      key={type}
+                      onClick={() => setViewType(type as any)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'}`}
+                    >
+                      {displayType[idx]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Statistics Summary Card */}
+              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
+                <div className="flex items-center gap-4 mb-5 pb-4 border-b border-slate-800/50">
+                  <div className="w-10 h-10 bg-indigo-500/10 text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-slate-50 font-bold text-sm tracking-tight">
+                      {t('taskSummary') || 'Ringkasan Tugas'}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 tracking-wide font-mono mt-0.5">
+                      {viewType === 'Harian' ? `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
+                       viewType === 'Mingguan' ? `${startOfWeek.getDate()} ${monthNames[startOfWeek.getMonth()]} - ${endOfWeek.getDate()} ${monthNames[endOfWeek.getMonth()]}` : 
+                       viewType === 'Bulanan' ? `${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
+                       `${selectedDate.getFullYear()}`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress Mini Grid */}
+                <div className="grid grid-cols-3 gap-2.5 mb-5">
+                  <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-2.5 text-center">
+                    <div className="text-lg font-black text-slate-50">{totalCount}</div>
+                    <div className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 mt-0.5">{t('total') || 'Total'}</div>
+                  </div>
+                  <div className="bg-emerald-950/20 border border-emerald-900/20 rounded-xl p-2.5 text-center">
+                    <div className="text-lg font-black text-emerald-400">{completedCount}</div>
+                    <div className="text-[9px] uppercase tracking-wider font-extrabold text-emerald-500 mt-0.5">{t('completed') || 'Selesai'}</div>
+                  </div>
+                  <div className="bg-orange-950/20 border border-orange-900/20 rounded-xl p-2.5 text-center">
+                    <div className="text-lg font-black text-orange-400">{activeCount}</div>
+                    <div className="text-[9px] uppercase tracking-wider font-extrabold text-orange-500 mt-0.5">{t('active') || 'Aktif'}</div>
+                  </div>
+                </div>
+
+                {/* Recharts Pie Chart */}
+                {totalCount > 0 ? (
+                  <div className="pt-4 border-t border-slate-800/50">
+                    <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 text-center">
+                      {t('completionPercentage') || 'Persentase Selesai'}
+                    </h5>
+                    <div className="h-36 w-full relative">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-2xl font-black text-slate-50 leading-none">{completionPercentageNumber}%</span>
+                        <span className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mt-1">{t('completed') || 'Selesai'}</span>
+                      </div>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={68}
+                            paddingAngle={safePaddingAngle}
+                            dataKey="value"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                            itemStyle={{ color: '#f8fafc', fontSize: '12px', fontWeight: 'bold' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                  </>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-xs text-slate-400 border border-dashed border-slate-800/60 rounded-xl">
+                    {lang === 'id' ? 'Tidak ada data untuk periode ini' : 'No task data for this period'}
+                  </div>
                 )}
-                
-                {/* Habit Stats */}
-                {tasks.filter(t => t.repeat === 'daily' && !t.isDiscipline).length > 0 && (
-                  <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 md:p-6 mt-6">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
-                       <Repeat className="w-4 h-4" />
+              </div>
+
+              {/* Insights Mini Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Streak Counter Card */}
+                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2rem] shadow-xl p-5 flex flex-col justify-between">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="w-8 h-8 bg-orange-500/10 text-orange-400 rounded-lg flex items-center justify-center shrink-0">
+                      <Flame className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-100">{t('streak')}</h4>
+                      <p className="text-[8px] text-slate-400 leading-tight truncate">{t('streakKeep')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-auto">
+                    <span className="text-2xl font-black text-orange-400 tracking-tight leading-none">{streak}</span>
+                    <span className="text-[8px] uppercase font-bold text-orange-400/70 tracking-widest">{t('days')}</span>
+                  </div>
+                </div>
+
+                {/* Monthly Average Mood Card */}
+                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2rem] shadow-xl p-5 flex flex-col justify-between">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 ${getMoodColorClass(avgMood)}`}>
+                      {getMoodIcon(avgMood || 'neutral', "w-4 h-4")}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-100 truncate">{lang === 'id' ? 'Rata Mood' : 'Average Mood'}</h4>
+                      <p className="text-[8px] text-slate-400 leading-tight">{lang === 'id' ? 'Bulan Ini' : 'This Month'}</p>
+                    </div>
+                  </div>
+                  <div className="mt-auto">
+                    <span className={`text-sm font-black tracking-tight ${avgMood ? getMoodColorClass(avgMood).split(' ')[0] : 'text-slate-400'}`}>
+                      {getMoodLabel(avgMood)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Habits Section */}
+              {tasks.filter(t => t.repeat === 'daily' && !t.isDiscipline).length > 0 && (
+                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/50">
+                    <div className="w-8 h-8 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center">
+                      <Repeat className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-50 tracking-tight">
                        {lang === 'id' ? 'Statistik Kebiasaan' : 'Habit Statistics'}
                     </h3>
-                    <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x sm:mx-0 sm:px-0">
-                      {tasks.filter(t => t.repeat === 'daily' && !t.isDiscipline).map(task => {
-                        const createdAt = new Date(task.createdAt || getTaskDateStr(task.date));
-                        const createdStr = new Date(createdAt.getTime() - (createdAt.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                        
-                        const currentDate = new Date(todayDate.getTime() - (todayDate.getTimezoneOffset() * 60000));
-                        const currentStr = currentDate.toISOString().split('T')[0];
-                        
-                        const createdDateObj = new Date(createdStr);
-                        const todayDateObj = new Date(currentStr);
-                        let diffDays = Math.round((todayDateObj.getTime() - createdDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                        if (diffDays < 1) diffDays = 1;
+                  </div>
 
-                        const completedCount = task.completedDates ? task.completedDates.length : (task.completed ? 1 : 0);
-                        const missedCount = Math.max(0, diffDays - completedCount);
-                        
-                        return (
-                          <div key={task.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-4 min-w-[240px] max-w-[240px] snap-center shrink-0">
-                            <div>
-                               <h4 className="font-bold text-slate-50 line-clamp-1">{task.title}</h4>
-                               <p className="text-[10px] text-slate-400 font-mono mt-1">{lang === 'id' ? 'Aktif sejak:' : 'Active since:'} {createdStr}</p>
-                            </div>
-                            <div className="flex justify-between items-center bg-slate-900/80 border border-slate-800 rounded-xl p-2.5">
-                               <div className="flex flex-col items-center flex-1">
-                                 <div className="text-[10px] uppercase tracking-wider font-bold text-emerald-500">{lang === 'id' ? 'Selesai' : 'Done'}</div>
-                                 <div className="text-xl font-black text-emerald-400 mt-0.5">{completedCount}</div>
-                               </div>
-                               <div className="w-[1px] h-8 bg-slate-800"></div>
-                               <div className="flex flex-col items-center flex-1">
-                                 <div className="text-[10px] uppercase tracking-wider font-bold text-orange-500">{lang === 'id' ? 'Bolong' : 'Missed'}</div>
-                                 <div className="text-xl font-black text-orange-400 mt-0.5">{missedCount}</div>
-                               </div>
-                            </div>
+                  <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1 no-scrollbar">
+                    {tasks.filter(t => t.repeat === 'daily' && !t.isDiscipline).map(task => {
+                      const { createdStr, diffDays, completedCount, missedCount, compRate, hStreak } = getHabitStats(task, todayStr, getTaskDateStr);
+                      
+                      return (
+                        <div 
+                          key={task.id} 
+                          onClick={() => setSelectedDetailTaskId(task.id)}
+                          className="bg-slate-950/45 border border-slate-800/50 hover:bg-slate-950/70 rounded-2xl p-4 flex items-center justify-between hover:border-indigo-500/40 transition-all cursor-pointer group"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-extrabold text-slate-100 text-xs sm:text-sm group-hover:text-indigo-400 transition-colors truncate" title={task.title}>{task.title}</h4>
+                            <p className="text-[10px] text-slate-400 font-mono mt-1">
+                              {lang === 'id' ? 'Aktif sejak' : 'Active since'}: {createdStr}
+                            </p>
                           </div>
-                        );
-                      })}
+                          <div className="flex items-center gap-3.5 shrink-0 ml-4">
+                            {hStreak > 0 && (
+                              <div className="flex items-center gap-1 bg-orange-500/10 border border-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full text-[10px] font-black shrink-0">
+                                <Flame size={11} className="fill-orange-400/20 animate-pulse text-orange-400" />
+                                <span>{hStreak}d</span>
+                              </div>
+                            )}
+                            <div className="flex flex-col items-end">
+                              <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">{lang === 'id' ? 'Konsistensi' : 'Consistency'}</span>
+                              <span className="text-emerald-400 font-black text-xs sm:text-sm leading-none mt-0.5">{compRate}%</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all duration-200" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 2nd Layer: Detailed Task/Habit Modal */}
+      {selectedDetailTask && (() => {
+        const isDaily = selectedDetailTask.repeat === 'daily';
+        
+        // Calculate stats for daily habit
+        const { createdStr, diffDays, completedCount, missedCount, compRate, hStreak } = getHabitStats(selectedDetailTask, todayStr, getTaskDateStr);
+
+        const isDetailTaskCompleted = selectedDetailTask.repeat === 'daily'
+          ? (selectedDetailTask.completedDates?.includes(selectedDateStr) || false)
+          : selectedDetailTask.completed;
+
+        const pColor = selectedDetailTask.priority === 'Tinggi' 
+          ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
+          : selectedDetailTask.priority === 'Sedang' 
+          ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+          : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+
+        const getHabitCalendar = () => {
+          const list = [];
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          // We want to show a 14-day history window.
+          // Let's start from 13 days ago.
+          const rangeStart = new Date(today);
+          rangeStart.setDate(today.getDate() - 13);
+
+          // Align the start to the Sunday of that week
+          const startDayOfWeek = rangeStart.getDay(); // 0 = Sunday
+          const calendarStart = new Date(rangeStart);
+          calendarStart.setDate(rangeStart.getDate() - startDayOfWeek);
+
+          // Align the end to the Saturday of the current week
+          const todayDayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+          const calendarEnd = new Date(today);
+          calendarEnd.setDate(today.getDate() + (6 - todayDayOfWeek));
+
+          const cur = new Date(calendarStart);
+          while (cur <= calendarEnd) {
+            const dateStr = getLocalIsoDate(cur);
+            const isCompleted = selectedDetailTask.completedDates?.includes(dateStr) || false;
+            const isTodayDate = cur.getDate() === today.getDate() && cur.getMonth() === today.getMonth() && cur.getFullYear() === today.getFullYear();
+            const isFuture = cur > today;
+            const isBeforeCreation = dateStr < createdStr;
+
+            list.push({
+              dateStr,
+              dayNum: cur.getDate(),
+              isCompleted,
+              isToday: isTodayDate,
+              isFuture,
+              isBeforeCreation,
+              dayOfWeek: cur.getDay(),
+            });
+
+            cur.setDate(cur.getDate() + 1);
+          }
+          return list;
+        };
+
+        return (
+          <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 transition-all duration-300">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[90vh]">
+              
+              {/* Header */}
+              <div className="flex justify-between items-center px-5 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-slate-800/60 flex-none">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-widest">
+                    {lang === 'id' ? 'Detail Tugas' : 'Task Details'}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setSelectedDetailTaskId(null)}
+                  className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-slate-100 rounded-full transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 sm:space-y-5 no-scrollbar">
+                
+                {/* Title and Priority */}
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${pColor}`}>
+                      {selectedDetailTask.priority}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-indigo-500/10 border-indigo-500/20 text-indigo-300">
+                      {isDaily ? (lang === 'id' ? 'Kebiasaan Harian' : 'Daily Habit') : (lang === 'id' ? 'Tugas Sekali' : 'One-time Task')}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-slate-50 tracking-tight leading-snug">
+                    {selectedDetailTask.title}
+                  </h3>
+                </div>
+
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
+                    <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Waktu' : 'Time'}</span>
+                      <span className="text-xs font-bold text-slate-200 block truncate">{selectedDetailTask.time || '--:--'}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
+                    <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Dibuat' : 'Created'}</span>
+                      <span className="text-xs font-bold text-slate-200 block truncate">{createdStr}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Status Block */}
+                <div className="bg-slate-950/40 border border-slate-800/40 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block mb-0.5">
+                      {lang === 'id' ? 'Status Tanggal' : 'Date Status'} ({selectedDateStr === todayStr ? (lang === 'id' ? 'Hari Ini' : 'Today') : selectedDateStr})
+                    </span>
+                    <span className={`text-sm font-extrabold ${isDetailTaskCompleted ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {isDetailTaskCompleted ? (lang === 'id' ? 'Selesai' : 'Completed') : (lang === 'id' ? 'Belum Selesai' : 'Active')}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => toggleTask(selectedDetailTask.id, selectedDateStr)}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
+                      isDetailTaskCompleted 
+                        ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 scale-95' 
+                        : 'bg-transparent border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Habits Analytics (Only if Daily) */}
+                {isDaily && (
+                  <div className="space-y-4">
+                    <div className="bg-slate-950/20 border border-slate-800/40 rounded-2xl p-4 space-y-3">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                        <span>{lang === 'id' ? 'Tingkat Konsistensi' : 'Consistency Rate'}</span>
+                        <span className="text-emerald-400">{compRate}%</span>
+                      </div>
+                      
+                      {/* Custom progress bar */}
+                      <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800/40">
+                        <div 
+                          className="h-full bg-gradient-to-r from-indigo-500 via-teal-400 to-emerald-400 rounded-full transition-all duration-500" 
+                          style={{ width: `${compRate}%` }}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-1.5 pt-1 text-center text-[9px] sm:text-[10px]">
+                        <div className="bg-slate-900/60 rounded-xl p-1.5 border border-slate-800/20">
+                          <span className="text-slate-400 block font-bold">{lang === 'id' ? 'Aktif' : 'Active'}</span>
+                          <span className="text-slate-200 font-extrabold block mt-0.5 truncate">{diffDays} {lang === 'id' ? 'Hari' : 'Days'}</span>
+                        </div>
+                        <div className="bg-slate-900/60 rounded-xl p-1.5 border border-slate-800/20">
+                          <span className="text-emerald-400 block font-bold">{lang === 'id' ? 'Selesai' : 'Done'}</span>
+                          <span className="text-emerald-400 font-extrabold block mt-0.5 truncate">{completedCount} {lang === 'id' ? 'Kali' : 'Times'}</span>
+                        </div>
+                        <div className="bg-slate-900/60 rounded-xl p-1.5 border border-slate-800/20">
+                          <span className="text-amber-500 block font-bold">{lang === 'id' ? 'Bolong' : 'Missed'}</span>
+                          <span className="text-amber-500 font-extrabold block mt-0.5 truncate">{missedCount} {lang === 'id' ? 'Hari' : 'Days'}</span>
+                        </div>
+                        <div className="bg-slate-900/60 rounded-xl p-1.5 border border-slate-800/20">
+                          <span className="text-orange-400 block font-bold">Streak</span>
+                          <span className="text-orange-400 font-extrabold block mt-0.5 truncate">{hStreak} {lang === 'id' ? 'Hari' : 'Days'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Check-in History (Calendar Grid) */}
+                    <div>
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>{lang === 'id' ? 'Riwayat Kebiasaan' : 'Habit History'}</span>
+                      </h4>
+                      
+                      {/* Weekday Initials Row */}
+                      <div className="grid grid-cols-7 mb-2 text-center text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                        {daysOfWeek.map((day, i) => (
+                          <div key={i} className="py-0.5">{day}</div>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-y-2 gap-x-1.5">
+                        {getHabitCalendar().map((day, idx) => {
+                          const getDayStyles = () => {
+                            if (day.isFuture) return 'bg-transparent border border-dashed border-slate-800 text-slate-700';
+                            if (day.isBeforeCreation) return 'bg-slate-950/20 text-slate-600 border border-slate-900';
+                            if (day.isCompleted) return 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400';
+                            // Missed day
+                            return 'bg-amber-500/10 border border-amber-500/25 text-amber-500/80';
+                          };
+                          
+                          return (
+                            <div 
+                              key={idx} 
+                              className="flex flex-col items-center justify-center"
+                            >
+                              <div 
+                                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex flex-col items-center justify-center text-[10px] sm:text-xs font-black transition-all relative ${getDayStyles()} ${day.isToday ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900' : ''}`}
+                                title={day.dateStr}
+                              >
+                                <span>{day.dayNum}</span>
+                                {day.isCompleted && (
+                                  <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 w-3.5 h-3.5 rounded-full flex items-center justify-center border border-slate-900 shadow-sm">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="w-2 h-2">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
-                
+
               </div>
+
+              {/* Footer Actions */}
+              <div className="p-4 sm:p-5 border-t border-slate-800/60 bg-slate-950/20 flex gap-3 flex-none">
+                <button
+                  onClick={() => {
+                    toggleTask(selectedDetailTask.id, selectedDateStr);
+                  }}
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                    isDetailTaskCompleted 
+                      ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20' 
+                      : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    {isDetailTaskCompleted 
+                      ? (lang === 'id' ? 'Batalkan Selesai' : 'Undo Complete') 
+                      : (lang === 'id' ? 'Tandai Selesai' : 'Mark Complete')}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setSelectedDetailTaskId(null)}
+                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-all"
+                >
+                  {lang === 'id' ? 'Tutup' : 'Close'}
+                </button>
+              </div>
+
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
     </div>
   );

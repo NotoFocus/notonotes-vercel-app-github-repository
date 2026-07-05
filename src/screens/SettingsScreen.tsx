@@ -253,9 +253,9 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
           
           {/* AKUN & TAMPILAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Smartphone size={16} className="text-indigo-400" /> {t('appearance')}</h3>
-          <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
-            <div className="flex flex-col border-b border-slate-800/60 p-4">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2.5"><Smartphone size={16} className="text-indigo-400" /> {t('appearance')}</h3>
+          <div className="bg-slate-900 border border-slate-800/80 rounded-[2rem] shadow-sm flex flex-col overflow-hidden divide-y divide-slate-800/50">
+            <div className="flex flex-col p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner overflow-hidden">
@@ -300,7 +300,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
+            <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3 w-1/2">
                 <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
                   <User size={18} />
@@ -317,7 +317,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               />
             </div>
             
-            <div className="flex flex-col border-b border-slate-800/60">
+            <div className="flex flex-col">
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
@@ -325,18 +325,21 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                   </div>
                   <span className="font-bold text-[15px] text-slate-200">{t('appThemeLabel')}</span>
                 </div>
-                <select 
-                  value={appTheme}
-                  onChange={(e) => setAppTheme(e.target.value as any)}
-                  className="bg-transparent text-indigo-400 font-bold text-[15px] outline-none cursor-pointer text-right appearance-none focus:text-indigo-300 transition-colors"
-                >
+                <div className="flex items-center gap-1">
+                  <select 
+                    value={appTheme}
+                    onChange={(e) => setAppTheme(e.target.value as any)}
+                    className="bg-transparent text-indigo-400 font-bold text-[15px] outline-none cursor-pointer text-right appearance-none focus:text-indigo-300 transition-colors pr-2"
+                  >
                   <option value="dark" className="bg-slate-900">{t('themeDark')}</option>
                   <option value="light" className="bg-slate-900">{t('themeLight')}</option>
                   <option value="pink" className="bg-slate-900">{t('themePink')}</option>
                   <option value="cool" className="bg-slate-900">{t('themeCool')}</option>
                   <option value="cute" className="bg-slate-900">{t('themeCute')}</option>
                   <option value="wallpaper" className="bg-slate-900">{t('themeWallpaper')}</option>
-                </select>
+                  </select>
+                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                </div>
               </div>
 
               {appTheme === 'wallpaper' && (
@@ -375,7 +378,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               )}
             </div>
 
-            <div className="flex flex-col border-b border-slate-800/60">
+            <div className="flex flex-col">
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
@@ -427,22 +430,25 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <span className="font-bold text-[15px] text-slate-200">{t('lang')}</span>
               </div>
-              <select 
-                value={lang} onChange={(e) => setLang(e.target.value as 'id' | 'en')}
-                className="bg-transparent text-indigo-400 font-bold text-[15px] outline-none cursor-pointer text-right appearance-none focus:text-indigo-300 transition-colors"
-              >
+              <div className="flex items-center gap-1">
+                <select 
+                  value={lang} onChange={(e) => setLang(e.target.value as 'id' | 'en')}
+                  className="bg-transparent text-indigo-400 font-bold text-[15px] outline-none cursor-pointer text-right appearance-none focus:text-indigo-300 transition-colors pr-2"
+                >
                 <option value="id" className="bg-slate-900">Indonesia</option>
                 <option value="en" className="bg-slate-900">English</option>
-              </select>
+                </select>
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </div>
             </div>
           </div>
         </section>
 
         {/* NOTIFIKASI & HABIT */}
         <section>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Bell size={16} className="text-orange-400" /> {t('notifications')}</h3>
-          <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2.5"><Bell size={16} className="text-orange-400" /> {t('notifications')}</h3>
+          <div className="bg-slate-900 border border-slate-800/80 rounded-[2rem] shadow-sm flex flex-col overflow-hidden divide-y divide-slate-800/50">
+            <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-inner transition-colors ${reminderActive ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-slate-800/80 text-slate-400'}`}>
                   <Bell size={18} />
@@ -469,7 +475,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               </button>
             </div>
 
-            <div className={`flex items-center justify-between p-4 border-b border-slate-800/60 transition-all duration-300 ${!reminderActive ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+            <div className={`flex items-center justify-between p-4 transition-all duration-300 ${!reminderActive ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
                   <Clock size={18} />
@@ -505,9 +511,9 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
         {/* DATA & CADANGAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><FileText size={16} className="text-emerald-400" /> {t('dataBackup')}</h3>
-          <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
-            <button onClick={handleExportClick} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60 text-left">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2.5"><FileText size={16} className="text-emerald-400" /> {t('dataBackup')}</h3>
+          <div className="bg-slate-900 border border-slate-800/80 rounded-[2rem] shadow-sm flex flex-col overflow-hidden divide-y divide-slate-800/50">
+            <button onClick={handleExportClick} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors text-left">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shadow-inner border border-emerald-500/20">
                   <Download size={18} />
@@ -536,9 +542,9 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
         {/* PRIVASI & KEAMANAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Lock size={16} className="text-rose-400" /> {t('securityAdvanced')}</h3>
-          <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2.5"><Lock size={16} className="text-rose-400" /> {t('securityAdvanced')}</h3>
+          <div className="bg-slate-900 border border-slate-800/80 rounded-[2rem] shadow-sm flex flex-col overflow-hidden divide-y divide-slate-800/50">
+            <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-inner transition-all ${appPin ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-slate-800/80 text-slate-400'}`}>
                   <Lock size={18} />
@@ -573,7 +579,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                   setPinError(false);
                   setPinModalMode('verify');
                 }}
-                className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60 text-left"
+                className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors text-left"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
@@ -604,8 +610,8 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
         {/* HIBURAN */}
         <section>
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Gamepad2 size={16} className="text-purple-400" /> {t('entertainment')}</h3>
-          <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2.5"><Gamepad2 size={16} className="text-purple-400" /> {t('entertainment')}</h3>
+          <div className="bg-slate-900 border border-slate-800/80 rounded-[2rem] shadow-sm flex flex-col overflow-hidden divide-y divide-slate-800/50">
             <button 
               onClick={() => onNavigate && onNavigate('games-hub')}
               className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors w-full text-left"
@@ -626,9 +632,9 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
         
         {/* TENTANG APLIKASI */}
         <section className="pb-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 flex items-center gap-2"><Info size={16} className="text-sky-400" /> {t('aboutApp')}</h3>
-          <div className="bg-slate-800/40 border border-slate-800/60 rounded-3xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 ml-2 flex items-center gap-2.5"><Info size={16} className="text-sky-400" /> {t('aboutApp')}</h3>
+          <div className="bg-slate-900 border border-slate-800/80 rounded-[2rem] shadow-sm flex flex-col overflow-hidden divide-y divide-slate-800/50">
+            <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
                   <Smartphone size={18} />
@@ -638,7 +644,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               <span className="font-black text-[15px] text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full text-center">v3.0</span>
             </div>
 
-            <button onClick={() => setShowUpdateNotes(true)} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60 w-full text-left">
+            <button onClick={() => setShowUpdateNotes(true)} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors w-full text-left">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
                   <FileText size={18} />
@@ -648,7 +654,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
               <ChevronRight className="w-5 h-5 text-slate-600" />
             </button>
 
-            <button onClick={() => setShowPrivacyPolicy(true)} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60 w-full text-left">
+            <button onClick={() => setShowPrivacyPolicy(true)} className="flex items-center justify-between p-4 hover:bg-slate-800/60 transition-colors w-full text-left">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 shadow-inner">
                   <Shield size={18} />
