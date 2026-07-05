@@ -19,7 +19,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
   ) : notes;
 
   const activeTasks = query ? tasks.filter(t => 
-    !t.isArchived && !t.isDiscipline && (t.title || '').toLowerCase().includes(query)
+    !t.isArchived && (t.title || '').toLowerCase().includes(query)
   ) : [];
 
   const archivedNotes = filteredNotes.filter(n => n.isArchived);

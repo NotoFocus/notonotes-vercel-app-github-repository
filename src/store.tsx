@@ -408,6 +408,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setTasks(prev => prev.map(t => {
       if (t.id !== id) return t;
+      
+      if (t.isDiscipline) {
+         const disciplineData = t.disciplineData || {};
+         const dailyCheckins = new Set(disciplineData.dailyCheckins || []);
+         const wasDoneOnDate = dailyCheckins.has(targetDate);
+         
+         if (isToday) {
+            wasCompleted = t.completed;
+            const newCompleted = !t.completed;
+            if (newCompleted) dailyCheckins.add(targetDate);
+            else dailyCheckins.delete(targetDate);
+            isNowCompleted = newCompleted;
+         } else {
+            if (wasDoneOnDate) {
+              dailyCheckins.delete(targetDate);
+            } else {
+              dailyCheckins.add(targetDate);
+              isNowCompleted = true; // For streak trigger
+            }
+         }
+         
+         const isCompletedToday = dailyCheckins.has(todayIso);
+         
+         return {
+           ...t,
+           completed: isCompletedToday,
+           disciplineData: {
+             ...disciplineData,
+             dailyCheckins: Array.from(dailyCheckins)
+           }
+         };
+      }
+
       const completedDates = new Set(t.completedDates || []);
       let newCompleted = t.completed;
       

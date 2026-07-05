@@ -325,7 +325,14 @@ export default function CalendarScreen() {
 
     if (viewType === 'Harian') {
       selectedTasks.forEach(tk => {
-        if (tk.repeat === 'daily') {
+        if (tk.isDiscipline) {
+          const checkins = tk.disciplineData?.dailyCheckins || [];
+          if (checkins.includes(selectedDateStr)) {
+            completed++;
+          } else {
+            active++;
+          }
+        } else if (tk.repeat === 'daily') {
           const compDates = tk.completedDates || [];
           if (compDates.includes(selectedDateStr)) {
             completed++;
@@ -383,7 +390,14 @@ export default function CalendarScreen() {
               return;
             }
 
-            if (tk.repeat === 'daily') {
+            if (tk.isDiscipline) {
+              const checkins = tk.disciplineData?.dailyCheckins || [];
+              if (checkins.includes(iterStr)) {
+                completed++;
+              } else {
+                active++;
+              }
+            } else if (tk.repeat === 'daily') {
               // Daily task/habit
               const compDates = tk.completedDates || [];
               if (compDates.includes(iterStr)) {
@@ -631,16 +645,12 @@ export default function CalendarScreen() {
                             return (
                              <div 
                                key={task.id} 
-                               onClick={() => { setSelectedDetailTaskId(task.id); setSelectedDetailModalTab('info'); setHabitCalendarDate(new Date()); }}
-                               className="flex items-center justify-between gap-3.5 bg-slate-950/35 hover:bg-slate-950/65 p-3.5 rounded-2xl border border-slate-800/40 cursor-pointer hover:border-indigo-500/40 transition-all duration-200 group"
+                               onClick={() => toggleTask(task.id, selectedDateStr)}
+                               className="flex items-center justify-between gap-3.5 bg-slate-950/35 hover:bg-slate-950/65 p-3.5 rounded-2xl border border-slate-800/40 cursor-pointer hover:border-emerald-500/30 transition-all duration-200 group"
                              >
                                <div className="flex items-center gap-3.5 min-w-0 flex-1">
                                  <div 
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     toggleTask(task.id, selectedDateStr);
-                                   }}
-                                   className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${isTaskCompleted ? 'bg-emerald-500 border-emerald-500 scale-95' : 'bg-transparent border-slate-600 group-hover:border-indigo-500'}`}
+                                   className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${isTaskCompleted ? 'bg-emerald-500 border-emerald-500 scale-95' : 'bg-transparent border-slate-600 group-hover:border-emerald-500'}`}
                                  >
                                    {isTaskCompleted && (
                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-slate-950">
