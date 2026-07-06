@@ -23,6 +23,13 @@ const getLocalDateFromStr = (dateStr: string) => {
 
 export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => void }) {
   const [activeTab, setActiveTab] = useState<'Biasa' | 'Disiplin'>('Biasa');
+  const [sortBy, setSortBy] = useState<'waktu' | 'level'>(() => {
+    try {
+      return (localStorage.getItem('noto_tasks_sort') as 'waktu' | 'level') || 'waktu';
+    } catch(e) {
+      return 'waktu';
+    }
+  });
   const [showCompleted, setShowCompleted] = useState(false);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -147,15 +154,49 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
     };
     const isNoDateTask = (t: any) => !t.date && t?.repeat !== 'daily';
 
-    const todayTasks = uncompleted.filter(isTodayTask);
-    const overdueTasks = uncompleted.filter(isOverdueTask);
-    const upcomingTasks = uncompleted.filter(isUpcomingTask);
-    const noDateTasks = uncompleted.filter(isNoDateTask);
+    const sortTasks = (taskList: any[]) => {
+      return [...taskList].sort((a, b) => {
+        if (sortBy === 'level') {
+          const priorityMap: Record<string, number> = {
+            'Tinggi': 3,
+            'Sedang': 2,
+            'Rendah': 1
+          };
+          const aPriority = priorityMap[a.priority] || 2;
+          const bPriority = priorityMap[b.priority] || 2;
+          if (bPriority !== aPriority) {
+            return bPriority - aPriority;
+          }
+        }
+        
+        const aDate = getTaskDateStr(a) || '';
+        const bDate = getTaskDateStr(b) || '';
+        if (aDate !== bDate) {
+          return aDate.localeCompare(bDate);
+        }
+
+        if (a.alarmTime && b.alarmTime) {
+          return a.alarmTime.localeCompare(b.alarmTime);
+        }
+        if (a.alarmTime) return -1;
+        if (b.alarmTime) return 1;
+
+        const aTime = a.time || '';
+        const bTime = b.time || '';
+        return aTime.localeCompare(bTime);
+      });
+    };
+
+    const todayTasks = sortTasks(uncompleted.filter(isTodayTask));
+    const overdueTasks = sortTasks(uncompleted.filter(isOverdueTask));
+    const upcomingTasks = sortTasks(uncompleted.filter(isUpcomingTask));
+    const noDateTasks = sortTasks(uncompleted.filter(isNoDateTask));
+    const sortedCompleted = sortTasks(completed);
 
     const disciplineTask = tasks.find(t => t.isDiscipline && !t.completed);
 
-    return { todayTasks, overdueTasks, upcomingTasks, noDateTasks, completedTasks: completed, disciplineTask, filteredTasks: uncompleted };
-  }, [tasks]);
+    return { todayTasks, overdueTasks, upcomingTasks, noDateTasks, completedTasks: sortedCompleted, disciplineTask, filteredTasks: uncompleted };
+  }, [tasks, sortBy]);
 
   const handleSelectExisting = useCallback(() => { 
     setNewTaskIsDiscipline(true); 
@@ -172,6 +213,28 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
         <div className="flex items-center gap-4">
           <span className="font-bold text-2xl text-slate-50 tracking-tight">{t('tasksMenu')}</span>
         </div>
+        {activeTab === 'Biasa' && (
+          <div className="flex items-center gap-0.5 bg-slate-950/80 border border-slate-800/60 rounded-xl p-0.5 text-[10px]">
+            <button
+              onClick={() => {
+                setSortBy('waktu');
+                try { localStorage.setItem('noto_tasks_sort', 'waktu'); } catch(e){}
+              }}
+              className={`px-2 py-0.5 rounded-lg font-bold transition-all duration-200 cursor-pointer ${sortBy === 'waktu' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              {lang === 'id' ? 'Waktu' : 'Time'}
+            </button>
+            <button
+              onClick={() => {
+                setSortBy('level');
+                try { localStorage.setItem('noto_tasks_sort', 'level'); } catch(e){}
+              }}
+              className={`px-2 py-0.5 rounded-lg font-bold transition-all duration-200 cursor-pointer ${sortBy === 'level' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              {lang === 'id' ? 'Level' : 'Level'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Mode Selector */}

@@ -97,19 +97,19 @@
   --color-orange-500: #e05300;
 
   color-scheme: dark;
-  --color-slate-950: #0a0a0a;   /* Base dark */
-  --color-slate-900: rgba(15, 23, 42, 0.75); /* Translucent Glass Dark */
-  --color-slate-800: rgba(30, 41, 59, 0.7);  /* Translucent Glass Card */
-  --color-slate-700: rgba(51, 65, 85, 0.6);
-  --color-slate-600: #475569;
-  --color-slate-500: #ff6b00;   /* Cool Orange main accent */
-  --color-slate-400: #38bdf8;
-  --color-slate-300: #94a3b8;
-  --color-slate-200: #cbd5e1;
-  --color-slate-100: #f1f5f9;
+  --color-slate-950: #050811;   /* Base deep cyber dark blue */
+  --color-slate-900: rgba(13, 19, 36, 0.85); /* Translucent deep blue glass */
+  --color-slate-800: rgba(22, 32, 59, 0.75);  /* Translucent card glass */
+  --color-slate-700: rgba(38, 51, 89, 0.65);  /* Cyber borders */
+  --color-slate-600: #64748b;   /* Cool gray-blue */
+  --color-slate-500: #94a3b8;   /* Muted gray text */
+  --color-slate-400: #cbd5e1;   /* Readable text */
+  --color-slate-300: #e2e8f0;   /* Bright text */
+  --color-slate-200: #f1f5f9;   /* Highlight text */
+  --color-slate-100: #f8fafc;   /* Headings */
   --color-slate-50: #ffffff;
   
-  --color-indigo-400: #ff6b00; /* Cool Orange */
+  --color-indigo-400: #ff6b00; /* Cool Orange main accent */
   --color-indigo-500: #ff5500;
   --color-indigo-600: #cc4400;
 }
@@ -131,20 +131,20 @@
 
   color-scheme: light;
   --color-slate-950: #fdf8eb;   /* Soft warm ivory cream background */
-  --color-slate-900: rgba(253, 244, 227, 0.85); /* Warm light cream */
+  --color-slate-900: rgba(253, 244, 227, 0.85); /* Warm light cream second bg */
   --color-slate-800: rgba(250, 235, 215, 0.8);  /* Cream card */
-  --color-slate-700: rgba(254, 215, 170, 0.7);
-  --color-slate-600: #f472b6;   /* Soft Cute Pink */
-  --color-slate-500: #ec4899;   /* Cute Deep Pink */
-  --color-slate-400: #db2777;
-  --color-slate-300: #be185d;
-  --color-slate-200: #831843;
-  --color-slate-100: #500724;
-  --color-slate-50: #1c0008;
+  --color-slate-700: rgba(254, 215, 170, 0.7);  /* Warm divider */
+  --color-slate-600: #bfa280;   /* Muted caramel */
+  --color-slate-500: #a1825e;   /* Soft chestnut brown */
+  --color-slate-400: #856543;   /* Warm hazelnut brown */
+  --color-slate-300: #6a4d2c;   /* Rich cocoa brown */
+  --color-slate-200: #51371b;   /* Dark chocolate */
+  --color-slate-100: #38230f;   /* Deep espresso brown headings */
+  --color-slate-50: #221204;
   
-  --color-indigo-400: #ec4899; /* Cute Pink accent */
-  --color-indigo-500: #db2777;
-  --color-indigo-600: #be185d;
+  --color-indigo-400: #f472b6; /* Cute Pink accent */
+  --color-indigo-500: #ec4899;
+  --color-indigo-600: #db2777;
 }
 
 .wallpaper-theme {
