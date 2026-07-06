@@ -510,7 +510,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
   };
-  const deleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
+  const deleteTask = (id: string) => setTasks(prev => {
+    const existing = prev.find(t => t.id === id);
+    if (!existing) return prev;
+    
+    if (existing.deleted) {
+      // Permanent delete
+      return prev.filter(t => t.id !== id);
+    }
+    
+    // Soft delete
+    return prev.map(t => {
+      if (t.id !== id) return t;
+      return {
+        ...t,
+        deleted: true,
+        deletedAt: new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0]
+      };
+    });
+  });
 
   const setMood = (date: string, mood: MoodEntry['mood'], note?: string) => {
     setMoods(prev => {

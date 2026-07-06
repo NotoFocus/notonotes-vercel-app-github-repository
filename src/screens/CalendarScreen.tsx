@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Activity, Flame, Repeat, Calendar, CheckCircle2, Smile, Clock, X, TrendingUp, Plus, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Activity, Flame, Repeat, Calendar, CheckCircle2, Smile, Clock, X, TrendingUp, Plus, Trash2, ChevronRight as ChevronRightIcon, Edit2, Check } from 'lucide-react';
 import { useAppStore } from '../store';
 import { generateId } from '../utils';
 import { useTranslation } from '../translations';
@@ -111,8 +111,14 @@ export default function CalendarScreen() {
   const [selectedDetailTaskId, setSelectedDetailTaskId] = useState<string | null>(null);
   const [selectedDetailModalTab, setSelectedDetailModalTab] = useState<'info' | 'analytics'>('info');
   const [habitCalendarDate, setHabitCalendarDate] = useState(new Date());
-  const { tasks, moods, lang, streak, setMood, toggleTask, addTask } = useAppStore();
+  const { tasks, moods, lang, streak, setMood, toggleTask, addTask, deleteTask, updateTask } = useAppStore();
   const t = useTranslation(lang);
+
+  // Calendar task editing state
+  const [isEditingCalendarTask, setIsEditingCalendarTask] = useState(false);
+  const [editCalTaskTitle, setEditCalTaskTitle] = useState('');
+  const [editCalTaskTime, setEditCalTaskTime] = useState('09:00');
+  const [editCalTaskPriority, setEditCalTaskPriority] = useState<'Tinggi' | 'Sedang' | 'Rendah'>('Sedang');
 
   // Quick task state
   const [isAddingQuickTask, setIsAddingQuickTask] = useState(false);
@@ -124,6 +130,15 @@ export default function CalendarScreen() {
   const selectedDetailTask = useMemo(() => {
     return tasks.find(tk => tk.id === selectedDetailTaskId) || null;
   }, [tasks, selectedDetailTaskId]);
+
+  useEffect(() => {
+    if (selectedDetailTask) {
+      setEditCalTaskTitle(selectedDetailTask.title);
+      setEditCalTaskTime(selectedDetailTask.time || '09:00');
+      setEditCalTaskPriority(selectedDetailTask.priority);
+      setIsEditingCalendarTask(false);
+    }
+  }, [selectedDetailTask]);
 
   const locale = lang === 'en' ? 'en-US' : 'id-ID';
   const daysOfWeek = Array.from({ length: 7 }, (_, i) => {
@@ -255,6 +270,17 @@ export default function CalendarScreen() {
       
       const createdDateStr = t.createdAt || tDateStr;
       
+      if (t.deleted) {
+        const deletedAtStr = t.deletedAt || todayStr;
+        if (t.isDiscipline) {
+          return (selectedDateStr >= createdDateStr && selectedDateStr <= deletedAtStr) || t.disciplineData?.dailyCheckins?.includes(selectedDateStr) || false;
+        }
+        if (t.repeat === 'daily') {
+          return (selectedDateStr >= createdDateStr && selectedDateStr <= deletedAtStr) || t.completedDates?.includes(selectedDateStr) || false;
+        }
+        return tDateStr === selectedDateStr;
+      }
+      
       if (t.repeat === 'daily' || t.isDiscipline) {
         return selectedDateStr >= createdDateStr && selectedDateStr <= todayStr;
       }
@@ -282,6 +308,37 @@ export default function CalendarScreen() {
        const tD = new Date(y, m - 1, d, 12, 0, 0, 0); // Noon to avoid timezone shifts
        const [cy, cm, cd] = createdDateStr.split('-').map(Number);
        const cD = new Date(cy, cm - 1, cd, 12, 0, 0, 0); // Noon to avoid timezone shifts
+
+       if (t.deleted) {
+         const deletedAtStr = t.deletedAt || todayStr;
+         const [dly, dlm, dld] = deletedAtStr.split('-').map(Number);
+         const delD = new Date(dly, dlm - 1, dld, 12, 0, 0, 0);
+
+         if (viewType === 'Harian') {
+           if (t.repeat === 'daily' || t.isDiscipline) {
+             return selectedDateStr >= createdDateStr && selectedDateStr <= deletedAtStr;
+           }
+           return tDateStr === selectedDateStr;
+         } else if (viewType === 'Mingguan') {
+           if (t.repeat === 'daily' || t.isDiscipline) return startOfWeek <= delD && endOfWeek >= cD;
+           return tD >= startOfWeek && tD <= endOfWeek;
+         } else if (viewType === 'Bulanan') {
+           if (t.repeat === 'daily' || t.isDiscipline) {
+             const monthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 0, 0, 0, 0);
+             const monthEnd = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59, 999);
+             return monthStart <= delD && monthEnd >= cD;
+           }
+           return tD.getMonth() === selectedDate.getMonth() && tD.getFullYear() === selectedDate.getFullYear();
+         } else if (viewType === 'Tahunan') {
+           if (t.repeat === 'daily' || t.isDiscipline) {
+             const yearStart = new Date(selectedDate.getFullYear(), 0, 1, 0, 0, 0, 0);
+             const yearEnd = new Date(selectedDate.getFullYear(), 11, 31, 23, 59, 59, 999);
+             return yearStart <= delD && yearEnd >= cD;
+           }
+           return tD.getFullYear() === selectedDate.getFullYear();
+         }
+         return false;
+       }
 
        if (viewType === 'Harian') {
          if ((t.repeat === 'daily' || t.isDiscipline) && selectedDateStr >= createdDateStr && selectedDateStr <= todayStr) return true;
@@ -330,7 +387,7 @@ export default function CalendarScreen() {
           if (checkins.includes(selectedDateStr)) {
             completed++;
           } else {
-            active++;
+            if (!tk.deleted) active++;
           }
         } else if (tk.repeat === 'daily') {
           const compDates = tk.completedDates || [];
@@ -339,16 +396,16 @@ export default function CalendarScreen() {
           } else {
             if (selectedDateStr === todayStr) {
                if (tk.completed) completed++;
-               else active++;
+               else { if (!tk.deleted) active++; }
             } else {
-               active++;
+               if (!tk.deleted) active++;
             }
           }
         } else {
           if (tk.completed) {
             completed++;
           } else {
-            active++;
+            if (!tk.deleted) active++;
           }
         }
       });
@@ -390,12 +447,14 @@ export default function CalendarScreen() {
               return;
             }
 
+            const isDeletedNow = tk.deleted && tk.deletedAt && iterStr > tk.deletedAt;
+
             if (tk.isDiscipline) {
               const checkins = tk.disciplineData?.dailyCheckins || [];
               if (checkins.includes(iterStr)) {
                 completed++;
               } else {
-                active++;
+                if (!isDeletedNow) active++;
               }
             } else if (tk.repeat === 'daily') {
               // Daily task/habit
@@ -405,9 +464,9 @@ export default function CalendarScreen() {
               } else {
                 if (iterStr === todayStr) {
                   if (tk.completed) completed++;
-                  else active++;
+                  else { if (!isDeletedNow) active++; }
                 } else {
-                  active++;
+                  if (!isDeletedNow) active++;
                 }
               }
             } else {
@@ -417,7 +476,7 @@ export default function CalendarScreen() {
                 if (tk.completed) {
                   completed++;
                 } else {
-                  active++;
+                  if (!isDeletedNow) active++;
                 }
               }
             }
@@ -645,12 +704,18 @@ export default function CalendarScreen() {
                             return (
                              <div 
                                key={task.id} 
-                               onClick={() => toggleTask(task.id, selectedDateStr)}
-                               className="flex items-center justify-between gap-3.5 bg-slate-950/35 hover:bg-slate-950/65 p-3.5 rounded-2xl border border-slate-800/40 cursor-pointer hover:border-emerald-500/30 transition-all duration-200 group"
+                               className={`flex items-center justify-between gap-3.5 p-3.5 rounded-2xl border transition-all duration-200 group ${task.deleted ? 'bg-slate-950/10 border-slate-900/40 opacity-45 italic' : 'bg-slate-950/35 hover:bg-slate-950/65 border-slate-800/40 hover:border-emerald-500/30 cursor-pointer'}`}
                              >
-                               <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                               <button 
+                                 disabled={task.deleted}
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   toggleTask(task.id, selectedDateStr);
+                                 }}
+                                 className={`p-1 rounded-lg flex-none flex items-center justify-center transition-colors ${task.deleted ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                               >
                                  <div 
-                                   className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${isTaskCompleted ? 'bg-emerald-500 border-emerald-500 scale-95' : 'bg-transparent border-slate-600 group-hover:border-emerald-500'}`}
+                                   className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${isTaskCompleted ? 'bg-emerald-500 border-emerald-500 scale-95' : 'bg-transparent border-slate-600'}`}
                                  >
                                    {isTaskCompleted && (
                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 text-slate-950">
@@ -658,16 +723,55 @@ export default function CalendarScreen() {
                                      </svg>
                                    )}
                                  </div>
+                               </button>
+
+                               <div 
+                                 onClick={() => setSelectedDetailTaskId(task.id)} 
+                                 className="flex items-center gap-3.5 min-w-0 flex-1 cursor-pointer"
+                               >
                                  <span className={`text-sm font-medium transition-all truncate flex items-center gap-2 ${isTaskCompleted ? 'text-slate-500 line-through decoration-1' : 'text-slate-200'}`}>
                                    {task.isDiscipline && (
                                      <span className="bg-orange-500/10 border border-orange-500/25 text-orange-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase flex items-center gap-0.5 shrink-0">
                                        <span className="animate-pulse">🔥</span> {lang === 'id' ? 'Disiplin' : 'Discipline'}
                                      </span>
                                    )}
+                                   {task.deleted && (
+                                     <span className="bg-rose-500/10 border border-rose-500/25 text-rose-400 px-1 py-0.5 rounded text-[8px] font-black tracking-wider uppercase shrink-0">
+                                       {lang === 'id' ? 'Terhapus' : 'Deleted'}
+                                     </span>
+                                   )}
                                    <span className="truncate">{task.title}</span>
-                                 </span>
-                               </div>
+                                  </span>
+                                </div>
 
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {task.deleted ? (
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        updateTask({ ...task, deleted: false }); 
+                                      }}
+                                      className="p-1.5 text-emerald-400 hover:text-emerald-300 transition-colors"
+                                      title={lang === 'id' ? 'Pulihkan' : 'Restore'}
+                                    >
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                                        <polyline points="23 4 23 10 17 10" />
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                                      </svg>
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        deleteTask(task.id); 
+                                      }}
+                                      className="p-1.5 text-slate-500 hover:text-red-400 transition-colors shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title={lang === 'id' ? 'Hapus' : 'Delete'}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
                              </div>
                            );
                         })}
@@ -1143,60 +1247,145 @@ export default function CalendarScreen() {
                 )}
 
                 {(!isDaily || selectedDetailModalTab === 'info') ? (
-                  <div className="space-y-4 sm:space-y-5 animate-fadeIn">
-                    {/* Title and Priority */}
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${pColor}`}>
-                          {selectedDetailTask.priority}
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-indigo-500/10 border-indigo-500/20 text-indigo-300">
-                          {isDaily ? (lang === 'id' ? 'Kebiasaan Harian' : 'Daily Habit') : (lang === 'id' ? 'Tugas Sekali' : 'One-time Task')}
-                        </span>
-                      </div>
-                      <h3 className="text-xl font-extrabold text-slate-50 tracking-tight leading-snug">
-                        {selectedDetailTask.title}
-                      </h3>
-                    </div>
-
-                    {/* Metadata Grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
-                        <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Waktu' : 'Time'}</span>
-                          <span className="text-xs font-bold text-slate-200 block truncate">{selectedDetailTask.time || '--:--'}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
-                        <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Dibuat' : 'Created'}</span>
-                          <span className="text-xs font-bold text-slate-200 block truncate">{createdStr}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Interactive Status Block */}
-                    <div className="bg-slate-950/40 border border-slate-800/40 rounded-2xl p-4 flex items-center justify-between">
+                  isEditingCalendarTask ? (
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!editCalTaskTitle.trim()) return;
+                      updateTask({
+                        ...selectedDetailTask,
+                        title: editCalTaskTitle.trim(),
+                        time: editCalTaskTime,
+                        priority: editCalTaskPriority,
+                      });
+                      setIsEditingCalendarTask(false);
+                    }} className="space-y-4 animate-fadeIn">
                       <div>
-                        <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block mb-0.5">
-                          {lang === 'id' ? 'Status Tanggal' : 'Date Status'} ({selectedDateStr === todayStr ? (lang === 'id' ? 'Hari Ini' : 'Today') : selectedDateStr})
-                        </span>
-                        <span className={`text-sm font-extrabold ${isDetailTaskCompleted ? 'text-emerald-400' : 'text-amber-400'}`}>
-                          {isDetailTaskCompleted ? (lang === 'id' ? 'Selesai' : 'Completed') : (lang === 'id' ? 'Belum Selesai' : 'Active')}
-                        </span>
+                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">
+                          {lang === 'id' ? 'Judul Tugas' : 'Task Title'}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editCalTaskTitle}
+                          onChange={(e) => setEditCalTaskTitle(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs outline-none focus:border-indigo-500 transition-colors"
+                        />
                       </div>
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${
-                        isDetailTaskCompleted 
-                          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                          : 'bg-slate-900 border-slate-800 text-slate-500'
-                      }`}>
-                        <CheckCircle2 className="w-5 h-5" />
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">
+                            {lang === 'id' ? 'Waktu' : 'Time'}
+                          </label>
+                          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-100 text-xs">
+                            <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                            <input
+                              type="time"
+                              value={editCalTaskTime}
+                              onChange={(e) => setEditCalTaskTime(e.target.value)}
+                              className="bg-transparent w-full outline-none text-[11px] text-slate-200 font-bold [color-scheme:dark]"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">
+                            {lang === 'id' ? 'Prioritas' : 'Priority'}
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5 bg-slate-950 border border-slate-800 rounded-xl p-1 h-[38px]">
+                            {[
+                              { val: 'Rendah', label: lang === 'id' ? 'Rndh' : 'Low', activeBg: 'bg-emerald-600 text-white' },
+                              { val: 'Sedang', label: lang === 'id' ? 'Sdng' : 'Med', activeBg: 'bg-amber-500 text-slate-950' },
+                              { val: 'Tinggi', label: lang === 'id' ? 'Tggi' : 'High', activeBg: 'bg-rose-600 text-white' },
+                            ].map((p) => {
+                              const isSel = editCalTaskPriority === p.val;
+                              return (
+                                <button
+                                  key={p.val}
+                                  type="button"
+                                  onClick={() => setEditCalTaskPriority(p.val as any)}
+                                  className={`rounded-lg text-[10px] font-extrabold transition-all ${isSel ? p.activeBg + ' scale-[1.02]' : 'text-slate-400 hover:text-slate-200'}`}
+                                >
+                                  {p.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2.5 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingCalendarTask(false)}
+                          className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs border border-slate-700 transition-all"
+                        >
+                          {lang === 'id' ? 'Batal' : 'Cancel'}
+                        </button>
+                        <button
+                          type="submit"
+                          className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-600/10 transition-all"
+                        >
+                          {lang === 'id' ? 'Simpan' : 'Save'}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="space-y-4 sm:space-y-5 animate-fadeIn">
+                      {/* Title and Priority */}
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${pColor}`}>
+                            {selectedDetailTask.priority}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-indigo-500/10 border-indigo-500/20 text-indigo-300">
+                            {isDaily ? (lang === 'id' ? 'Kebiasaan Harian' : 'Daily Habit') : (lang === 'id' ? 'Tugas Sekali' : 'One-time Task')}
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-extrabold text-slate-50 tracking-tight leading-snug">
+                          {selectedDetailTask.title}
+                        </h3>
+                      </div>
+
+                      {/* Metadata Grid */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
+                          <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Waktu' : 'Time'}</span>
+                            <span className="text-xs font-bold text-slate-200 block truncate">{selectedDetailTask.time || '--:--'}</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-3 flex items-center gap-3">
+                          <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[9px] text-slate-500 block uppercase font-bold tracking-wider">{lang === 'id' ? 'Dibuat' : 'Created'}</span>
+                            <span className="text-xs font-bold text-slate-200 block truncate">{createdStr}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Status Block */}
+                      <div className="bg-slate-950/40 border border-slate-800/40 rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                          <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block mb-0.5">
+                            {lang === 'id' ? 'Status Tanggal' : 'Date Status'} ({selectedDateStr === todayStr ? (lang === 'id' ? 'Hari Ini' : 'Today') : selectedDateStr})
+                          </span>
+                          <span className={`text-sm font-extrabold ${isDetailTaskCompleted ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {isDetailTaskCompleted ? (lang === 'id' ? 'Selesai' : 'Completed') : (lang === 'id' ? 'Belum Selesai' : 'Active')}
+                          </span>
+                        </div>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all ${
+                          isDetailTaskCompleted 
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                            : 'bg-slate-900 border-slate-800 text-slate-500'
+                        }`}>
+                          <CheckCircle2 className="w-5 h-5" />
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )
                 ) : (
                   <div className="space-y-4 sm:space-y-5 animate-fadeIn">
                     {/* Habits Analytics */}
@@ -1233,6 +1422,27 @@ export default function CalendarScreen() {
                         </div>
                       </div>
                     </div>
+
+                    {selectedDetailTask.isDiscipline && selectedDetailTask.disciplineData?.punishment && (
+                      <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-3.5 flex items-center justify-between text-left animate-in fade-in duration-200">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-rose-400 uppercase font-black tracking-wider block">
+                            {lang === 'id' ? 'Penyelesaian Hukuman' : 'Consequence Cleared'}
+                          </span>
+                          <span className="text-xs text-slate-300 block">
+                            {selectedDetailTask.disciplineData.punishment}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-xl font-black text-rose-400 block">
+                            {(selectedDetailTask.disciplineData.punishmentCompletedDates || []).length}
+                          </span>
+                          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">
+                            {lang === 'id' ? 'kali dilakukan' : 'times done'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Check-in History (Calendar Grid) */}
                     <div>
@@ -1298,9 +1508,24 @@ export default function CalendarScreen() {
                               key={idx} 
                               className="flex flex-col items-center justify-center"
                             >
-                              <div 
-                                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex flex-col items-center justify-center text-[10px] sm:text-xs font-black transition-all relative ${getDayStyles()} ${day.isToday ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900' : ''}`}
-                                title={day.dateStr}
+                              <button 
+                                type="button"
+                                disabled={day.isFuture}
+                                onClick={() => {
+                                  toggleTask(selectedDetailTask.id, day.dateStr);
+                                }}
+                                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex flex-col items-center justify-center text-[10px] sm:text-xs font-black transition-all relative ${getDayStyles()} ${
+                                  day.isToday ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900' : ''
+                                } ${
+                                  day.isFuture 
+                                    ? 'cursor-not-allowed opacity-40' 
+                                    : 'cursor-pointer hover:scale-110 hover:brightness-125 active:scale-95 shadow-[0_0_8px_rgba(99,102,241,0.1)]'
+                                }`}
+                                title={
+                                  day.isFuture 
+                                    ? `${day.dateStr} (${lang === 'id' ? 'Mendatang' : 'Upcoming'})` 
+                                    : `${day.dateStr} (${lang === 'id' ? 'Klik untuk ubah status' : 'Click to toggle status'})`
+                                }
                               >
                                 <span>{day.dayNum}</span>
                                 {day.isCompleted && (
@@ -1310,7 +1535,7 @@ export default function CalendarScreen() {
                                     </svg>
                                   </div>
                                 )}
-                              </div>
+                              </button>
                             </div>
                           );
                         })}
@@ -1323,29 +1548,80 @@ export default function CalendarScreen() {
 
               {/* Footer Actions */}
               <div className="p-4 sm:p-5 border-t border-slate-800/60 bg-slate-950/20 flex gap-3 flex-none">
-                <button
-                  onClick={() => {
-                    toggleTask(selectedDetailTask.id, selectedDateStr);
-                  }}
-                  className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                    isDetailTaskCompleted 
-                      ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20' 
-                      : 'bg-indigo-600 text-white hover:bg-indigo-500'
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>
-                    {isDetailTaskCompleted 
-                      ? (lang === 'id' ? 'Batalkan Selesai' : 'Undo Complete') 
-                      : (lang === 'id' ? 'Tandai Selesai' : 'Mark Complete')}
-                  </span>
-                </button>
-                <button
-                  onClick={() => setSelectedDetailTaskId(null)}
-                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-all"
-                >
-                  {lang === 'id' ? 'Tutup' : 'Close'}
-                </button>
+                {!isEditingCalendarTask && (
+                  <>
+                    {selectedDetailTask.deleted ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            updateTask({ ...selectedDetailTask, deleted: false });
+                            setSelectedDetailTaskId(null);
+                          }}
+                          className="flex-1 py-3 px-4 rounded-xl font-bold text-xs bg-emerald-600 text-white hover:bg-emerald-500 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>{lang === 'id' ? 'Pulihkan Tugas' : 'Restore Task'}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            deleteTask(selectedDetailTask.id);
+                            setSelectedDetailTaskId(null);
+                          }}
+                          className="px-4 py-3 bg-rose-600 text-white hover:bg-rose-500 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+                          title={lang === 'id' ? 'Hapus Permanen' : 'Delete Permanently'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>{lang === 'id' ? 'Hapus Permanen' : 'Delete Permanently'}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            toggleTask(selectedDetailTask.id, selectedDateStr);
+                          }}
+                          className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                            isDetailTaskCompleted 
+                              ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20' 
+                              : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>
+                            {isDetailTaskCompleted 
+                              ? (lang === 'id' ? 'Batalkan Selesai' : 'Undo Complete') 
+                              : (lang === 'id' ? 'Tandai Selesai' : 'Mark Complete')}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => setIsEditingCalendarTask(true)}
+                          className="px-4 py-3 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+                          title={lang === 'id' ? 'Edit' : 'Edit'}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          <span>{lang === 'id' ? 'Edit' : 'Edit'}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            deleteTask(selectedDetailTask.id);
+                            setSelectedDetailTaskId(null);
+                          }}
+                          className="px-4 py-3 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+                          title={lang === 'id' ? 'Hapus' : 'Delete'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>{lang === 'id' ? 'Hapus' : 'Delete'}</span>
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setSelectedDetailTaskId(null)}
+                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-all"
+                    >
+                      {lang === 'id' ? 'Tutup' : 'Close'}
+                    </button>
+                  </>
+                )}
               </div>
 
             </div>

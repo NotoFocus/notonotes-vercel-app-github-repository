@@ -144,12 +144,12 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
 
   const { pinnedNotes, pinnedTasks, disciplineTask, todayTasks, activeTasksCount, totalTodayCount, progressPercent } = useMemo(() => {
     const pNotes = (notes || []).filter(n => n && n.pinned && !n.isArchived);
-    const pTasks = (tasks || []).filter(t => t && t.pinned && !t.isDiscipline);
-    const dTask = (tasks || []).find(t => t && t.isDiscipline && !t.completed);
+    const pTasks = (tasks || []).filter(t => t && t.pinned && !t.isDiscipline && !t.deleted);
+    const dTask = (tasks || []).find(t => t && t.isDiscipline && !t.completed && !t.deleted);
 
     const isToday = (t: any) => t?.date === todayStr || t?.date === 'Hari ini' || t?.date === 'Hari Ini' || t?.repeat === 'daily';
     
-    const tTasks = (tasks || []).filter(t => t && isToday(t) && !t.isDiscipline);
+    const tTasks = (tasks || []).filter(t => t && isToday(t) && !t.isDiscipline && !t.deleted);
     const activeCount = tTasks.filter(t => !t.completed).length;
     const totalCount = tTasks.length;
     const pPercent = totalCount === 0 ? 0 : Math.round(((totalCount - activeCount) / totalCount) * 100);

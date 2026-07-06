@@ -31,6 +31,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
     }
   });
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -124,7 +125,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
     setEditingTask(null);
   };
 
-  const { todayTasks, overdueTasks, upcomingTasks, noDateTasks, completedTasks, disciplineTask, filteredTasks } = useMemo(() => {
+  const { todayTasks, overdueTasks, upcomingTasks, noDateTasks, completedTasks, disciplineTask, filteredTasks, deletedTasks } = useMemo(() => {
     const todayStr = getLocalIsoDate(new Date());
 
     const getTaskDateStr = (t: any) => {
@@ -137,11 +138,13 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
         return t.date;
     };
 
-    let filtered = [...(tasks || [])].filter(t => t !== null && t !== undefined);
+    let allTasks = [...(tasks || [])].filter(t => t !== null && t !== undefined);
+    let activeTasks = allTasks.filter(t => !t.deleted);
+    let delTasks = allTasks.filter(t => t.deleted);
     
     // For Biasa view, we only partition tasks
-    const uncompleted = filtered.filter(t => !t.completed && !t.isDiscipline);
-    const completed = filtered.filter(t => t.completed);
+    const uncompleted = activeTasks.filter(t => !t.completed && !t.isDiscipline);
+    const completed = activeTasks.filter(t => t.completed);
 
     const isTodayTask = (t: any) => getTaskDateStr(t) === todayStr || t?.repeat === 'daily';
     const isOverdueTask = (t: any) => {
@@ -192,10 +195,20 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
     const upcomingTasks = sortTasks(uncompleted.filter(isUpcomingTask));
     const noDateTasks = sortTasks(uncompleted.filter(isNoDateTask));
     const sortedCompleted = sortTasks(completed);
+    const sortedDeleted = sortTasks(delTasks);
 
-    const disciplineTask = tasks.find(t => t.isDiscipline && !t.completed);
+    const disciplineTask = tasks.find(t => t.isDiscipline && !t.completed && !t.deleted);
 
-    return { todayTasks, overdueTasks, upcomingTasks, noDateTasks, completedTasks: sortedCompleted, disciplineTask, filteredTasks: uncompleted };
+    return { 
+      todayTasks, 
+      overdueTasks, 
+      upcomingTasks, 
+      noDateTasks, 
+      completedTasks: sortedCompleted, 
+      disciplineTask, 
+      filteredTasks: uncompleted, 
+      deletedTasks: sortedDeleted 
+    };
   }, [tasks, sortBy]);
 
   const handleSelectExisting = useCallback(() => { 
@@ -352,9 +365,33 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
                 </button>
                 {showCompleted && (
                   <div className="bg-slate-900 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden shadow-sm mt-3">
-                     {completedTasks.map((task, i) => (
-                       <TaskCard key={task.id} task={task} last={i === completedTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
-                     ))}
+                      {completedTasks.map((task, i) => (
+                        <TaskCard key={task.id} task={task} last={i === completedTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
+                      ))}
+                  </div>
+                )}
+              </div>
+              )}
+
+              {/* Group: Terhapus / Arsip (Trash / Archive) */}
+              {deletedTasks.length > 0 && (
+              <div className="mt-4">
+                <button 
+                  onClick={() => setShowDeleted(!showDeleted)} 
+                  className="w-full flex items-center justify-between p-4 bg-slate-900/80 hover:bg-slate-900 border border-slate-800/80 rounded-2xl transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Trash2 className="w-5 h-5 text-slate-500" />
+                    <h3 className="text-sm font-bold text-slate-300">{lang === 'id' ? 'Riwayat & Arsip Tugas (Terhapus)' : 'History & Task Archive (Deleted)'}</h3>
+                    <span className="text-[10px] text-slate-400 font-medium bg-slate-800/80 px-2 py-0.5 rounded-md">{deletedTasks.length}</span>
+                  </div>
+                  <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${showDeleted ? 'rotate-90' : ''}`} />
+                </button>
+                {showDeleted && (
+                  <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden shadow-sm mt-3">
+                      {deletedTasks.map((task, i) => (
+                        <TaskCard key={task.id} task={task} last={i === deletedTasks.length - 1} onToggle={toggleTask} onEdit={openEditTask} />
+                      ))}
                   </div>
                 )}
               </div>
@@ -492,6 +529,21 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
                    )}
                  </div>
 
+                  {editingTask?.deleted && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        updateTask({ ...editingTask, deleted: false });
+                        setIsAddingTask(false);
+                        setEditingTask(null);
+                        setNewTaskTitle('');
+                      }} 
+                      className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-colors mb-3 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/10"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>{lang === 'id' ? 'Pulihkan Tugas Ini' : 'Restore This Task'}</span>
+                    </button>
+                  )}
                  <button type="submit" className="w-full py-3.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20">{t('save')}</button>
               </form>
            </div>
@@ -529,18 +581,33 @@ const TaskCard = React.memo<{ task: Task, last?: boolean, onToggle: (id: string)
   }
 
   return (
-    <div className={`flex items-start gap-4 group border-slate-800/60 cursor-pointer px-4 ${!last ? 'border-b py-4' : 'pt-4 pb-4'}`}>
-      <button onClick={() => onToggle(task.id)} className="p-4 -ml-4 rounded-full flex-none flex items-center justify-center transition-colors mt-0">
-        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-          task.completed 
-            ? 'border-indigo-500 bg-indigo-500' 
-            : 'border-slate-700 group-hover:border-indigo-500'
-        }`}>
-          {task.completed && <div className="w-2 h-2 rounded-sm bg-white" />}
+    <div className={`flex items-start gap-4 group border-slate-800/60 cursor-pointer px-4 ${!last ? 'border-b py-4' : 'pt-4 pb-4'} ${task.deleted ? 'bg-slate-950/20' : ''}`}>
+      {task.deleted ? (
+        <div className="p-4 -ml-4 flex-none flex items-center justify-center mt-0" title={lang === 'id' ? 'Terhapus / Arsip' : 'Deleted / Archive'}>
+          <div className="w-5 h-5 rounded-md border border-slate-800 flex items-center justify-center bg-slate-900 text-slate-500 text-[10px]">
+            🗑️
+          </div>
         </div>
-      </button>
-      <div onClick={() => onEdit(task)} className={`flex-1 ${task.completed ? 'opacity-50' : ''}`}>
-         <h4 className={`text-sm font-medium ${task.completed ? 'text-slate-400 line-through' : 'text-slate-50'}`}>{task.title}</h4>
+      ) : (
+        <button onClick={() => onToggle(task.id)} className="p-4 -ml-4 rounded-full flex-none flex items-center justify-center transition-colors mt-0">
+          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+            task.completed 
+              ? 'border-indigo-500 bg-indigo-500' 
+              : 'border-slate-700 group-hover:border-indigo-500'
+          }`}>
+            {task.completed && <div className="w-2 h-2 rounded-sm bg-white" />}
+          </div>
+        </button>
+      )}
+      <div onClick={() => onEdit(task)} className={`flex-1 ${task.completed ? 'opacity-50' : ''} ${task.deleted ? 'opacity-40 italic' : ''}`}>
+         <h4 className={`text-sm font-medium ${task.completed ? 'text-slate-400 line-through' : 'text-slate-50'} flex items-center gap-2`}>
+           <span>{task.title}</span>
+           {task.deleted && (
+             <span className="text-[8px] font-bold uppercase tracking-widest px-1 py-0.5 rounded text-rose-400 bg-rose-500/10 border border-rose-500/10 shrink-0">
+               {lang === 'id' ? 'Terhapus' : 'Deleted'}
+             </span>
+           )}
+         </h4>
          <div className="flex items-center gap-2 mt-1 flex-wrap">
            <span className="text-[10px] text-slate-400 font-mono">
              {task.date && task.date.includes('-') && task.date !== new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0] ? `${task.date} • ` : ''}{task.time}
@@ -565,7 +632,7 @@ const TaskCard = React.memo<{ task: Task, last?: boolean, onToggle: (id: string)
              {(isHigh ? t('high') : isMed ? t('medium') : t('low')) || task.priority}
            </span>
          </div>
-         {dailyStats && (
+         {dailyStats && !task.deleted && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                 {lang === 'id' ? `Selesai: ${dailyStats.completed} hari` : `Done: ${dailyStats.completed} days`}
@@ -577,18 +644,40 @@ const TaskCard = React.memo<{ task: Task, last?: boolean, onToggle: (id: string)
          )}
       </div>
       <div className="flex gap-1 flex-shrink-0">
-        <button 
-          onClick={(e) => { e.stopPropagation(); updateTask({ ...task, pinned: !task.pinned }); }} 
-          className="p-3 text-slate-400 hover:text-orange-400 transition-colors flex items-center justify-center"
-        >
-           <Pin className={`w-5 h-5 ${task.pinned ? 'fill-orange-400 text-orange-400' : ''}`} />
-        </button>
-        <button 
-          onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
-          className="p-3 -mr-2 text-slate-400 hover:text-red-400 transition-colors flex items-center justify-center"
-        >
-           <Trash2 className="w-5 h-5" />
-        </button>
+        {task.deleted ? (
+          <>
+            <button 
+              onClick={(e) => { e.stopPropagation(); updateTask({ ...task, deleted: false }); }} 
+              className="p-3 text-emerald-400 hover:text-emerald-300 transition-colors flex items-center justify-center gap-1 font-bold"
+              title={lang === 'id' ? 'Pulihkan' : 'Restore'}
+            >
+               <Check className="w-4 h-4 shrink-0" />
+               <span className="text-[10px] uppercase tracking-wider font-extrabold hidden sm:inline">{lang === 'id' ? 'Pulihkan' : 'Restore'}</span>
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
+              className="p-3 -mr-2 text-slate-500 hover:text-red-500 transition-colors flex items-center justify-center"
+              title={lang === 'id' ? 'Hapus Permanen' : 'Delete Permanently'}
+            >
+               <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button 
+              onClick={(e) => { e.stopPropagation(); updateTask({ ...task, pinned: !task.pinned }); }} 
+              className="p-3 text-slate-400 hover:text-orange-400 transition-colors flex items-center justify-center"
+            >
+               <Pin className={`w-5 h-5 ${task.pinned ? 'fill-orange-400 text-orange-400' : ''}`} />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
+              className="p-3 -mr-2 text-slate-400 hover:text-red-400 transition-colors flex items-center justify-center"
+            >
+               <Trash2 className="w-5 h-5" />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -783,6 +872,12 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
                  <span className="text-slate-400 mb-1">{lang === 'id' ? 'Bolong' : 'Missed'}</span>
                  <span className="text-rose-400 font-bold text-sm">{daysMissed} <span className="text-xs font-normal opacity-80">{lang === 'id' ? 'hari' : 'days'}</span></span>
                </div>
+               {d.punishment && (
+                 <div className="flex flex-col text-center animate-in fade-in duration-200">
+                   <span className="text-slate-400 mb-1">{lang === 'id' ? 'Hukuman' : 'Consequence'}</span>
+                   <span className="text-amber-500 font-bold text-sm">{(d.punishmentCompletedDates || []).length} <span className="text-xs font-normal opacity-80">{lang === 'id' ? 'kali' : 'times'}</span></span>
+                 </div>
+               )}
                <div className="flex flex-col text-right">
                  <span className="text-slate-400 mb-1">{lang === 'id' ? 'Sisa' : 'Left'}</span>
                  <span className="text-indigo-400 font-bold text-sm">{daysLeftText}</span>
@@ -910,6 +1005,14 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
                   <p className="text-xs text-slate-400 mb-3 leading-relaxed pr-6">{lang === 'id' ? 'Sesuai komitmen awal, Anda harus menerima konsekuensi:' : 'As per your commitment, you must accept the consequence:'}</p>
                   <div className="bg-rose-500/10 rounded-2xl p-4 border border-rose-500/20 shadow-inner mb-3">
                     <span className="text-sm font-bold text-slate-100">{d.punishment}</span>
+                    <div className="mt-2 text-xs font-semibold text-rose-400/90 flex items-center gap-1.5">
+                      <span>🎯</span>
+                      <span>
+                        {lang === 'id' 
+                          ? `Hukuman ini telah dilakukan sebanyak ${(d.punishmentCompletedDates || []).length} kali.` 
+                          : `This punishment has been completed ${(d.punishmentCompletedDates || []).length} times.`}
+                      </span>
+                    </div>
                   </div>
                   {!(d.punishmentCompletedDates || []).includes(today) ? (
                     <button

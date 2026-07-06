@@ -57,6 +57,8 @@ export interface Task {
   completedDates?: string[];
   isDiscipline?: boolean;
   disciplineData?: DisciplineData;
+  deleted?: boolean;
+  deletedAt?: string;
 }
 
 export interface Transaction {
