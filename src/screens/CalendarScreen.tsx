@@ -158,8 +158,8 @@ export default function CalendarScreen() {
   const getMonthlyAverageMood = () => {
     const monthMoods = (moods || []).filter(m => {
       if (!m || !m.date) return false;
-      const d = new Date(m.date);
-      return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      const d = getLocalDateFromStr(m.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
     if (monthMoods.length === 0) return null;
 
@@ -247,6 +247,54 @@ export default function CalendarScreen() {
 
   const handleSelectDay = (day: number) => {
     setSelectedDate(new Date(currentYear, currentMonth, day));
+  };
+
+  const handlePrevPeriod = () => {
+    if (viewType === 'Harian') {
+      const prev = new Date(selectedDate);
+      prev.setDate(prev.getDate() - 1);
+      setSelectedDate(prev);
+      setCurrentDate(prev);
+    } else if (viewType === 'Mingguan') {
+      const prev = new Date(selectedDate);
+      prev.setDate(prev.getDate() - 7);
+      setSelectedDate(prev);
+      setCurrentDate(prev);
+    } else if (viewType === 'Bulanan') {
+      const prev = new Date(selectedDate);
+      prev.setMonth(prev.getMonth() - 1);
+      setSelectedDate(prev);
+      setCurrentDate(prev);
+    } else if (viewType === 'Tahunan') {
+      const prev = new Date(selectedDate);
+      prev.setFullYear(prev.getFullYear() - 1);
+      setSelectedDate(prev);
+      setCurrentDate(prev);
+    }
+  };
+
+  const handleNextPeriod = () => {
+    if (viewType === 'Harian') {
+      const next = new Date(selectedDate);
+      next.setDate(next.getDate() + 1);
+      setSelectedDate(next);
+      setCurrentDate(next);
+    } else if (viewType === 'Mingguan') {
+      const next = new Date(selectedDate);
+      next.setDate(next.getDate() + 7);
+      setSelectedDate(next);
+      setCurrentDate(next);
+    } else if (viewType === 'Bulanan') {
+      const next = new Date(selectedDate);
+      next.setMonth(next.getMonth() + 1);
+      setSelectedDate(next);
+      setCurrentDate(next);
+    } else if (viewType === 'Tahunan') {
+      const next = new Date(selectedDate);
+      next.setFullYear(next.getFullYear() + 1);
+      setSelectedDate(next);
+      setCurrentDate(next);
+    }
   };
 
   // Convert selected date to string comparable with task 'date'
@@ -375,11 +423,6 @@ export default function CalendarScreen() {
     let completed = 0;
     let active = 0;
 
-    // Helper to get local YYYY-MM-DD string for a Date object
-    const getLocalDateStr = (dObj: Date) => {
-      return new Date(dObj.getTime() - (dObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-    };
-
     if (viewType === 'Harian') {
       selectedTasks.forEach(tk => {
         if (tk.isDiscipline) {
@@ -434,7 +477,7 @@ export default function CalendarScreen() {
       let daysCounted = 0;
 
       while (currentIter <= endDate && daysCounted < maxDays) {
-        const iterStr = getLocalDateStr(currentIter);
+        const iterStr = getLocalIsoDate(currentIter);
         
         // Only count up to today
         if (iterStr <= capDateStr) {
@@ -491,13 +534,228 @@ export default function CalendarScreen() {
 
     return { completedCount: completed, activeCount: active };
   }, [selectedTasks, viewType, selectedDate, selectedDateStr, startOfWeek, endOfWeek, todayStr, getTaskDateStr]);
+
+  const priorityStats = useMemo(() => {
+    let highCompleted = 0, highTotal = 0;
+    let medCompleted = 0, medTotal = 0;
+    let lowCompleted = 0, lowTotal = 0;
+
+    if (viewType === 'Harian') {
+      selectedTasks.forEach(tk => {
+        const prio = tk.priority || 'Sedang';
+        let isCompleted = false;
+        let isActive = false;
+
+        if (tk.isDiscipline) {
+          const checkins = tk.disciplineData?.dailyCheckins || [];
+          if (checkins.includes(selectedDateStr)) {
+            isCompleted = true;
+          } else {
+            if (!tk.deleted) isActive = true;
+          }
+        } else if (tk.repeat === 'daily') {
+          const compDates = tk.completedDates || [];
+          if (compDates.includes(selectedDateStr)) {
+            isCompleted = true;
+          } else {
+            if (selectedDateStr === todayStr) {
+              if (tk.completed) isCompleted = true;
+              else { if (!tk.deleted) isActive = true; }
+            } else {
+              if (!tk.deleted) isActive = true;
+            }
+          }
+        } else {
+          if (tk.completed) {
+            isCompleted = true;
+          } else {
+            if (!tk.deleted) isActive = true;
+          }
+        }
+
+        if (isCompleted) {
+          if (prio === 'Tinggi') highCompleted++;
+          else if (prio === 'Sedang') medCompleted++;
+          else lowCompleted++;
+        }
+        if (isCompleted || isActive) {
+          if (prio === 'Tinggi') highTotal++;
+          else if (prio === 'Sedang') medTotal++;
+          else lowTotal++;
+        }
+      });
+    } else {
+      let startDate: Date;
+      let endDate: Date;
+
+      if (viewType === 'Mingguan') {
+        startDate = new Date(startOfWeek);
+        endDate = new Date(endOfWeek);
+      } else if (viewType === 'Bulanan') {
+        startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+      } else {
+        startDate = new Date(selectedDate.getFullYear(), 0, 1);
+        endDate = new Date(selectedDate.getFullYear(), 11, 31);
+      }
+
+      const currentIter = new Date(startDate);
+      const capDateStr = todayStr;
+      const maxDays = viewType === 'Tahunan' ? 366 : (viewType === 'Bulanan' ? 31 : 7);
+      let daysCounted = 0;
+
+      while (currentIter <= endDate && daysCounted < maxDays) {
+        const iterStr = getLocalIsoDate(currentIter);
+        if (iterStr <= capDateStr) {
+          selectedTasks.forEach(tk => {
+            const tDateStr = getTaskDateStr(tk.date);
+            const createdDateStr = tk.createdAt || tDateStr;
+            if (iterStr >= createdDateStr) {
+              const isDeletedNow = tk.deleted && tk.deletedAt && iterStr > tk.deletedAt;
+              const prio = tk.priority || 'Sedang';
+              
+              let isCompleted = false;
+              let isActive = false;
+
+              if (tk.isDiscipline) {
+                const checkins = tk.disciplineData?.dailyCheckins || [];
+                if (checkins.includes(iterStr)) {
+                  isCompleted = true;
+                } else {
+                  if (!isDeletedNow) isActive = true;
+                }
+              } else if (tk.repeat === 'daily') {
+                const compDates = tk.completedDates || [];
+                if (compDates.includes(iterStr)) {
+                  isCompleted = true;
+                } else {
+                  if (iterStr === todayStr) {
+                    if (tk.completed) isCompleted = true;
+                    else { if (!isDeletedNow) isActive = true; }
+                  } else {
+                    if (!isDeletedNow) isActive = true;
+                  }
+                }
+              } else {
+                if (tDateStr === iterStr) {
+                  if (tk.completed) {
+                    isCompleted = true;
+                  } else {
+                    if (!isDeletedNow) isActive = true;
+                  }
+                }
+              }
+
+              if (isCompleted) {
+                if (prio === 'Tinggi') highCompleted++;
+                else if (prio === 'Sedang') medCompleted++;
+                else lowCompleted++;
+              }
+              if (isCompleted || isActive) {
+                if (prio === 'Tinggi') highTotal++;
+                else if (prio === 'Sedang') medTotal++;
+                else lowTotal++;
+              }
+            }
+          });
+        }
+        currentIter.setDate(currentIter.getDate() + 1);
+        daysCounted++;
+      }
+    }
+
+    return {
+      high: { completed: highCompleted, total: highTotal, rate: highTotal > 0 ? Math.round((highCompleted / highTotal) * 100) : 0 },
+      medium: { completed: medCompleted, total: medTotal, rate: medTotal > 0 ? Math.round((medCompleted / medTotal) * 100) : 0 },
+      low: { completed: lowCompleted, total: lowTotal, rate: lowTotal > 0 ? Math.round((lowCompleted / lowTotal) * 100) : 0 },
+    };
+  }, [selectedTasks, viewType, selectedDate, selectedDateStr, startOfWeek, endOfWeek, todayStr, getTaskDateStr]);
+
+  const completedTasksInPeriod = useMemo(() => {
+    const list: { id: string; title: string; dateStr: string; priority: string; isDiscipline: boolean }[] = [];
+    
+    let startDate: Date;
+    let endDate: Date;
+    if (viewType === 'Harian') {
+      startDate = new Date(selectedDate);
+      endDate = new Date(selectedDate);
+    } else if (viewType === 'Mingguan') {
+      startDate = new Date(startOfWeek);
+      endDate = new Date(endOfWeek);
+    } else if (viewType === 'Bulanan') {
+      startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+    } else {
+      startDate = new Date(selectedDate.getFullYear(), 0, 1);
+      endDate = new Date(selectedDate.getFullYear(), 11, 31);
+    }
+
+    const startStr = getLocalIsoDate(startDate);
+    const endStr = getLocalIsoDate(endDate);
+
+    selectedTasks.forEach(tk => {
+      const tDateStr = getTaskDateStr(tk.date);
+      
+      if (tk.isDiscipline) {
+        const checkins = tk.disciplineData?.dailyCheckins || [];
+        checkins.forEach(cDate => {
+          if (cDate >= startStr && cDate <= endStr) {
+            list.push({
+              id: `${tk.id}-${cDate}`,
+              title: tk.title,
+              dateStr: cDate,
+              priority: tk.priority || 'Sedang',
+              isDiscipline: true
+            });
+          }
+        });
+      } else if (tk.repeat === 'daily') {
+        const compDates = tk.completedDates || [];
+        compDates.forEach(cDate => {
+          if (cDate >= startStr && cDate <= endStr) {
+            list.push({
+              id: `${tk.id}-${cDate}`,
+              title: tk.title,
+              dateStr: cDate,
+              priority: tk.priority || 'Sedang',
+              isDiscipline: false
+            });
+          }
+        });
+        if (tk.completed && !compDates.includes(todayStr) && todayStr >= startStr && todayStr <= endStr) {
+          const createdDateStr = tk.createdAt || tDateStr;
+          if (todayStr >= createdDateStr) {
+            list.push({
+              id: `${tk.id}-${todayStr}`,
+              title: tk.title,
+              dateStr: todayStr,
+              priority: tk.priority || 'Sedang',
+              isDiscipline: false
+            });
+          }
+        }
+      } else {
+        if (tk.completed && tDateStr >= startStr && tDateStr <= endStr) {
+          list.push({
+            id: tk.id,
+            title: tk.title,
+            dateStr: tDateStr,
+            priority: tk.priority || 'Sedang',
+            isDiscipline: false
+          });
+        }
+      }
+    });
+
+    return list.sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+  }, [selectedTasks, viewType, selectedDate, startOfWeek, endOfWeek, todayStr, getTaskDateStr]);
   
   // Prevent Recharts visual glitch by removing padding angle if only one data type exists
   const safePaddingAngle = (completedCount > 0 && activeCount > 0) ? 5 : 0;
   
   const pieData = [
     { name: t('completed') || 'Selesai', value: completedCount, color: '#34d399' },
-    { name: t('active') || 'Aktif', value: activeCount, color: '#fb923c' }
+    { name: lang === 'id' ? 'Belum Selesai' : 'Uncompleted', value: activeCount, color: '#fb923c' }
   ].filter(d => d.value > 0);
 
   const totalCount = completedCount + activeCount;
@@ -522,7 +780,7 @@ export default function CalendarScreen() {
       </div>
 
       {/* Mode Selector (Tabs switcher) */}
-      <div className="px-4 py-3 flex-none">
+      <div className="px-4 py-3 flex-none w-full max-w-xl mx-auto">
         <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 relative shadow-inner">
           <div 
             className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg transition-transform duration-300 ease-out bg-indigo-600 shadow-sm ${activeTab === 'stats' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} 
@@ -553,7 +811,7 @@ export default function CalendarScreen() {
               
               {/* Left Column: Calendar Card */}
               <div className="lg:col-span-7 space-y-6 animate-fadeIn">
-                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
+                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl shadow-xl p-6">
                   {/* Month Navigation inside Card */}
                   <div className="flex justify-between items-center mb-6">
                     <button className="p-2 text-slate-400 hover:text-slate-50 hover:bg-slate-800/60 rounded-full transition-all duration-200" onClick={handlePrevMonth}>
@@ -605,7 +863,7 @@ export default function CalendarScreen() {
               {/* Right Column: Daily Tasks & Mood Logger */}
               <div className="lg:col-span-5 space-y-6 animate-fadeIn">
                 {/* Dynamic Day Detail Panel */}
-                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
+                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl shadow-xl p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-6 border-b border-slate-800/60">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-widest">{lang === 'id' ? 'Aktivitas Harian' : 'Daily Activity'}</span>
@@ -626,7 +884,12 @@ export default function CalendarScreen() {
                           <span>{lang === 'id' ? 'Kemajuan Tugas' : 'Task Progress'}</span>
                         </span>
                         <span className="text-indigo-400 font-mono text-[11px] font-black">
-                          {dayTasks.filter(t => t.repeat === 'daily' ? t.completedDates?.includes(selectedDateStr) : t.completed).length} / {dayTasks.length} {lang === 'id' ? 'Selesai' : 'Done'}
+                          {dayTasks.filter(t => t.isDiscipline 
+                            ? (t.disciplineData?.dailyCheckins?.includes(selectedDateStr) || false)
+                            : (t.repeat === 'daily' 
+                              ? (t.completedDates?.includes(selectedDateStr) || (selectedDateStr === todayStr && t.completed))
+                              : t.completed)
+                          ).length} / {dayTasks.length} {lang === 'id' ? 'Selesai' : 'Done'}
                         </span>
                       </div>
                       <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-850">
@@ -634,7 +897,12 @@ export default function CalendarScreen() {
                           className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500" 
                           style={{ 
                             width: `${Math.round(
-                              (dayTasks.filter(t => t.repeat === 'daily' ? t.completedDates?.includes(selectedDateStr) : t.completed).length / dayTasks.length) * 100
+                              (dayTasks.filter(t => t.isDiscipline 
+                                ? (t.disciplineData?.dailyCheckins?.includes(selectedDateStr) || false)
+                                : (t.repeat === 'daily' 
+                                  ? (t.completedDates?.includes(selectedDateStr) || (selectedDateStr === todayStr && t.completed))
+                                  : t.completed)
+                              ).length / dayTasks.length) * 100
                             )}%` 
                           }}
                         />
@@ -726,13 +994,18 @@ export default function CalendarScreen() {
                                </button>
 
                                <div 
-                                 onClick={() => setSelectedDetailTaskId(task.id)} 
+                                 onClick={() => {
+                                   setActiveTab('stats');
+                                   setSelectedDetailTaskId(task.id);
+                                   setSelectedDetailModalTab('analytics');
+                                   setHabitCalendarDate(new Date());
+                                 }} 
                                  className="flex items-center gap-3.5 min-w-0 flex-1 cursor-pointer"
                                >
                                  <span className={`text-sm font-medium transition-all truncate flex items-center gap-2 ${isTaskCompleted ? 'text-slate-500 line-through decoration-1' : 'text-slate-200'}`}>
                                    {task.isDiscipline && (
                                      <span className="bg-orange-500/10 border border-orange-500/25 text-orange-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase flex items-center gap-0.5 shrink-0">
-                                       <span className="animate-pulse">🔥</span> {lang === 'id' ? 'Disiplin' : 'Discipline'}
+                                       {lang === 'id' ? 'Disiplin' : 'Discipline'}
                                      </span>
                                    )}
                                    {task.deleted && (
@@ -935,193 +1208,340 @@ export default function CalendarScreen() {
             </div>
           ) : (
             /* Productivity Statistics & Habits Section */
-            <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
+            <div className="space-y-6 animate-fadeIn">
               
-              {/* Period Switcher */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1 flex gap-1 shadow-md">
-                {['Harian', 'Mingguan', 'Bulanan', 'Tahunan'].map((type, idx) => {
-                  const displayType = [t('daily') || 'Harian', t('weekly') || 'Mingguan', t('monthly') || 'Bulanan', t('yearly') || 'Tahunan'];
-                  const isActive = viewType === type;
-                  return (
-                    <button 
-                      key={type}
-                      onClick={() => setViewType(type as any)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'}`}
-                    >
-                      {displayType[idx]}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Statistics Summary Card */}
-              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
-                <div className="flex items-center gap-4 mb-5 pb-4 border-b border-slate-800/50">
-                  <div className="w-10 h-10 bg-indigo-500/10 text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
-                    <Activity className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-slate-50 font-bold text-sm tracking-tight">
-                      {t('taskSummary') || 'Ringkasan Tugas'}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 tracking-wide font-mono mt-0.5">
-                      {viewType === 'Harian' ? `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
-                       viewType === 'Mingguan' ? `${startOfWeek.getDate()} ${monthNames[startOfWeek.getMonth()]} - ${endOfWeek.getDate()} ${monthNames[endOfWeek.getMonth()]}` : 
-                       viewType === 'Bulanan' ? `${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
-                       `${selectedDate.getFullYear()}`}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Progress Mini Grid */}
-                <div className="grid grid-cols-3 gap-2.5 mb-5">
-                  <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-2.5 text-center">
-                    <div className="text-lg font-black text-slate-50">{totalCount}</div>
-                    <div className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 mt-0.5">{t('total') || 'Total'}</div>
-                  </div>
-                  <div className="bg-emerald-950/20 border border-emerald-900/20 rounded-xl p-2.5 text-center">
-                    <div className="text-lg font-black text-emerald-400">{completedCount}</div>
-                    <div className="text-[9px] uppercase tracking-wider font-extrabold text-emerald-500 mt-0.5">{t('completed') || 'Selesai'}</div>
-                  </div>
-                  <div className="bg-orange-950/20 border border-orange-900/20 rounded-xl p-2.5 text-center">
-                    <div className="text-lg font-black text-orange-400">{activeCount}</div>
-                    <div className="text-[9px] uppercase tracking-wider font-extrabold text-orange-500 mt-0.5">{t('active') || 'Aktif'}</div>
-                  </div>
-                </div>
-
-                {/* Recharts Pie Chart */}
-                {totalCount > 0 ? (
-                  <div className="pt-4 border-t border-slate-800/50">
-                    <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 text-center">
-                      {t('completionPercentage') || 'Persentase Selesai'}
-                    </h5>
-                    <div className="h-36 w-full relative">
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-2xl font-black text-slate-50 leading-none">{completionPercentageNumber}%</span>
-                        <span className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mt-1">{t('completed') || 'Selesai'}</span>
-                      </div>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={50}
-                            outerRadius={68}
-                            paddingAngle={safePaddingAngle}
-                            dataKey="value"
-                          >
-                            {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                            itemStyle={{ color: '#f8fafc', fontSize: '12px', fontWeight: 'bold' }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-xs text-slate-400 border border-dashed border-slate-800/60 rounded-xl">
-                    {lang === 'id' ? 'Tidak ada data untuk periode ini' : 'No task data for this period'}
-                  </div>
-                )}
-              </div>
-
-              {/* Insights Mini Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Streak Counter Card */}
-                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2rem] shadow-xl p-5 flex flex-col justify-between">
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <div className="w-8 h-8 bg-orange-500/10 text-orange-400 rounded-lg flex items-center justify-center shrink-0">
-                      <Flame className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-100">{t('streak')}</h4>
-                      <p className="text-[8px] text-slate-400 leading-tight truncate">{t('streakKeep')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-baseline gap-1 mt-auto">
-                    <span className="text-2xl font-black text-orange-400 tracking-tight leading-none">{streak}</span>
-                    <span className="text-[8px] uppercase font-bold text-orange-400/70 tracking-widest">{t('days')}</span>
-                  </div>
-                </div>
-
-                {/* Monthly Average Mood Card */}
-                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2rem] shadow-xl p-5 flex flex-col justify-between">
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shrink-0 ${getMoodColorClass(avgMood)}`}>
-                      {getMoodIcon(avgMood || 'neutral', "w-4 h-4")}
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-100 truncate">{lang === 'id' ? 'Rata Mood' : 'Average Mood'}</h4>
-                      <p className="text-[8px] text-slate-400 leading-tight">{lang === 'id' ? 'Bulan Ini' : 'This Month'}</p>
-                    </div>
-                  </div>
-                  <div className="mt-auto">
-                    <span className={`text-sm font-black tracking-tight ${avgMood ? getMoodColorClass(avgMood).split(' ')[0] : 'text-slate-400'}`}>
-                      {getMoodLabel(avgMood)}
-                    </span>
-                  </div>
+              {/* Period Switcher - Centered and elegant */}
+              <div className="max-w-xl mx-auto w-full">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-1 flex gap-1 shadow-md">
+                  {['Harian', 'Mingguan', 'Bulanan', 'Tahunan'].map((type, idx) => {
+                    const displayType = [t('daily') || 'Harian', t('weekly') || 'Mingguan', t('monthly') || 'Bulanan', t('yearly') || 'Tahunan'];
+                    const isActive = viewType === type;
+                    return (
+                      <button 
+                        key={type}
+                        onClick={() => setViewType(type as any)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'}`}
+                      >
+                        {displayType[idx]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Habits Section */}
-              {tasks.filter(t => t.repeat === 'daily' || t.isDiscipline).length > 0 && (
-                <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-[2.5rem] shadow-xl p-6">
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/50">
-                    <div className="w-8 h-8 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center">
-                      <Repeat className="w-4 h-4" />
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-50 tracking-tight">
-                       {lang === 'id' ? 'Statistik Kebiasaan' : 'Habit Statistics'}
-                    </h3>
-                  </div>
-
-                  <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1 no-scrollbar">
-                    {tasks.filter(t => t.repeat === 'daily' || t.isDiscipline).map(task => {
-                      const { createdStr, diffDays, completedCount, missedCount, compRate, hStreak } = getHabitStats(task, todayStr, getTaskDateStr);
-                      
-                      return (
-                        <div 
-                          key={task.id} 
-                          onClick={() => { setSelectedDetailTaskId(task.id); setSelectedDetailModalTab('info'); setHabitCalendarDate(new Date()); }}
-                          className="bg-slate-950/45 border border-slate-800/50 hover:bg-slate-950/70 rounded-2xl p-4 flex items-center justify-between hover:border-indigo-500/40 transition-all cursor-pointer group"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-extrabold text-slate-100 text-xs sm:text-sm group-hover:text-indigo-400 transition-colors truncate flex items-center gap-1.5" title={task.title}>
-                              {task.isDiscipline && (
-                                <span className="bg-orange-500/10 border border-orange-500/25 text-orange-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase flex items-center gap-0.5 shrink-0">
-                                  <span>🔥</span> {lang === 'id' ? 'Disiplin' : 'Discipline'}
-                                </span>
-                              )}
-                              <span className="truncate">{task.title}</span>
-                            </h4>
-                            <p className="text-[10px] text-slate-400 font-mono mt-1">
-                              {lang === 'id' ? 'Aktif sejak' : 'Active since'}: {createdStr}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3.5 shrink-0 ml-4">
-                            {hStreak > 0 && (
-                              <div className="flex items-center gap-1 bg-orange-500/10 border border-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full text-[10px] font-black shrink-0">
-                                <Flame size={11} className="fill-orange-400/20 animate-pulse text-orange-400" />
-                                <span>{hStreak}d</span>
-                              </div>
-                            )}
-                            <div className="flex flex-col items-end">
-                              <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">{lang === 'id' ? 'Konsistensi' : 'Consistency'}</span>
-                              <span className="text-emerald-400 font-black text-xs sm:text-sm leading-none mt-0.5">{compRate}%</span>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all duration-200" />
-                          </div>
+              {/* Bento Grid layout for Statistics on desktop, single column on mobile */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+                
+                {/* Left Column: Summary and Priority Stats (Col span 5) */}
+                <div className="lg:col-span-5 space-y-6">
+                  {/* Statistics Summary Card */}
+                  <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl shadow-xl p-6">
+                    <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-800/50">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-indigo-500/10 text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
+                          <Activity className="w-5 h-5" />
                         </div>
-                      );
-                    })}
+                        <div>
+                          <h4 className="text-slate-50 font-bold text-sm tracking-tight">
+                            {t('taskSummary') || 'Ringkasan Tugas'}
+                          </h4>
+                          <p className="text-[10px] text-slate-400 tracking-wide font-mono mt-0.5">
+                            {viewType === 'Harian' ? `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
+                             viewType === 'Mingguan' ? `${startOfWeek.getDate()} ${monthNames[startOfWeek.getMonth()]} - ${endOfWeek.getDate()} ${monthNames[endOfWeek.getMonth()]}` : 
+                             viewType === 'Bulanan' ? `${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}` : 
+                             `${selectedDate.getFullYear()}`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Navigation Arrows for Stats Period */}
+                      <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
+                        <button 
+                          onClick={handlePrevPeriod}
+                          className="p-1.5 hover:bg-slate-850 text-slate-400 hover:text-slate-100 rounded-lg transition-all"
+                          title={lang === 'id' ? 'Sebelumnya' : 'Previous'}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={handleNextPeriod}
+                          className="p-1.5 hover:bg-slate-850 text-slate-400 hover:text-slate-100 rounded-lg transition-all"
+                          title={lang === 'id' ? 'Berikutnya' : 'Next'}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Progress Mini Grid */}
+                    <div className="grid grid-cols-3 gap-2.5 mb-5">
+                      <div className="bg-slate-950/40 border border-slate-800/40 rounded-xl p-2.5 text-center">
+                        <div className="text-lg font-black text-slate-50">{totalCount}</div>
+                        <div className="text-[9px] uppercase tracking-wider font-extrabold text-slate-400 mt-0.5">{t('total') || 'Total'}</div>
+                      </div>
+                      <div className="bg-emerald-950/20 border border-emerald-900/20 rounded-xl p-2.5 text-center">
+                        <div className="text-lg font-black text-emerald-400">{completedCount}</div>
+                        <div className="text-[9px] uppercase tracking-wider font-extrabold text-emerald-500 mt-0.5">{t('completed') || 'Selesai'}</div>
+                      </div>
+                      <div className="bg-orange-950/20 border border-orange-900/20 rounded-xl p-2.5 text-center">
+                        <div className="text-lg font-black text-orange-400">{activeCount}</div>
+                        <div className="text-[9px] uppercase tracking-wider font-extrabold text-orange-500 mt-0.5">{lang === 'id' ? 'Belum Selesai' : 'Uncompleted'}</div>
+                      </div>
+                    </div>
+
+                    {/* Recharts Pie Chart */}
+                    {totalCount > 0 ? (
+                      <div className="pt-4 border-t border-slate-800/50">
+                        <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 text-center">
+                          {t('completionPercentage') || 'Persentase Selesai'}
+                        </h5>
+                        <div className="h-36 w-full relative">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-2xl font-black text-slate-50 leading-none">{completionPercentageNumber}%</span>
+                            <span className="text-[8px] uppercase tracking-widest text-slate-400 font-bold mt-1">{t('completed') || 'Selesai'}</span>
+                          </div>
+                          <ResponsiveContainer key={`${viewType}-${activeTab}-${completedCount}-${activeCount}`} width="100%" height={144}>
+                            <PieChart>
+                              <Pie
+                                data={pieData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={68}
+                                paddingAngle={safePaddingAngle}
+                                dataKey="value"
+                              >
+                                {pieData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                                itemStyle={{ color: '#f8fafc', fontSize: '12px', fontWeight: 'bold' }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-xs text-slate-400 border border-dashed border-slate-800/60 rounded-xl">
+                        {lang === 'id' ? 'Tidak ada data untuk periode ini' : 'No task data for this period'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Priority Analysis Card */}
+                  <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl shadow-xl p-6">
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/50">
+                      <div className="w-8 h-8 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-50 tracking-tight">
+                        {lang === 'id' ? 'Analisis Tingkat Prioritas' : 'Priority Level Analysis'}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* High Priority */}
+                      <div>
+                        <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
+                          <span className="text-rose-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                            {lang === 'id' ? 'Tinggi' : 'High'}
+                          </span>
+                          <span className="text-slate-300">
+                            {priorityStats.high.completed} / {priorityStats.high.total} {lang === 'id' ? 'Selesai' : 'Completed'} ({priorityStats.high.rate}%)
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800/40">
+                          <div 
+                            className="h-full bg-rose-500 rounded-full transition-all duration-500" 
+                            style={{ width: `${priorityStats.high.rate}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Medium Priority */}
+                      <div>
+                        <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
+                          <span className="text-amber-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            {lang === 'id' ? 'Sedang' : 'Medium'}
+                          </span>
+                          <span className="text-slate-300">
+                            {priorityStats.medium.completed} / {priorityStats.medium.total} {lang === 'id' ? 'Selesai' : 'Completed'} ({priorityStats.medium.rate}%)
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800/40">
+                          <div 
+                            className="h-full bg-amber-500 rounded-full transition-all duration-500" 
+                            style={{ width: `${priorityStats.medium.rate}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Low Priority */}
+                      <div>
+                        <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
+                          <span className="text-emerald-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            {lang === 'id' ? 'Rendah' : 'Low'}
+                          </span>
+                          <span className="text-slate-300">
+                            {priorityStats.low.completed} / {priorityStats.low.total} {lang === 'id' ? 'Selesai' : 'Completed'} ({priorityStats.low.rate}%)
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800/40">
+                          <div 
+                            className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                            style={{ width: `${priorityStats.low.rate}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
+
+                {/* Right Column: Habit Analytics / Calendar Directory & Completed History (Col span 7) */}
+                <div className="lg:col-span-7 space-y-6">
+                  {/* Task Directory / Detail Statistics Selector */}
+                  <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl shadow-xl p-6">
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/50">
+                      <div className="w-8 h-8 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-50 tracking-tight">
+                          {lang === 'id' ? 'Detail Statistik & Kalender Tugas' : 'Task Stats & Calendar Directory'}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                          {lang === 'id' ? 'Pilih tugas untuk melihat grafik & kalender penyelesaian lengkap' : 'Select a task to view its detailed chart & full completion calendar'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedTasks.filter(t => !t.deleted).length > 0 ? (
+                      <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1 no-scrollbar">
+                        {selectedTasks.filter(t => !t.deleted).map(task => {
+                          const { createdStr, diffDays, completedCount, missedCount, compRate, hStreak } = getHabitStats(task, todayStr, getTaskDateStr);
+                          const isDaily = task.repeat === 'daily' || task.isDiscipline;
+                          
+                          return (
+                            <div 
+                              key={task.id} 
+                              onClick={() => { 
+                                setSelectedDetailTaskId(task.id); 
+                                setSelectedDetailModalTab('analytics'); 
+                                setHabitCalendarDate(new Date()); 
+                              }}
+                              className="bg-slate-950/45 border border-slate-800/50 hover:bg-slate-950/70 rounded-2xl p-4 flex items-center justify-between hover:border-indigo-500/40 transition-all cursor-pointer group"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {task.isDiscipline && (
+                                    <span className="bg-orange-500/10 border border-orange-500/25 text-orange-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase shrink-0">
+                                      {lang === 'id' ? 'Disiplin' : 'Discipline'}
+                                    </span>
+                                  )}
+                                  {isDaily && !task.isDiscipline && (
+                                    <span className="bg-indigo-500/10 border border-indigo-500/25 text-indigo-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase shrink-0">
+                                      {lang === 'id' ? 'Harian' : 'Daily'}
+                                    </span>
+                                  )}
+                                  {!isDaily && (
+                                    <span className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase shrink-0">
+                                      {lang === 'id' ? 'Sekali' : 'Once'}
+                                    </span>
+                                  )}
+                                  <span className="font-extrabold text-slate-100 text-xs sm:text-sm group-hover:text-indigo-400 transition-colors truncate" title={task.title}>
+                                    {task.title}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1.5 font-mono text-[9px] text-slate-400">
+                                  <span>{lang === 'id' ? 'Dibuat' : 'Created'}: {createdStr}</span>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-3.5 shrink-0 ml-4">
+                                <div className="flex flex-col items-end">
+                                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">
+                                    {isDaily ? (lang === 'id' ? 'Konsistensi' : 'Consistency') : (lang === 'id' ? 'Status' : 'Status')}
+                                  </span>
+                                  <span className={`font-black text-xs sm:text-sm mt-0.5 ${isDaily ? 'text-indigo-400' : (task.completed ? 'text-emerald-400' : 'text-amber-400')}`}>
+                                    {isDaily ? `${compRate}%` : (task.completed ? (lang === 'id' ? 'Selesai' : 'Completed') : (lang === 'id' ? 'Aktif' : 'Active'))}
+                                  </span>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all duration-200" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-800/60 rounded-xl font-mono">
+                        {lang === 'id' ? 'Tidak ada tugas terdaftar di periode ini' : 'No tasks listed in this period'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Completed Tasks History Card */}
+                  <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl shadow-xl p-6">
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/50">
+                      <div className="w-8 h-8 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-50 tracking-tight">
+                        {lang === 'id' ? 'Riwayat Tugas Selesai' : 'Completed Tasks History'}
+                      </h3>
+                    </div>
+
+                    {completedTasksInPeriod.length > 0 ? (
+                      <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1 no-scrollbar">
+                        {completedTasksInPeriod.map((item) => (
+                          <div 
+                            key={item.id}
+                            className="bg-slate-950/45 border border-slate-800/50 rounded-2xl p-3.5 flex items-center justify-between hover:border-emerald-500/30 transition-all group"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="w-4 h-4 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center shrink-0">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                </span>
+                                <span className="font-extrabold text-slate-100 text-xs sm:text-sm truncate" title={item.title}>
+                                  {item.title}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1.5 font-mono text-[9px] text-slate-400">
+                                <span>{lang === 'id' ? 'Selesai' : 'Completed'}: {item.dateStr}</span>
+                                {item.isDiscipline && (
+                                  <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 px-1 py-0.5 rounded text-[8px] font-black uppercase">
+                                    {lang === 'id' ? 'Disiplin' : 'Discipline'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border uppercase shrink-0 ml-4 ${
+                              item.priority === 'Tinggi' 
+                                ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
+                                : item.priority === 'Sedang'
+                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                            }`}>
+                              {item.priority}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-800/60 rounded-xl font-mono">
+                        {lang === 'id' ? 'Belum ada riwayat tugas selesai pada periode ini' : 'No completed tasks recorded in this period'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
 
             </div>
           )}
@@ -1218,35 +1638,33 @@ export default function CalendarScreen() {
               <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 sm:space-y-5 no-scrollbar">
                 
                 {/* Modal Tab Switcher (Layered details) */}
-                {isDaily && (
-                  <div className="flex bg-slate-950 border border-slate-800/80 rounded-xl p-0.5 mb-2.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDetailModalTab('info')}
-                      className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                        selectedDetailModalTab === 'info' 
-                          ? 'bg-indigo-600 text-white shadow-sm' 
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {lang === 'id' ? 'Informasi' : 'Information'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDetailModalTab('analytics')}
-                      className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                        selectedDetailModalTab === 'analytics' 
-                          ? 'bg-indigo-600 text-white shadow-sm' 
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <TrendingUp className="w-3.5 h-3.5" />
-                      {lang === 'id' ? 'Analisis & Riwayat' : 'Analytics & History'}
-                    </button>
-                  </div>
-                )}
+                <div className="flex bg-slate-950 border border-slate-800/80 rounded-xl p-0.5 mb-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDetailModalTab('info')}
+                    className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                      selectedDetailModalTab === 'info' 
+                        ? 'bg-indigo-600 text-white shadow-sm' 
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {lang === 'id' ? 'Informasi' : 'Information'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDetailModalTab('analytics')}
+                    className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
+                      selectedDetailModalTab === 'analytics' 
+                        ? 'bg-indigo-600 text-white shadow-sm' 
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    {lang === 'id' ? 'Analisis & Riwayat' : 'Analytics & History'}
+                  </button>
+                </div>
 
-                {(!isDaily || selectedDetailModalTab === 'info') ? (
+                {(selectedDetailModalTab === 'info') ? (
                   isEditingCalendarTask ? (
                     <form onSubmit={(e) => {
                       e.preventDefault();
@@ -1547,79 +1965,96 @@ export default function CalendarScreen() {
               </div>
 
               {/* Footer Actions */}
-              <div className="p-4 sm:p-5 border-t border-slate-800/60 bg-slate-950/20 flex gap-3 flex-none">
+              <div className="p-4 sm:p-5 border-t border-slate-800/60 bg-slate-950/20 flex items-center justify-center gap-3.5 flex-none">
                 {!isEditingCalendarTask && (
                   <>
                     {selectedDetailTask.deleted ? (
-                      <>
+                      <div className="flex items-center justify-center gap-3.5 w-full">
+                        {/* Restore Button */}
                         <button
                           onClick={() => {
                             updateTask({ ...selectedDetailTask, deleted: false });
                             setSelectedDetailTaskId(null);
                           }}
-                          className="flex-1 py-3 px-4 rounded-xl font-bold text-xs bg-emerald-600 text-white hover:bg-emerald-500 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20"
+                          className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-400 hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center shadow-lg shadow-emerald-500/5"
+                          title={lang === 'id' ? 'Pulihkan Tugas' : 'Restore Task'}
                         >
-                          <Check className="w-4 h-4" />
-                          <span>{lang === 'id' ? 'Pulihkan Tugas' : 'Restore Task'}</span>
+                          <Check className="w-4.5 h-4.5" />
                         </button>
+
+                        {/* Delete Permanently Button */}
                         <button
                           onClick={() => {
                             deleteTask(selectedDetailTask.id);
                             setSelectedDetailTaskId(null);
                           }}
-                          className="px-4 py-3 bg-rose-600 text-white hover:bg-rose-500 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+                          className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center shadow-lg shadow-rose-500/5"
                           title={lang === 'id' ? 'Hapus Permanen' : 'Delete Permanently'}
                         >
-                          <Trash2 className="w-4 h-4" />
-                          <span>{lang === 'id' ? 'Hapus Permanen' : 'Delete Permanently'}</span>
+                          <Trash2 className="w-4.5 h-4.5" />
                         </button>
-                      </>
+
+                        {/* Close Button */}
+                        <button
+                          onClick={() => setSelectedDetailTaskId(null)}
+                          className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center"
+                          title={lang === 'id' ? 'Tutup' : 'Close'}
+                        >
+                          <X className="w-4.5 h-4.5" />
+                        </button>
+                      </div>
                     ) : (
-                      <>
+                      <div className="flex items-center justify-center gap-3.5 w-full">
+                        {/* Toggle Checkmark Button */}
                         <button
                           onClick={() => {
                             toggleTask(selectedDetailTask.id, selectedDateStr);
                           }}
-                          className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                          className={`w-10 h-10 rounded-xl hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center ${
                             isDetailTaskCompleted 
-                              ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20' 
-                              : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                              ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/25 shadow-lg shadow-rose-500/5' 
+                              : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/25'
                           }`}
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>
-                            {isDetailTaskCompleted 
+                          title={
+                            isDetailTaskCompleted 
                               ? (lang === 'id' ? 'Batalkan Selesai' : 'Undo Complete') 
-                              : (lang === 'id' ? 'Tandai Selesai' : 'Mark Complete')}
-                          </span>
+                              : (lang === 'id' ? 'Tandai Selesai' : 'Mark Complete')
+                          }
+                        >
+                          <CheckCircle2 className="w-4.5 h-4.5" />
                         </button>
+
+                        {/* Edit Button */}
                         <button
                           onClick={() => setIsEditingCalendarTask(true)}
-                          className="px-4 py-3 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 text-indigo-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
-                          title={lang === 'id' ? 'Edit' : 'Edit'}
+                          className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 hover:border-indigo-500/40 hover:text-indigo-400 hover:scale-[1.03] active:scale-[0.97] text-slate-300 transition-all flex items-center justify-center"
+                          title={lang === 'id' ? 'Edit Tugas' : 'Edit Task'}
                         >
-                          <Edit2 className="w-4 h-4" />
-                          <span>{lang === 'id' ? 'Edit' : 'Edit'}</span>
+                          <Edit2 className="w-4.5 h-4.5" />
                         </button>
+
+                        {/* Delete Button */}
                         <button
                           onClick={() => {
                             deleteTask(selectedDetailTask.id);
                             setSelectedDetailTaskId(null);
                           }}
-                          className="px-4 py-3 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+                          className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 hover:border-rose-500/40 hover:text-rose-400 hover:scale-[1.03] active:scale-[0.97] text-slate-300 transition-all flex items-center justify-center"
                           title={lang === 'id' ? 'Hapus' : 'Delete'}
                         >
-                          <Trash2 className="w-4 h-4" />
-                          <span>{lang === 'id' ? 'Hapus' : 'Delete'}</span>
+                          <Trash2 className="w-4.5 h-4.5" />
                         </button>
-                      </>
+
+                        {/* Close Button */}
+                        <button
+                          onClick={() => setSelectedDetailTaskId(null)}
+                          className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 hover:scale-[1.03] active:scale-[0.97] transition-all flex items-center justify-center"
+                          title={lang === 'id' ? 'Tutup' : 'Close'}
+                        >
+                          <X className="w-4.5 h-4.5" />
+                        </button>
+                      </div>
                     )}
-                    <button
-                      onClick={() => setSelectedDetailTaskId(null)}
-                      className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition-all"
-                    >
-                      {lang === 'id' ? 'Tutup' : 'Close'}
-                    </button>
                   </>
                 )}
               </div>

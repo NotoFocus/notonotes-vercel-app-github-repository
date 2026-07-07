@@ -41,12 +41,11 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
   const getGreeting = () => {
     const hour = new Date().getHours();
     let timeGreeting = '';
-    let icon = '';
-    if (hour < 11) { timeGreeting = lang === 'id' ? 'Selamat Pagi' : 'Good Morning'; icon = '🌅'; }
-    else if (hour < 15) { timeGreeting = lang === 'id' ? 'Selamat Siang' : 'Good Afternoon'; icon = '☀️'; }
-    else if (hour < 18) { timeGreeting = lang === 'id' ? 'Selamat Sore' : 'Good Afternoon'; icon = '🌤️'; }
-    else { timeGreeting = lang === 'id' ? 'Selamat Malam' : 'Good Evening'; icon = '🌙'; }
-    return `${timeGreeting}, ${currentUser.name || (lang === 'id' ? 'Kawan' : 'Friend')} ${icon}`;
+    if (hour < 11) { timeGreeting = lang === 'id' ? 'Selamat Pagi' : 'Good Morning'; }
+    else if (hour < 15) { timeGreeting = lang === 'id' ? 'Selamat Siang' : 'Good Afternoon'; }
+    else if (hour < 18) { timeGreeting = lang === 'id' ? 'Selamat Sore' : 'Good Afternoon'; }
+    else { timeGreeting = lang === 'id' ? 'Selamat Malam' : 'Good Evening'; }
+    return `${timeGreeting}, ${currentUser.name || (lang === 'id' ? 'Kawan' : 'Friend')}`;
   };
 
   const [showStreakSplash, setShowStreakSplash] = useState(() => {

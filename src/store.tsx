@@ -463,6 +463,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
          wasCompleted = t.completed;
          newCompleted = !t.completed;
          isNowCompleted = newCompleted;
+         if (newCompleted) completedDates.add(targetDate);
+         else completedDates.delete(targetDate);
       }
       
       return { ...t, completed: newCompleted, completedDates: Array.from(completedDates) };

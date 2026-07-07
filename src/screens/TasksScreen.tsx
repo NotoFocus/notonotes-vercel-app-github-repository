@@ -739,7 +739,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
     }
   }
   const isPunishmentClearedToday = (d.punishmentCompletedDates || []).includes(today);
-  const isMissedDay = missedDatesCount > 0 && !isPunishmentClearedToday;
+  const isMissedDay = missedDatesCount > 0;
   
   const hasStarted = checkins.length > 0;
   

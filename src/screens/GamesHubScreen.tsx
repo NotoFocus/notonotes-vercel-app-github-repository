@@ -1,9 +1,9 @@
 import React from 'react';
-import { ArrowLeft, Gamepad2, Grid3X3, Joystick, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, Gamepad2, Grid3X3, Joystick, LayoutGrid, Brain, Zap } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 
-export default function GamesHubScreen({ onSelectGame, onBack }: { onSelectGame: (game: 'game' | 'tictactoe' | 'puzzle' | 'tetris') => void, onBack: () => void }) {
+export default function GamesHubScreen({ onSelectGame, onBack }: { onSelectGame: (game: 'game' | 'tictactoe' | 'puzzle' | 'tetris' | 'memory' | 'space-invaders') => void, onBack: () => void }) {
   const { lang } = useAppStore();
   const t = useTranslation(lang);
 
@@ -22,6 +22,39 @@ export default function GamesHubScreen({ onSelectGame, onBack }: { onSelectGame:
       <div className="flex-1 overflow-y-auto p-4 content-start space-y-4 max-w-sm mx-auto w-full pt-8 animate-in fade-in slide-in-from-bottom-4 duration-300 pb-12">
         <p className="text-slate-400 text-sm text-center mb-6">{t('gamesHubDesc')}</p>
         
+        {/* Stress Invaders - Highlighted Feature Game */}
+        <button 
+          onClick={() => onSelectGame('space-invaders')}
+          className="w-full bg-slate-900 border border-rose-500/30 rounded-3xl p-4 flex items-center gap-4 hover:shadow-md transition-all active:scale-95 shadow-[0_0_15px_rgba(244,63,94,0.1)] hover:border-rose-500/50"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-400 shrink-0 animate-pulse">
+            <Zap size={24} />
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="font-bold text-slate-200 flex items-center gap-1.5">
+              {t('spaceInvadersTitle')}
+              <span className="bg-rose-500/10 text-rose-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded tracking-widest uppercase">HOT</span>
+            </span>
+            <span className="text-xs text-slate-400 mt-0.5">{t('spaceInvadersDesc')}</span>
+          </div>
+        </button>
+
+        <button 
+          onClick={() => onSelectGame('memory')}
+          className="w-full bg-slate-900 border border-slate-800 rounded-3xl p-4 flex items-center gap-4 hover:shadow-md transition-all active:scale-95 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)] hover:border-indigo-500/50"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+            <Brain size={24} />
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="font-bold text-slate-200 flex items-center gap-1.5">
+              {t('memoryTitle')}
+              <span className="bg-indigo-500/10 text-indigo-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded tracking-widest uppercase">NEW</span>
+            </span>
+            <span className="text-xs text-slate-400 mt-0.5">{t('memoryDesc')}</span>
+          </div>
+        </button>
+
         <button 
           onClick={() => onSelectGame('tetris')}
           className="w-full bg-slate-900 border border-slate-800 rounded-3xl p-4 flex items-center gap-4 hover:shadow-md transition-all active:scale-95"
