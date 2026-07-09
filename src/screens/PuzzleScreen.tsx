@@ -129,55 +129,43 @@ export default function PuzzleScreen({ onBack }: { onBack: () => void }) {
     initGame();
   }, []);
 
-  const boardRef = useRef(board);
-  const isWonRef = useRef(isWon);
-
-  useEffect(() => {
-    boardRef.current = board;
-    isWonRef.current = isWon;
-  }, [board, isWon]);
-
   const handleTileClick = (index: number) => {
-    if (isWonRef.current) return;
+    if (isWon) return;
 
-    setBoard(currentBoard => {
-      const emptyIndex = currentBoard.indexOf(0);
-      if (emptyIndex === -1) return currentBoard;
+    const emptyIndex = board.indexOf(0);
+    if (emptyIndex === -1) return;
 
-      const row = Math.floor(index / 3);
-      const col = index % 3;
-      const emptyRow = Math.floor(emptyIndex / 3);
-      const emptyCol = emptyIndex % 3;
+    const row = Math.floor(index / 3);
+    const col = index % 3;
+    const emptyRow = Math.floor(emptyIndex / 3);
+    const emptyCol = emptyIndex % 3;
 
-      const isAdjacent = Math.abs(row - emptyRow) + Math.abs(col - emptyCol) === 1;
+    const isAdjacent = Math.abs(row - emptyRow) + Math.abs(col - emptyCol) === 1;
 
-      if (isAdjacent) {
-        playSound('click');
-        const newBoard = [...currentBoard];
-        newBoard[emptyIndex] = currentBoard[index];
-        newBoard[index] = 0;
-        
-        setMoves(m => m + 1);
+    if (isAdjacent) {
+      playSound('click');
+      const newBoard = [...board];
+      newBoard[emptyIndex] = board[index];
+      newBoard[index] = 0;
+      
+      setBoard(newBoard);
+      setMoves(m => m + 1);
 
-        if (isWinning(newBoard)) {
-          setIsWon(true);
-          setTimeout(() => playSound('win'), 80);
-        }
-        return newBoard;
+      if (isWinning(newBoard)) {
+        setIsWon(true);
+        setTimeout(() => playSound('win'), 80);
       }
-      return currentBoard;
-    });
+    }
   };
 
   // Keyboard Navigation: Arrow Keys & WASD Support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isWonRef.current) return;
+      if (isWon) return;
       const key = e.key.toLowerCase();
-      const currentBoard = boardRef.current;
-      if (currentBoard.length === 0) return;
+      if (board.length === 0) return;
 
-      const emptyIndex = currentBoard.indexOf(0);
+      const emptyIndex = board.indexOf(0);
       if (emptyIndex === -1) return;
 
       const emptyRow = Math.floor(emptyIndex / 3);
@@ -213,7 +201,7 @@ export default function PuzzleScreen({ onBack }: { onBack: () => void }) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [board, isWon]);
 
   return (
     <div className="relative flex flex-col h-full bg-slate-950 text-slate-100 select-none overflow-hidden">
@@ -253,7 +241,8 @@ export default function PuzzleScreen({ onBack }: { onBack: () => void }) {
                   return (
                     <motion.div 
                       layout
-                      key="cell-empty" 
+                      key="cell-0" 
+                      transition={{ type: 'spring', stiffness: 450, damping: 30 }}
                       className="aspect-square rounded-2xl bg-slate-950/40 border border-transparent"
                     />
                   );
@@ -265,13 +254,14 @@ export default function PuzzleScreen({ onBack }: { onBack: () => void }) {
                     key={`cell-${cell}`}
                     onClick={() => handleTileClick(index)}
                     disabled={isWon}
-                    className={`flex flex-col items-center justify-center text-3xl font-mono font-black rounded-2xl transition-all aspect-square relative overflow-hidden group border border-slate-700/50 cursor-pointer shadow-md bg-slate-800/80 text-slate-100 hover:bg-slate-750 hover:border-slate-600/80 active:scale-95`}
+                    transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                    className="flex flex-col items-center justify-center text-3xl font-mono font-black rounded-2xl aspect-square relative overflow-hidden group border border-slate-700/50 cursor-pointer shadow-md bg-slate-800/80 text-slate-100 transition-[background-color,border-color] duration-200 hover:bg-slate-750 hover:border-slate-600/80 active:scale-[0.97]"
                     style={{ touchAction: 'none' }}
                   >
                     {/* Visual accent line inside tile for premium look */}
                     <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-slate-500/10 to-transparent" />
                     
-                    <span className="group-hover:scale-105 transition-transform duration-250">
+                    <span className="group-hover:scale-105 transition-transform duration-200">
                       {cell}
                     </span>
                   </motion.button>

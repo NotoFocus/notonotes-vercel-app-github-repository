@@ -515,24 +515,34 @@ export default function MemoryGameScreen({ onBack }: { onBack: () => void }) {
                         handleCardClick(index);
                       }
                     }}
-                    className={`aspect-square w-full cursor-pointer transition-all duration-300 relative focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
+                    className={`aspect-square w-full cursor-pointer [perspective:1000px] focus:outline-none ${
                       card.isMatched 
-                        ? 'opacity-30 scale-95 pointer-events-none' 
-                        : 'hover:scale-[1.03] active:scale-[0.97]'
+                        ? 'opacity-40 pointer-events-none transition-opacity duration-300' 
+                        : 'hover:scale-[1.04] active:scale-[0.96] transition-transform duration-200'
                     }`}
                   >
-                    <div className={`absolute inset-0 ${sizeConfig.rounded} border-2 transition-all duration-300 flex items-center justify-center ${sizeConfig.text} shadow-md ${
-                      isRevealed
-                        ? card.isMatched
-                          ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 scale-100'
-                          : 'bg-indigo-500/10 border-indigo-500/40 text-slate-100 scale-100'
-                        : 'bg-slate-900 border-slate-800 hover:border-indigo-500/30 text-slate-500'
-                    }`}>
-                      {isRevealed ? (
-                        <span className="animate-in zoom-in-50 duration-200 select-none">{card.emoji}</span>
-                      ) : (
+                    <div 
+                      className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${
+                        isRevealed ? '[transform:rotateY(180deg)]' : ''
+                      }`}
+                    >
+                      {/* Front Side (Emoji) - Rotated by 180deg */}
+                      <div 
+                        className={`absolute inset-0 ${sizeConfig.rounded} border-2 flex items-center justify-center ${sizeConfig.text} shadow-md [backface-visibility:hidden] [transform:rotateY(180deg)] ${
+                          card.isMatched
+                            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                            : 'bg-indigo-500/10 border-indigo-500/40 text-slate-100'
+                        }`}
+                      >
+                        <span className="select-none">{card.emoji}</span>
+                      </div>
+
+                      {/* Back Side (Help/Pattern) - Face up initially */}
+                      <div 
+                        className={`absolute inset-0 ${sizeConfig.rounded} border border-slate-800 bg-slate-900 flex items-center justify-center shadow-md [backface-visibility:hidden] hover:border-indigo-500/40 text-slate-500 transition-colors duration-200`}
+                      >
                         <HelpCircle className={`${sizeConfig.icon} text-slate-600`} />
-                      )}
+                      </div>
                     </div>
                   </div>
                 );

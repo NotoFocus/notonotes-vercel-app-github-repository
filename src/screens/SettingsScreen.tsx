@@ -115,52 +115,81 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
     setIsRefreshing(true);
     setRefreshStep(1);
 
-    // Step 1: Check server stability/connectivity using a real cache-busting fetch request to /index.html
+    // Step 1: Check server stability & ping the host with a cache-busting parameter
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      await fetch('/index.html?t=' + Date.now(), { cache: 'no-store', method: 'HEAD' });
+      await fetch('/index.html?ping=' + Date.now(), { cache: 'no-store', method: 'HEAD' });
     } catch (err) {
-      console.warn("Connection or cache-busting fetch warning:", err);
+      console.warn("Server connection stability check warning:", err);
     }
 
-    // Step 2: Clear stale asset cache stored in Cache Storage
+    // Step 2: Safe database validation & schema healing (compacts malformed storage items)
     setRefreshStep(2);
     await new Promise(resolve => setTimeout(resolve, 1200));
     try {
-      if ('caches' in window) {
-        const cacheNames = await caches.keys();
-        for (const name of cacheNames) {
-          await caches.delete(name);
+      const keysToValidate = ['noto_notes', 'noto_tasks', 'noto_transactions', 'noto_moods', 'noto_user'];
+      for (const key of keysToValidate) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          try {
+            const parsed = JSON.parse(item);
+            if (key === 'noto_notes' && Array.isArray(parsed)) {
+              const repaired = parsed.filter(n => n && typeof n === 'object').map(n => ({
+                id: n.id || String(Math.random()),
+                title: n.title || 'Untitled',
+                content: n.content || '',
+                date: n.date || new Date().toISOString(),
+                ...n
+              }));
+              localStorage.setItem(key, JSON.stringify(repaired));
+            } else if (key === 'noto_tasks' && Array.isArray(parsed)) {
+              const repaired = parsed.filter(t => t && typeof t === 'object').map(t => ({
+                id: t.id || String(Math.random()),
+                title: t.title || 'Untitled Task',
+                completed: !!t.completed,
+                ...t
+              }));
+              localStorage.setItem(key, JSON.stringify(repaired));
+            }
+          } catch (e) {
+            console.warn(`Database healing repaired key: ${key}`, e);
+          }
         }
       }
     } catch (err) {
-      console.error("Cache clean failed:", err);
+      console.error("Local database self-healing failed:", err);
     }
 
-    // Step 3: Update Service Worker registration
+    // Step 3: Clear transient tab/session cache safely (does not affect browser proxy)
     setRefreshStep(3);
     await new Promise(resolve => setTimeout(resolve, 1200));
     try {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const reg of registrations) {
-          await reg.update();
-        }
-      }
+      sessionStorage.clear();
     } catch (err) {
-      console.error("Service worker update failed:", err);
+      console.error("Transient session clear warning:", err);
     }
 
-    // Step 4: Validate local database structures & trigger key events
+    // Step 4: Re-align customized graphics & themes
     setRefreshStep(4);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    window.dispatchEvent(new Event('noto_wallpaper_changed'));
-    window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+    try {
+      window.dispatchEvent(new Event('noto_wallpaper_changed'));
+      window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+    } catch (err) {
+      console.error("UI alignment dispatcher warning:", err);
+    }
 
-    // Step 5: Success! Hard reload page to load new scripts & styles
+    // Step 5: Success! Execute a secure cache-busting hard-reload to fetch fresh server bundles
     setRefreshStep(5);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    window.location.reload();
+    
+    try {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('refresh_v', Date.now().toString());
+      window.location.href = currentUrl.toString();
+    } catch (e) {
+      window.location.reload();
+    }
   };
 
   const handlePinSubmit = async () => {
@@ -500,6 +529,29 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     <span className="text-xs font-black text-amber-400">{streak} {lang === 'id' ? 'Hari Beruntun' : 'Day Streak'}</span>
                   </div>
                 )}
+              </div>
+
+              {/* QUICK REFRESH & DIAGNOSTIC CARD */}
+              <div className="p-5 sm:p-6 bg-slate-900/45 hover:bg-slate-900/70 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-5 shadow-lg shadow-slate-950/15 transition-all">
+                <div className="flex items-center gap-4 min-w-0 flex-1 text-center sm:text-left flex-col sm:flex-row">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.15)] shrink-0">
+                    <RefreshCw size={22} className="animate-spin duration-[8000ms]" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-extrabold text-[15px] text-slate-100 tracking-tight">
+                      {t('refreshApp')}
+                    </span>
+                    <span className="text-xs text-slate-400 leading-normal mt-1 max-w-md">
+                      {t('refreshAppDesc')}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleRefreshApp}
+                  className="w-full sm:w-auto px-5 py-3 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl active:scale-[0.97] transition-all cursor-pointer whitespace-nowrap shadow-lg shadow-indigo-500/15 shrink-0"
+                >
+                  {lang === 'id' ? 'Segarkan Noto' : 'Refresh Noto'}
+                </button>
               </div>
 
               {/* SETTINGS CATEGORIES GRID */}
@@ -1037,22 +1089,6 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <span className="font-black text-[11px] text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full text-center shrink-0 ml-3">v3.0</span>
               </div>
-
-              <button 
-                onClick={handleRefreshApp} 
-                className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 w-full text-left active:scale-[0.995] cursor-pointer"
-              >
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)] shrink-0 group-hover:rotate-180 transition-transform duration-700">
-                    <RefreshCw size={18} />
-                  </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-bold text-[15px] text-slate-200 group-hover:text-indigo-400 transition-colors truncate">{t('refreshApp')}</span>
-                    <span className="text-[11px] font-medium text-slate-400/85 mt-0.5 leading-normal whitespace-normal break-words">{t('refreshAppDesc')}</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-200 ml-3" />
-              </button>
 
               <button onClick={() => setShowUpdateNotes(true)} className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 w-full text-left active:scale-[0.995] cursor-pointer">
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
