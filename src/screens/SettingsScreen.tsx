@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Moon, Download, Upload, Bell, Lock, FileText, Smartphone, 
   ChevronRight, ChevronLeft, User, Globe, Clock, Key, Trash2, Info, Shield, MessageCircle, Gamepad2,
-  AlertTriangle, Image as ImageIcon
+  AlertTriangle, Image as ImageIcon, RefreshCw
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -108,6 +108,60 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
   const [showUpdateNotes, setShowUpdateNotes] = useState(false);
   const [backupModalMode, setBackupModalMode] = useState<'export' | 'import' | null>(null);
   const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshStep, setRefreshStep] = useState<number>(1);
+
+  const handleRefreshApp = async () => {
+    setIsRefreshing(true);
+    setRefreshStep(1);
+
+    // Step 1: Check server stability/connectivity using a real cache-busting fetch request to /index.html
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await fetch('/index.html?t=' + Date.now(), { cache: 'no-store', method: 'HEAD' });
+    } catch (err) {
+      console.warn("Connection or cache-busting fetch warning:", err);
+    }
+
+    // Step 2: Clear stale asset cache stored in Cache Storage
+    setRefreshStep(2);
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    try {
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        for (const name of cacheNames) {
+          await caches.delete(name);
+        }
+      }
+    } catch (err) {
+      console.error("Cache clean failed:", err);
+    }
+
+    // Step 3: Update Service Worker registration
+    setRefreshStep(3);
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.update();
+        }
+      }
+    } catch (err) {
+      console.error("Service worker update failed:", err);
+    }
+
+    // Step 4: Validate local database structures & trigger key events
+    setRefreshStep(4);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    window.dispatchEvent(new Event('noto_wallpaper_changed'));
+    window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+
+    // Step 5: Success! Hard reload page to load new scripts & styles
+    setRefreshStep(5);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    window.location.reload();
+  };
 
   const handlePinSubmit = async () => {
     if (pinInput.length !== 4) return;
@@ -364,6 +418,50 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
           <p className="text-slate-400 text-xs mt-2">
             {lang === 'id' ? 'Mohon tunggu sebentar, halaman akan dimuat ulang.' : 'Please wait, the page will reload shortly.'}
           </p>
+        </div>
+      )}
+      {isRefreshing && (
+        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300">
+          <div className="relative mb-8 flex items-center justify-center">
+            <div className="w-20 h-20 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin absolute" />
+            <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.25)] animate-pulse">
+              <RefreshCw size={24} className="animate-spin duration-[3000ms]" />
+            </div>
+          </div>
+          
+          <h2 className="text-slate-50 font-black text-xl tracking-tight mb-2">
+            {t('refreshingTitle')}
+          </h2>
+          <p className="text-slate-400 text-xs mb-8 max-w-xs leading-relaxed">
+            {lang === 'id'
+              ? 'Membersihkan cache sistem dan menyegarkan data agar Noto berjalan lancar kembali.'
+              : 'Clearing system cache and refreshing data to keep Noto running smoothly.'}
+          </p>
+
+          <div className="w-full max-w-xs bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 text-left space-y-3.5 shadow-xl">
+            {[1, 2, 3, 4, 5].map((stepNum) => {
+              const isCurrent = refreshStep === stepNum;
+              const isDone = refreshStep > stepNum;
+              
+              let stepLabel = '';
+              if (stepNum === 1) stepLabel = t('refreshStep1');
+              else if (stepNum === 2) stepLabel = t('refreshStep2');
+              else if (stepNum === 3) stepLabel = t('refreshStep3');
+              else if (stepNum === 4) stepLabel = t('refreshStep4');
+              else if (stepNum === 5) stepLabel = t('refreshStep5');
+
+              return (
+                <div key={stepNum} className={`flex items-center gap-3.5 transition-all duration-300 ${isCurrent ? 'scale-[1.02] opacity-100' : isDone ? 'opacity-80' : 'opacity-30'}`}>
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : isCurrent ? 'bg-indigo-500 text-slate-950 animate-bounce' : 'bg-slate-850 text-slate-500 border border-slate-800'}`}>
+                    {isDone ? '✓' : stepNum}
+                  </div>
+                  <span className={`text-[12px] font-semibold leading-none truncate ${isCurrent ? 'text-indigo-400 font-bold' : isDone ? 'text-slate-300 line-through decoration-slate-600/60' : 'text-slate-500'}`}>
+                    {stepLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       <div className="flex-none h-16 pt-[env(safe-area-inset-top)] border-b border-slate-800/40 bg-slate-900/80 backdrop-blur-md px-6 flex items-center justify-between z-10">
@@ -939,6 +1037,22 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </div>
                 <span className="font-black text-[11px] text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full text-center shrink-0 ml-3">v3.0</span>
               </div>
+
+              <button 
+                onClick={handleRefreshApp} 
+                className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 w-full text-left active:scale-[0.995] cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)] shrink-0 group-hover:rotate-180 transition-transform duration-700">
+                    <RefreshCw size={18} />
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-bold text-[15px] text-slate-200 group-hover:text-indigo-400 transition-colors truncate">{t('refreshApp')}</span>
+                    <span className="text-[11px] font-medium text-slate-400/85 mt-0.5 leading-normal whitespace-normal break-words">{t('refreshAppDesc')}</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-200 ml-3" />
+              </button>
 
               <button onClick={() => setShowUpdateNotes(true)} className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 w-full text-left active:scale-[0.995] cursor-pointer">
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
