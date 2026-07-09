@@ -297,6 +297,37 @@ export default function MemoryGameScreen({ onBack }: { onBack: () => void }) {
 
   const currentGrid = LEVELS[currentLevel - 1] || LEVELS[0];
 
+  const getCardSizeClasses = (cols: number) => {
+    if (cols >= 6) {
+      return {
+        text: 'text-lg sm:text-2xl',
+        icon: 'w-4 h-4 sm:w-5 sm:h-5',
+        rounded: 'rounded-xl',
+      };
+    }
+    if (cols === 5) {
+      return {
+        text: 'text-xl sm:text-2xl',
+        icon: 'w-4 h-4 sm:w-5 sm:h-5',
+        rounded: 'rounded-xl',
+      };
+    }
+    if (cols === 4) {
+      return {
+        text: 'text-xl sm:text-3xl',
+        icon: 'w-5 h-5 sm:w-7 sm:h-7',
+        rounded: 'rounded-2xl',
+      };
+    }
+    return {
+      text: 'text-3xl sm:text-4xl',
+      icon: 'w-7 h-7 sm:w-9 sm:h-9',
+      rounded: 'rounded-2xl',
+    };
+  };
+
+  const sizeConfig = getCardSizeClasses(currentGrid.cols);
+
   return (
     <div className="flex flex-col h-full text-slate-200">
       {/* Header */}
@@ -318,7 +349,8 @@ export default function MemoryGameScreen({ onBack }: { onBack: () => void }) {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col items-center justify-center max-w-lg mx-auto w-full space-y-6 no-scrollbar pb-12">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden relative no-scrollbar">
+        <div className="flex flex-col items-center justify-center p-4 py-6 min-h-[min-content] sm:min-h-full max-w-lg mx-auto w-full space-y-6 pb-12">
         
         {/* Game Stats */}
         <div className="w-full bg-slate-900/60 border border-slate-800/80 rounded-[2rem] p-4 flex justify-around items-center text-center shadow-lg">
@@ -465,7 +497,7 @@ export default function MemoryGameScreen({ onBack }: { onBack: () => void }) {
             </div>
 
             <div 
-              className="grid gap-3.5 w-full animate-in zoom-in-95 duration-300 select-none"
+              className={`grid w-full animate-in zoom-in-95 duration-300 select-none ${currentGrid.cols >= 5 ? 'gap-1.5' : 'gap-3'}`}
               style={{
                 gridTemplateColumns: `repeat(${currentGrid.cols}, minmax(0, 1fr))`,
               }}
@@ -473,16 +505,23 @@ export default function MemoryGameScreen({ onBack }: { onBack: () => void }) {
               {cards.map((card, index) => {
                 const isRevealed = card.isFlipped || card.isMatched;
                 return (
-                  <button
+                  <div
                     key={card.id}
                     onClick={() => handleCardClick(index)}
-                    className={`aspect-square w-full rounded-2xl cursor-pointer transition-all duration-300 relative focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        handleCardClick(index);
+                      }
+                    }}
+                    className={`aspect-square w-full cursor-pointer transition-all duration-300 relative focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
                       card.isMatched 
-                        ? 'opacity-40 scale-95 pointer-events-none' 
+                        ? 'opacity-30 scale-95 pointer-events-none' 
                         : 'hover:scale-[1.03] active:scale-[0.97]'
                     }`}
                   >
-                    <div className={`w-full h-full rounded-2xl border-2 transition-all duration-300 flex items-center justify-center text-2xl sm:text-3xl shadow-md ${
+                    <div className={`absolute inset-0 ${sizeConfig.rounded} border-2 transition-all duration-300 flex items-center justify-center ${sizeConfig.text} shadow-md ${
                       isRevealed
                         ? card.isMatched
                           ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 scale-100'
@@ -492,10 +531,10 @@ export default function MemoryGameScreen({ onBack }: { onBack: () => void }) {
                       {isRevealed ? (
                         <span className="animate-in zoom-in-50 duration-200 select-none">{card.emoji}</span>
                       ) : (
-                        <HelpCircle className="w-5 h-5 sm:w-7 sm:h-7 text-slate-600" />
+                        <HelpCircle className={`${sizeConfig.icon} text-slate-600`} />
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -578,6 +617,7 @@ export default function MemoryGameScreen({ onBack }: { onBack: () => void }) {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

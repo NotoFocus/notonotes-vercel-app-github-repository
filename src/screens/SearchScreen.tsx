@@ -9,6 +9,7 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
   const { notes, tasks, toggleTask, updateTask, deleteTask, updateNote, deleteNote, searchQuery, setSearchQuery, lang, checkInDaily } = useAppStore();
   const t = useTranslation(lang);
   const [activeFilter, setActiveFilter] = useState<string>('all'); // 'all', 'archive', or tag name
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
   const query = searchQuery.toLowerCase().trim();
 
@@ -109,8 +110,9 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
             <Archive className="w-3.5 h-3.5" />
           </button>
           <button 
-            onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
+            onClick={(e) => { e.stopPropagation(); setNoteToDelete(note.id); }}
             className="p-1.5 rounded-lg transition-colors hover:bg-slate-700 text-slate-400 hover:text-red-400"
+            title={lang === 'id' ? 'Hapus Catatan' : 'Delete Note'}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -309,6 +311,36 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
 
         </div>
       </div>
+
+      {noteToDelete && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm shadow-2xl">
+            <h3 className="text-xl font-bold text-red-400 mb-2">{t('deleteNoteTitle')}</h3>
+            <p className="text-sm text-slate-400 mb-6">
+              {t('deleteNoteConfirm')}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setNoteToDelete(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-50 bg-slate-800 transition-colors"
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={() => {
+                  if (noteToDelete) {
+                    deleteNote(noteToDelete);
+                  }
+                  setNoteToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl text-white text-sm font-bold bg-red-500 hover:bg-red-600 transition-colors"
+              >
+                {t('delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

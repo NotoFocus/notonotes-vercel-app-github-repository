@@ -25,6 +25,7 @@ interface AppContextType {
   clearAllTransactions: () => void;
   importTransactions: (transactions: Transaction[]) => void;
   importData: (notes: Note[], tasks: Task[], transactions?: Transaction[]) => void;
+  importFullBackup: (backup: any) => Promise<void>;
   clearAllData: () => Promise<void>;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
@@ -335,6 +336,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (user && user.avatarUrl === 'indexeddb:user_avatar') {
+      getLargeItem('user_avatar').then(cached => {
+        if (cached) {
+          setUser(prev => {
+            if (prev && prev.avatarUrl === 'indexeddb:user_avatar') {
+              return { ...prev, avatarUrl: cached };
+            }
+            return prev;
+          });
+        }
+      }).catch(err => console.error("Failed to load async user avatar:", err));
+    }
+  }, [user?.avatarUrl]);
+
+  useEffect(() => {
     const lightweightUser = { ...user };
     if (user.avatarUrl && user.avatarUrl.startsWith('data:image/')) {
       setLargeItem('user_avatar', user.avatarUrl).catch(e => console.error(e));
@@ -391,10 +407,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteNote = (id: string) => setNotes(prev => prev.filter(n => n.id !== id));
 
   const addTask = (task: Task) => setTasks(prev => {
-    if (prev.some(t => t.id === task.id)) return prev.map(t => t.id === task.id ? task : t);
-    return [task, ...prev];
+    let next = prev;
+    if (task.isDiscipline) {
+      next = next.map(t => t.isDiscipline ? { ...t, isDiscipline: false } : t);
+    }
+    if (next.some(t => t.id === task.id)) return next.map(t => t.id === task.id ? task : t);
+    return [task, ...next];
   });
-  const updateTask = (task: Task) => setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+  const updateTask = (task: Task) => setTasks(prev => {
+    let next = prev;
+    if (task.isDiscipline) {
+      next = next.map(t => (t.isDiscipline && t.id !== task.id) ? { ...t, isDiscipline: false } : t);
+    }
+    return next.map(t => t.id === task.id ? task : t);
+  });
   const toggleTask = (id: string, dateStr?: string) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
@@ -577,6 +603,82 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (importedTransactions) setTransactions(importedTransactions);
   };
 
+  const importFullBackup = async (backup: any) => {
+    if (!backup || typeof backup !== 'object') return;
+    
+    if (Array.isArray(backup.notes)) {
+      setNotes(backup.notes);
+    }
+    if (Array.isArray(backup.tasks)) {
+      setTasks(backup.tasks);
+    }
+    if (Array.isArray(backup.transactions)) {
+      setTransactions(backup.transactions);
+    }
+    if (Array.isArray(backup.moods)) {
+      setMoods(backup.moods);
+    }
+    if (backup.user && typeof backup.user === 'object') {
+      setUser(backup.user);
+    }
+    if (typeof backup.streak === 'number') {
+      setStreak(backup.streak);
+    }
+    if (backup.lastTaskCompleted !== undefined) {
+      setLastTaskCompleted(backup.lastTaskCompleted);
+    }
+    if (backup.appPin !== undefined) {
+      setAppPin(backup.appPin);
+    }
+    if (backup.pinRecoveryQuestion !== undefined) {
+      setPinRecoveryQuestion(backup.pinRecoveryQuestion);
+    }
+    if (backup.pinRecoveryAnswer !== undefined) {
+      setPinRecoveryAnswer(backup.pinRecoveryAnswer);
+    }
+    if (backup.lang) {
+      setLang(backup.lang);
+    }
+    if (typeof backup.reminderActive === 'boolean') {
+      setReminderActive(backup.reminderActive);
+    }
+    if (backup.reminderTime) {
+      setReminderTime(backup.reminderTime);
+    }
+    if (backup.savingsTarget !== undefined) {
+      setSavingsTarget(backup.savingsTarget);
+    }
+    if (backup.savingsTargetTitle !== undefined) {
+      setSavingsTargetTitle(backup.savingsTargetTitle);
+    }
+    if (typeof backup.savingsBalance === 'number') {
+      setSavingsBalance(backup.savingsBalance);
+    }
+    if (typeof backup.hasCompletedOnboarding === 'boolean') {
+      setHasCompletedOnboarding(backup.hasCompletedOnboarding);
+    }
+    if (Array.isArray(backup.archivedTags)) {
+      setArchivedTags(backup.archivedTags);
+    }
+    
+    // Asynchronously import wallpapers
+    if (backup.customWallpaper) {
+      await setLargeItem('noto_custom_wallpaper', backup.customWallpaper);
+      window.dispatchEvent(new Event('noto_wallpaper_changed'));
+    } else if (backup.customWallpaper === null) {
+      await deleteLargeItem('noto_custom_wallpaper');
+      window.dispatchEvent(new Event('noto_wallpaper_changed'));
+    }
+
+    if (backup.bannerWallpaper) {
+      await setLargeItem('noto_banner_wallpaper', backup.bannerWallpaper);
+      window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+    } else if (backup.bannerWallpaper === null) {
+      await deleteLargeItem('noto_banner_wallpaper');
+      window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+    }
+  };
+
   const clearAllData = async () => {
     // Securely wipe all data from local storage by dynamically finding all keys, overwriting, and clearing
     try {
@@ -630,7 +732,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addNote, updateNote, deleteNote, 
     addTask, updateTask, toggleTask, deleteTask, setMood,
     addTransaction, updateTransaction, deleteTransaction, clearAllTransactions, importTransactions,
-    importData, clearAllData,
+    importData, importFullBackup, clearAllData,
     searchQuery, setSearchQuery, appPin, setAppPin,
     pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer,
     lang, setLang,

@@ -311,7 +311,7 @@ export default function App() {
                 : `Ketuk untuk membuka catatan: "${note.title || 'Catatan'}"`;
               
               sendNotification(
-                t('noteReminderTitle') || "Catatan Pengingat! 🔔",
+                t('noteReminderTitle') || "Catatan Pengingat!",
                 bodyText,
                 true,
                 note.id

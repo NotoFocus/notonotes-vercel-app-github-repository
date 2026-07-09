@@ -1483,62 +1483,6 @@ export default function CalendarScreen() {
                       </div>
                     )}
                   </div>
-
-                  {/* Completed Tasks History Card */}
-                  <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl shadow-xl p-6">
-                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/50">
-                      <div className="w-8 h-8 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                      <h3 className="text-sm font-bold text-slate-50 tracking-tight">
-                        {lang === 'id' ? 'Riwayat Tugas Selesai' : 'Completed Tasks History'}
-                      </h3>
-                    </div>
-
-                    {completedTasksInPeriod.length > 0 ? (
-                      <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1 no-scrollbar">
-                        {completedTasksInPeriod.map((item) => (
-                          <div 
-                            key={item.id}
-                            className="bg-slate-950/45 border border-slate-800/50 rounded-2xl p-3.5 flex items-center justify-between hover:border-emerald-500/30 transition-all group"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="w-4 h-4 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center shrink-0">
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                </span>
-                                <span className="font-extrabold text-slate-100 text-xs sm:text-sm truncate" title={item.title}>
-                                  {item.title}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1.5 font-mono text-[9px] text-slate-400">
-                                <span>{lang === 'id' ? 'Selesai' : 'Completed'}: {item.dateStr}</span>
-                                {item.isDiscipline && (
-                                  <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 px-1 py-0.5 rounded text-[8px] font-black uppercase">
-                                    {lang === 'id' ? 'Disiplin' : 'Discipline'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border uppercase shrink-0 ml-4 ${
-                              item.priority === 'Tinggi' 
-                                ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
-                                : item.priority === 'Sedang'
-                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                            }`}>
-                              {item.priority}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-800/60 rounded-xl font-mono">
-                        {lang === 'id' ? 'Belum ada riwayat tugas selesai pada periode ini' : 'No completed tasks recorded in this period'}
-                      </div>
-                    )}
-                  </div>
                 </div>
 
               </div>

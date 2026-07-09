@@ -11,17 +11,45 @@ import { generateId, encryptData, decryptData, hashPin } from '../utils';
 import { getLargeItem, getLargeItemSync, setLargeItem, deleteLargeItem } from '../utils/db';
 
 export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { appTheme: string, setAppTheme: (t: any) => void, onNavigate?: (s: ScreenItem) => void }) {
-  const { transactions, notes, tasks, user, updateUser, appPin, setAppPin, pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer, setIsUnlocked, importData, clearAllData, lang, setLang, streak, reminderActive, setReminderActive, reminderTime, setReminderTime } = useAppStore();
+  const { 
+    transactions, notes, tasks, user, updateUser, appPin, setAppPin, 
+    pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer, 
+    setIsUnlocked, importData, importFullBackup, clearAllData, lang, setLang, streak, 
+    reminderActive, setReminderActive, reminderTime, setReminderTime,
+    moods, savingsTarget, savingsTargetTitle, savingsBalance, hasCompletedOnboarding, archivedTags
+  } = useAppStore();
   const t = useTranslation(lang);
 
   const [activeSection, setActiveSection] = useState<'appearance' | 'notifications' | 'security' | 'backup' | 'about' | null>(null);
+
+  const [exportOptions, setExportOptions] = useState({
+    notes: true,
+    tasks: true,
+    transactions: true,
+    moods: true,
+    userProfile: true,
+    settings: true,
+    wallpaper: true
+  });
 
   const [localCustomWallpaper, setLocalCustomWallpaper] = useState<string | null>(() => getLargeItemSync("noto_custom_wallpaper"));
   const [localBannerWallpaper, setLocalBannerWallpaper] = useState<string | null>(() => getLargeItemSync("noto_banner_wallpaper"));
 
   useEffect(() => {
-    getLargeItem('noto_custom_wallpaper').then(setLocalCustomWallpaper);
-    getLargeItem('noto_banner_wallpaper').then(setLocalBannerWallpaper);
+    const loadWallpapers = () => {
+      getLargeItem('noto_custom_wallpaper').then(setLocalCustomWallpaper);
+      getLargeItem('noto_banner_wallpaper').then(setLocalBannerWallpaper);
+    };
+
+    loadWallpapers();
+
+    window.addEventListener('noto_wallpaper_changed', loadWallpapers);
+    window.addEventListener('noto_banner_wallpaper_changed', loadWallpapers);
+
+    return () => {
+      window.removeEventListener('noto_wallpaper_changed', loadWallpapers);
+      window.removeEventListener('noto_banner_wallpaper_changed', loadWallpapers);
+    };
   }, []);
 
   const handleWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,11 +109,54 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
   const [backupModalMode, setBackupModalMode] = useState<'export' | 'import' | null>(null);
   const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
 
+  const handlePinSubmit = async () => {
+    if (pinInput.length !== 4) return;
+    const { hashPin } = await import('../utils');
+    if (pinModalMode === 'create' || pinModalMode === 'change') {
+      if (!pinQuestionInput.trim() || !pinAnswerInput.trim()) {
+        setPinError(true);
+        setTimeout(() => setPinError(false), 500);
+        return;
+      }
+      const hashed = await hashPin(pinInput);
+      setAppPin(hashed);
+      setPinRecoveryQuestion(pinQuestionInput.trim());
+      setPinRecoveryAnswer(pinAnswerInput.trim().toLowerCase());
+      setIsUnlocked(true);
+      setPinModalMode(null);
+      setPinQuestionInput('');
+      setPinAnswerInput('');
+    } else if (pinModalMode === 'verify') {
+      const hashed = await hashPin(pinInput);
+      if (hashed === appPin || pinInput === appPin) {
+        setPinInput('');
+        setPinError(false);
+        setPinModalMode('change');
+      } else {
+        setPinError(true);
+        setPinInput('');
+        setTimeout(() => setPinError(false), 500);
+      }
+    } else if (pinModalMode === 'remove') {
+      const hashed = await hashPin(pinInput);
+      if (hashed === appPin || pinInput === appPin) {
+        setAppPin(null);
+        setPinRecoveryQuestion(null);
+        setPinRecoveryAnswer(null);
+        setPinModalMode(null);
+      } else {
+        setPinError(true);
+        setPinInput('');
+        setTimeout(() => setPinError(false), 500);
+      }
+    }
+  };
+
   const triggerTestNotif = () => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       window.Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
-          const title = t('notifTitleTest') || 'Uji Coba Notifikasi Noto! 🔔';
+          const title = t('notifTitleTest') || 'Uji Coba Notifikasi Noto!';
           const body = t('notifBodyTest') || 'Hebat! Notifikasi dari aplikasi Noto berfungsi dengan benar 100%.';
           const options = {
             body: body,
@@ -148,7 +219,42 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
 
   const processExport = async () => {
     try {
-      const data = JSON.stringify({ notes, tasks, transactions });
+      const exportData: any = { 
+        version: "4.0",
+        timestamp: new Date().toISOString()
+      };
+      
+      if (exportOptions.notes) exportData.notes = notes;
+      if (exportOptions.tasks) exportData.tasks = tasks;
+      if (exportOptions.transactions) exportData.transactions = transactions;
+      if (exportOptions.moods) exportData.moods = moods;
+      
+      if (exportOptions.userProfile) {
+        exportData.user = user;
+        exportData.streak = streak;
+      }
+      
+      if (exportOptions.settings) {
+        exportData.appPin = appPin;
+        exportData.pinRecoveryQuestion = pinRecoveryQuestion;
+        exportData.pinRecoveryAnswer = pinRecoveryAnswer;
+        exportData.lang = lang;
+        exportData.reminderActive = reminderActive;
+        exportData.reminderTime = reminderTime;
+        exportData.savingsTarget = savingsTarget;
+        exportData.savingsTargetTitle = savingsTargetTitle;
+        exportData.savingsBalance = savingsBalance;
+        exportData.hasCompletedOnboarding = hasCompletedOnboarding;
+        exportData.archivedTags = archivedTags;
+      }
+      
+      if (exportOptions.wallpaper) {
+        exportData.customWallpaper = localCustomWallpaper;
+        exportData.bannerWallpaper = localBannerWallpaper;
+        exportData.appTheme = appTheme;
+      }
+      
+      const data = JSON.stringify(exportData);
       let finalData = data;
       
       if (backupPassword) {
@@ -160,7 +266,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'noto_backup.json';
+      a.download = `noto_backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
       setToastMessage(t('toastExportSuccess'));
@@ -195,7 +301,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
       }
       
       const data = JSON.parse(dataStr);
-      if (data.notes && data.tasks) {
+      if (data.version === "4.0" || data.notes || data.tasks) {
         const parsedTransactions = data.transactions || [];
         const seenTxIds = new Set();
         const uniqueTransactions = parsedTransactions.map((t: any) => {
@@ -204,21 +310,35 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
           return t;
         });
 
+        const parsedTasks = data.tasks || [];
         const seenTaskIds = new Set();
-        const uniqueTasks = data.tasks.map((t: any) => {
+        const uniqueTasks = parsedTasks.map((t: any) => {
           if (seenTaskIds.has(t.id)) t.id = generateId();
           seenTaskIds.add(t.id);
           return t;
         });
 
+        const parsedNotes = data.notes || [];
         const seenNoteIds = new Set();
-        const uniqueNotes = data.notes.map((n: any) => {
+        const uniqueNotes = parsedNotes.map((n: any) => {
           if (seenNoteIds.has(n.id)) n.id = generateId();
           seenNoteIds.add(n.id);
           return n;
         });
         
-        importData(uniqueNotes, uniqueTasks, uniqueTransactions);
+        const fullBackup = {
+          ...data,
+          notes: uniqueNotes,
+          tasks: uniqueTasks,
+          transactions: uniqueTransactions
+        };
+
+        await importFullBackup(fullBackup);
+
+        if (data.appTheme) {
+          setAppTheme(data.appTheme);
+        }
+
         setToastMessage(t('toastImportSuccess'));
         setBackupModalMode(null);
         setTimeout(() => setToastMessage(null), 3000);
@@ -896,47 +1016,9 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 autoFocus
                 value={pinInput}
                 onChange={e => setPinInput(e.target.value.replace(/\D/g, ''))}
-                onKeyDown={async (e) => {
-                  if (e.key === 'Enter' && pinInput.length === 4) {
-                    const { hashPin } = await import('../utils');
-                    if (pinModalMode === 'create' || pinModalMode === 'change') {
-                      if (!pinQuestionInput.trim() || !pinAnswerInput.trim()) {
-                        setPinError(true);
-                        setTimeout(() => setPinError(false), 500);
-                        return;
-                      }
-                      const hashed = await hashPin(pinInput);
-                      setAppPin(hashed);
-                      setPinRecoveryQuestion(pinQuestionInput.trim());
-                      setPinRecoveryAnswer(pinAnswerInput.trim().toLowerCase());
-                      setIsUnlocked(true);
-                      setPinModalMode(null);
-                      setPinQuestionInput('');
-                      setPinAnswerInput('');
-                    } else if (pinModalMode === 'verify') {
-                      const hashed = await hashPin(pinInput);
-                      if (hashed === appPin || pinInput === appPin) { // fallback for legacy plaintext pin
-                        setPinInput('');
-                        setPinError(false);
-                        setPinModalMode('change');
-                      } else {
-                        setPinError(true);
-                        setPinInput('');
-                        setTimeout(() => setPinError(false), 500);
-                      }
-                    } else if (pinModalMode === 'remove') {
-                      const hashed = await hashPin(pinInput);
-                      if (hashed === appPin || pinInput === appPin) { // fallback for legacy plaintext pin
-                        setAppPin(null);
-                        setPinRecoveryQuestion(null);
-                        setPinRecoveryAnswer(null);
-                        setPinModalMode(null);
-                      } else {
-                        setPinError(true);
-                        setPinInput('');
-                        setTimeout(() => setPinError(false), 500);
-                      }
-                    }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handlePinSubmit();
                   }
                 }}
                 className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3.5 text-slate-50 text-xl tracking-[1.2em] font-mono text-center mb-5 outline-none focus:border-indigo-500/60 focus:bg-slate-950/90 transition-all shadow-inner"
@@ -948,6 +1030,11 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     type="text"
                     value={pinQuestionInput}
                     onChange={e => setPinQuestionInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handlePinSubmit();
+                      }
+                    }}
                     className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500/60 transition-all placeholder-slate-600"
                     placeholder={t('securityQuestionPlaceholder')}
                   />
@@ -955,6 +1042,11 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     type="text"
                     value={pinAnswerInput}
                     onChange={e => setPinAnswerInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handlePinSubmit();
+                      }
+                    }}
                     className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500/60 transition-all placeholder-slate-600"
                     placeholder={t('securityAnswerPlaceholder')}
                   />
@@ -975,42 +1067,7 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                 </button>
                 <button 
                   disabled={pinInput.length !== 4 || ((pinModalMode === 'create' || pinModalMode === 'change') && (!pinQuestionInput.trim() || !pinAnswerInput.trim()))}
-                  onClick={async () => {
-                    const { hashPin } = await import('../utils');
-                    if (pinModalMode === 'create' || pinModalMode === 'change') {
-                      const hashed = await hashPin(pinInput);
-                      setAppPin(hashed);
-                      setPinRecoveryQuestion(pinQuestionInput.trim());
-                      setPinRecoveryAnswer(pinAnswerInput.trim().toLowerCase());
-                      setIsUnlocked(true);
-                      setPinModalMode(null);
-                      setPinQuestionInput('');
-                      setPinAnswerInput('');
-                    } else if (pinModalMode === 'verify') {
-                      const hashed = await hashPin(pinInput);
-                      if (hashed === appPin || pinInput === appPin) {
-                        setPinInput('');
-                        setPinError(false);
-                        setPinModalMode('change');
-                      } else {
-                        setPinError(true);
-                        setPinInput('');
-                        setTimeout(() => setPinError(false), 500);
-                      }
-                    } else if (pinModalMode === 'remove') {
-                      const hashed = await hashPin(pinInput);
-                      if (hashed === appPin || pinInput === appPin) {
-                        setAppPin(null);
-                        setPinRecoveryQuestion(null);
-                        setPinRecoveryAnswer(null);
-                        setPinModalMode(null);
-                      } else {
-                        setPinError(true);
-                        setPinInput('');
-                        setTimeout(() => setPinError(false), 500);
-                      }
-                    }
-                  }}
+                  onClick={handlePinSubmit}
                   className={`flex-1 py-3 rounded-2xl text-slate-950 text-sm font-extrabold transition-all active:scale-[0.98] cursor-pointer ${pinInput.length === 4 && (!['create', 'change'].includes(pinModalMode) || (pinQuestionInput.trim() && pinAnswerInput.trim())) ? 'bg-indigo-400 hover:bg-indigo-300 shadow-md shadow-indigo-500/20' : 'bg-slate-850 text-slate-500 cursor-not-allowed opacity-50'}`}
                 >
                   {t('save')}
@@ -1053,30 +1110,183 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
         )}
 
         {backupModalMode && (
-          <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-4 z-50">
-            <div className={`bg-slate-900 border border-slate-800 p-4 md:p-4 rounded-3xl w-full max-w-sm ${backupError ? 'animate-pulse border-red-500/50' : ''}`}>
-              <h3 className="text-lg font-bold text-slate-50 mb-2">
-                {backupModalMode === 'export' ? t('backupPasswordTitle') : t('enterBackupPasswordTitle')}
-              </h3>
-              <p className="text-sm text-slate-400 mb-4">
-                {backupModalMode === 'export' 
-                  ? t('backupExportPasswordDesc') 
-                  : t('backupImportPasswordDesc')}
-              </p>
-              <input
-                type="password"
-                value={backupPassword}
-                onChange={e => setBackupPassword(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    if (backupModalMode === 'export') processExport();
-                    else processImport();
-                  }
-                }}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 text-center mb-4 outline-none focus:border-indigo-500 transition-colors"
-                placeholder="Password"
-              />
-              <div className="flex justify-end gap-3">
+          <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-6 z-50 overflow-y-auto">
+            <div className={`bg-slate-900 border border-slate-800/80 p-5 md:p-6 rounded-[2rem] w-full max-w-lg shadow-2xl relative ${backupError ? 'animate-pulse border-red-500/50' : ''} max-h-[90vh] flex flex-col`}>
+              
+              <div className="flex-none mb-4">
+                <h3 className="text-xl font-extrabold text-slate-50 tracking-tight flex items-center gap-2">
+                  <Download className="w-5 h-5 text-indigo-400" />
+                  {backupModalMode === 'export' 
+                    ? (lang === 'id' ? 'Ekspor Cadangan Lengkap' : 'Export Full Backup')
+                    : (lang === 'id' ? 'Impor File Cadangan' : 'Import Backup File')}
+                </h3>
+                <p className="text-xs text-slate-400 mt-1.5 leading-normal">
+                  {backupModalMode === 'export'
+                    ? (lang === 'id' 
+                      ? 'Pilih data yang ingin Anda cadangkan. Opsi default akan mencadangkan seluruh aplikasi (kembali seperti awal pasca-impor).'
+                      : 'Choose data to backup. Default options will back up the entire application.')
+                    : (lang === 'id' 
+                      ? 'Masukkan kata sandi jika file cadangan ini dienkripsi sebelumnya.'
+                      : 'Enter password if this backup file was previously encrypted.')}
+                </p>
+              </div>
+
+              {backupModalMode === 'export' ? (
+                <div className="flex-1 overflow-y-auto pr-1 space-y-4 mb-5 no-scrollbar">
+                  
+                  {/* IMPORTANT DATA GROUP */}
+                  <div>
+                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 px-1">
+                      {lang === 'id' ? 'Data Sangat Penting (Rekomendasi)' : 'Highly Important Data (Recommended)'}
+                    </h4>
+                    <div className="space-y-2">
+                      {[
+                        { 
+                          key: 'notes', 
+                          title: lang === 'id' ? 'Catatan & Jurnal pribadi' : 'Notes & Journals',
+                          desc: lang === 'id' ? 'Semua teks, lampiran, dan jurnal harian Anda.' : 'All your text entries, attachments, and daily journals.',
+                          icon: '📝'
+                        },
+                        { 
+                          key: 'tasks', 
+                          title: lang === 'id' ? 'Daftar Tugas & Kebiasaan' : 'Tasks & Habits',
+                          desc: lang === 'id' ? 'Target harian, status tugas, dan streak disiplin.' : 'Daily targets, task completion states, and discipline streaks.',
+                          icon: '✅'
+                        },
+                        { 
+                          key: 'transactions', 
+                          title: lang === 'id' ? 'Keuangan & Target Tabungan' : 'Finances & Savings Target',
+                          desc: lang === 'id' ? 'Seluruh laporan transaksi pemasukan/pengeluaran dan tabungan.' : 'All cashflow logs, savings targets, and balance.',
+                          icon: '💰'
+                        }
+                      ].map((item) => (
+                        <label 
+                          key={item.key}
+                          className="flex items-start gap-3 p-3 bg-slate-950/40 hover:bg-slate-950/80 border border-slate-800/80 rounded-2xl cursor-pointer transition-all active:scale-[0.995]"
+                        >
+                          <input 
+                            type="checkbox"
+                            checked={(exportOptions as any)[item.key]}
+                            onChange={(e) => setExportOptions(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                            className="w-4 h-4 mt-0.5 rounded text-indigo-500 bg-slate-900 border-slate-800 focus:ring-indigo-500 focus:ring-offset-slate-900 focus:ring-2"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs">{item.icon}</span>
+                              <span className="text-xs font-black text-slate-100">{item.title}</span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">{item.desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* OPTIONAL DATA GROUP */}
+                  <div>
+                    <h4 className="text-[10px] font-bold text-amber-400/90 uppercase tracking-widest mb-2 px-1">
+                      {lang === 'id' ? 'Data Pendukung / Opsional (Kurang Penting)' : 'Supporting / Optional Data (Less Important)'}
+                    </h4>
+                    <div className="space-y-2">
+                      {[
+                        { 
+                          key: 'moods', 
+                          title: lang === 'id' ? 'Riwayat Suasana Hati / Mood' : 'Mood Log History',
+                          desc: lang === 'id' ? 'Catatan pelacakan emosi dan kondisi mental harian.' : 'Emotion tracking history and mental state logs.',
+                          icon: '🎭'
+                        },
+                        { 
+                          key: 'userProfile', 
+                          title: lang === 'id' ? 'Profil Pengguna & Streak' : 'User Profile & Streak info',
+                          desc: lang === 'id' ? 'Nama panggilan, streak login, dan pengaturan onboard.' : 'User nickname, login streak data, and onboarding info.',
+                          icon: '👤'
+                        },
+                        { 
+                          key: 'settings', 
+                          title: lang === 'id' ? 'Pengaturan & PIN Kunci Keamanan' : 'App Settings & PIN Lock',
+                          desc: lang === 'id' ? 'Bahasa, jam pengingat harian, dan PIN masuk aplikasi.' : 'Language, daily reminder alarm, and app entry PIN passcode.',
+                          icon: '⚙️'
+                        },
+                        { 
+                          key: 'wallpaper', 
+                          title: lang === 'id' ? 'Wallpaper & Tema Kustom' : 'Custom Wallpapers & Theme',
+                          desc: lang === 'id' ? 'Gambar latar belakang utama dan tema warna yang Anda atur.' : 'Home background pictures and custom color themes.',
+                          icon: '🖼️'
+                        }
+                      ].map((item) => (
+                        <label 
+                          key={item.key}
+                          className="flex items-start gap-3 p-3 bg-slate-950/20 hover:bg-slate-950/55 border border-slate-800/50 rounded-2xl cursor-pointer transition-all active:scale-[0.995]"
+                        >
+                          <input 
+                            type="checkbox"
+                            checked={(exportOptions as any)[item.key]}
+                            onChange={(e) => setExportOptions(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                            className="w-4 h-4 mt-0.5 rounded text-indigo-500 bg-slate-900 border-slate-800 focus:ring-indigo-500 focus:ring-offset-slate-900 focus:ring-2"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs">{item.icon}</span>
+                              <span className="text-xs font-bold text-slate-200">{item.title}</span>
+                              <span className="bg-slate-800 border border-slate-700/60 text-slate-400 px-1 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ml-auto scale-90 shrink-0">
+                                {lang === 'id' ? 'Opsional' : 'Optional'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">{item.desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SECURITY PASSWORD IN ACCORDION / BOX */}
+                  <div className="p-3.5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
+                    <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest block mb-1.5">
+                      {lang === 'id' ? 'Kata Sandi Cadangan (Opsional)' : 'Backup Password (Optional)'}
+                    </span>
+                    <p className="text-[10px] text-slate-400 mb-2.5 leading-normal">
+                      {lang === 'id' 
+                        ? 'Kosongkan jika tidak ingin mengenkripsi file cadangan Anda.' 
+                        : 'Leave blank if you do not want to encrypt your backup file.'}
+                    </p>
+                    <input
+                      type="password"
+                      value={backupPassword}
+                      onChange={e => setBackupPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-slate-50 text-xs text-center outline-none focus:border-indigo-500 transition-colors"
+                      placeholder={lang === 'id' ? 'Masukkan Kata Sandi' : 'Enter Password'}
+                    />
+                  </div>
+
+                </div>
+              ) : (
+                <div className="flex-1 space-y-4 mb-5">
+                  <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
+                    <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest block mb-2">
+                      {lang === 'id' ? 'Kata Sandi File Terenkripsi' : 'Encrypted File Password'}
+                    </span>
+                    <p className="text-xs text-slate-400 mb-3 leading-normal">
+                      {lang === 'id'
+                        ? 'Jika file cadangan dilindungi kata sandi, masukkan di bawah ini agar data dapat didekripsi.'
+                        : 'If the backup file was password-protected, enter it below to decrypt your data.'}
+                    </p>
+                    <input
+                      type="password"
+                      value={backupPassword}
+                      onChange={e => setBackupPassword(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          processImport();
+                        }
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 text-center outline-none focus:border-indigo-500 transition-colors"
+                      placeholder={lang === 'id' ? 'Sandi File (kosongkan jika tidak ada)' : 'File Password (leave blank if none)'}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex-none flex gap-3 pt-3 border-t border-slate-800/40">
                 <button 
                   onClick={() => {
                     setBackupModalMode(null);
@@ -1084,17 +1294,20 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     setBackupFileContent(null);
                     setBackupError(false);
                   }}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-50 transition-colors"
+                  className="flex-1 py-3.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-950/40 border border-slate-800/60 hover:bg-slate-800/40 active:scale-[0.98] transition-all cursor-pointer text-center"
                 >
                   {t('cancel')}
                 </button>
                 <button 
                   onClick={backupModalMode === 'export' ? processExport : processImport}
-                  className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-colors bg-indigo-500 hover:bg-indigo-600"
+                  className="flex-1 py-3.5 rounded-2xl text-slate-950 text-xs font-black transition-all active:scale-[0.98] cursor-pointer text-center bg-indigo-400 hover:bg-indigo-300 shadow-lg shadow-indigo-500/20"
                 >
-                  {backupModalMode === 'export' ? (backupPassword ? t('exportWithEncryption') : t('exportWithoutEncryption')) : t('importLabel')}
+                  {backupModalMode === 'export' 
+                    ? (lang === 'id' ? 'Ekspor Sekarang' : 'Export Now') 
+                    : t('importLabel')}
                 </button>
               </div>
+
             </div>
           </div>
         )}

@@ -26,7 +26,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
   const t = useTranslation(lang);
   const [title, setTitle] = useState(note.title);
   const [initialHtml] = useState(() => {
-    let html = note.content;
+    let html = note.content || "";
     if (html && !html.includes("<") && html.includes("**")) {
       html = html
         .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
@@ -77,9 +77,9 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
   const saveNote = () => {
     setIsSaving(true);
     const existing = notes.find((n) => n.id === note.id);
-    const currTitle = title || '';
+    const currTitle = titleRef.current || '';
     const currContent = (editorRef.current ? editorRef.current.innerHTML : contentRef.current) || '';
-    const currTags = tags || [];
+    const currTags = tagsRef.current || [];
     const currReminder = reminderRef.current;
     
     if (currTitle.trim() || currContent.trim() || currTags.length > 0 || currReminder) {
@@ -94,34 +94,45 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
       }
     }
     
-    titleRef.current = currTitle;
-    contentRef.current = currContent;
-    tagsRef.current = currTags;
-    
     setHasUnsavedChanges(false);
     setIsSaving(false);
     setLastSaved(Date.now());
   };
 
+  const triggerAutosave = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      saveNote();
+    }, 1500);
+  };
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
+    titleRef.current = e.target.value;
     setHasUnsavedChanges(true);
+    triggerAutosave();
   };
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     contentRef.current = e.currentTarget.innerHTML;
     setHasUnsavedChanges(true);
+    triggerAutosave();
   };
 
   const handleBack = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
     if (hasUnsavedChanges) {
       saveNote();
     }
     
     // Also remove if perfectly empty (and no reminder set)
-    const currTitle = title || '';
+    const currTitle = titleRef.current || '';
     const currContent = (editorRef.current ? editorRef.current.innerHTML : contentRef.current) || '';
-    const currTags = tags || [];
+    const currTags = tagsRef.current || [];
     const currReminder = reminderRef.current;
     
     if (!currTitle.trim() && !currContent.trim() && currTags.length === 0 && !currReminder) {
@@ -169,6 +180,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
         document.execCommand("insertHTML", false, html);
         contentRef.current = editorRef.current.innerHTML;
         setHasUnsavedChanges(true);
+        triggerAutosave();
       }
     };
     reader.readAsDataURL(file);
@@ -188,6 +200,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
         document.execCommand("insertHTML", false, html);
         contentRef.current = editorRef.current.innerHTML;
         setHasUnsavedChanges(true);
+        triggerAutosave();
       }
     };
     reader.readAsDataURL(file);
@@ -206,9 +219,11 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
       if (!tags.includes(newTag)) {
         setTags((prev) => {
           const newTags = [...prev, newTag];
+          tagsRef.current = newTags;
           setHasUnsavedChanges(true);
           return newTags;
         });
+        triggerAutosave();
       }
     }
     setNewTagInput("");
@@ -218,9 +233,11 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
   const handleRemoveTag = (tagToRemove: string) => {
     setTags((prev) => {
       const newTags = prev.filter((t) => t !== tagToRemove);
+      tagsRef.current = newTags;
       setHasUnsavedChanges(true);
       return newTags;
     });
+    triggerAutosave();
   };
 
   const allExistingTags = useMemo(() => {
@@ -241,9 +258,11 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
     if (!tags.includes(tag)) {
       setTags(prev => {
         const newTags = [...prev, tag];
+        tagsRef.current = newTags;
         setHasUnsavedChanges(true);
         return newTags;
       });
+      triggerAutosave();
     }
   };
 

@@ -71,14 +71,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
        // Prevent immediate notification if user schedules an alarm in the past
        const isTodayTask = newTaskDate === 'Hari ini' || newTaskDate.toLowerCase() === 'today' || newTaskDate === todayDate || newTaskRepeat === 'daily';
 
-       if (newTaskIsDiscipline) {
-         // remove discipline flag from all other tasks
-         tasks.forEach(t => {
-           if (t.isDiscipline && t.id !== editingTask?.id) {
-             updateTask({ ...t, isDiscipline: false });
-           }
-         });
-       }
+
 
        if (editingTask) {
          updateTask({
@@ -941,28 +934,28 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
                   <>
                     <button
                       onClick={() => {
-                        const todayStr = new Date().toISOString().split('T')[0];
+                        const todayStr = getLocalIsoDate(new Date());
                         const checkinsArr = d.dailyCheckins || [];
                         if (!checkinsArr.includes(todayStr)) {
                           updateTask({ ...task, disciplineData: { ...d, dailyCheckins: [...checkinsArr, todayStr] } });
                           checkInDaily();
                         }
                       }}
-                      disabled={d.dailyCheckins?.includes(new Date().toISOString().split('T')[0])}
+                      disabled={d.dailyCheckins?.includes(getLocalIsoDate(new Date()))}
                       className={`w-full px-5 py-4 rounded-2xl font-bold text-sm transition-all ${
-                        d.dailyCheckins?.includes(new Date().toISOString().split('T')[0])
+                        d.dailyCheckins?.includes(getLocalIsoDate(new Date()))
                           ? 'bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-800'
                           : 'bg-orange-500 text-white hover:bg-orange-600 shadow-lg shadow-orange-500/20 active:scale-95'
                       }`}
                     >
-                      {d.dailyCheckins?.includes(new Date().toISOString().split('T')[0]) 
+                      {d.dailyCheckins?.includes(getLocalIsoDate(new Date())) 
                         ? (lang === 'id' ? 'Selesai Hari Ini' : 'Done Today') 
                         : (lang === 'id' ? 'Check-in Sekarang' : 'Check-in Now')}
                     </button>
                     
                     <button
                       onClick={() => {
-                        const todayStr = new Date().toISOString().split('T')[0];
+                        const todayStr = getLocalIsoDate(new Date());
                         const checkinsArr = d.dailyCheckins || [];
                         const rests = d.usedRestDates || [];
                         if (!checkinsArr.includes(todayStr)) {
@@ -978,11 +971,11 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
                         }
                       }}
                       disabled={
-                        d.dailyCheckins?.includes(new Date().toISOString().split('T')[0]) || 
-                        ((d.usedRestDates || []).filter(date => (new Date().getTime() - new Date(date).getTime()) < 7 * 24 * 60 * 60 * 1000).length >= 1)
+                        d.dailyCheckins?.includes(getLocalIsoDate(new Date())) || 
+                        ((d.usedRestDates || []).filter(date => getDaysDiff(date, getLocalIsoDate(new Date())) < 7).length >= 1)
                       }
                       className={`w-full px-5 py-3 rounded-2xl font-bold text-sm transition-all border ${
-                        d.dailyCheckins?.includes(new Date().toISOString().split('T')[0]) || ((d.usedRestDates || []).filter(date => (new Date().getTime() - new Date(date).getTime()) < 7 * 24 * 60 * 60 * 1000).length >= 1)
+                        d.dailyCheckins?.includes(getLocalIsoDate(new Date())) || ((d.usedRestDates || []).filter(date => getDaysDiff(date, getLocalIsoDate(new Date())) < 7).length >= 1)
                           ? 'bg-slate-900/50 text-slate-500 border-slate-800 cursor-not-allowed'
                           : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border-slate-700 active:scale-95'
                       }`}
@@ -1017,7 +1010,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
                   {!(d.punishmentCompletedDates || []).includes(today) ? (
                     <button
                       onClick={() => {
-                        const todayStr = new Date().toISOString().split('T')[0];
+                        const todayStr = getLocalIsoDate(new Date());
                         const completedPunishments = d.punishmentCompletedDates || [];
                         if (!completedPunishments.includes(todayStr)) {
                           updateTask({
@@ -1062,7 +1055,7 @@ const DisciplineView = React.memo<{ task?: Task, onSelectExisting: () => void, l
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 block">{lang === 'id' ? 'Mulai' : 'Start'}</span>
                   <input 
                     type="date" 
-                    value={d.startDate || (task.date && task.date.includes('-') ? task.date : (task.createdAt ? task.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]))}
+                    value={d.startDate || (task.date && task.date.includes('-') ? task.date : (task.createdAt ? task.createdAt.split('T')[0] : getLocalIsoDate(new Date())))}
                     onChange={(e) => updateTask({ ...task, disciplineData: { ...d, startDate: e.target.value } })}
                     className="bg-transparent text-sm font-medium text-slate-300 focus:outline-none w-full"
                   />

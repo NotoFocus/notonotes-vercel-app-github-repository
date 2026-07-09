@@ -610,11 +610,11 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl relative overflow-hidden"
              >
                 {/* Subtle gradient bg */}
-                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-transparent pointer-events-none" />
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none" />
 
                 <button 
                   onClick={() => setShowTimer(false)}
-                  className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 transition-colors bg-slate-100 hover:bg-slate-200 rounded-full p-1.5 z-10"
+                  className="absolute top-5 right-5 text-slate-400 hover:text-slate-200 transition-colors bg-slate-800 hover:bg-slate-700 rounded-full p-1.5 z-10"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -640,7 +640,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                           className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all ${
                             timerDuration === mins * 60 
                               ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
-                              : 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100'
+                              : 'bg-slate-950/60 text-slate-400 border border-slate-800 hover:bg-slate-800/60 hover:text-slate-200'
                           }`}
                         >
                           {mins}m
@@ -656,7 +656,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                       onClick={toggleTimer} 
                       className={`flex-1 py-4 rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
                         isTimerRunning 
-                          ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
+                          ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700/50' 
                           : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/30'
                       }`}
                     >
@@ -664,7 +664,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                     </button>
                     <button 
                       onClick={resetTimer} 
-                      className="w-14 py-4 rounded-2xl bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 font-bold transition-colors flex items-center justify-center active:scale-95"
+                      className="w-14 py-4 rounded-2xl bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700 border border-slate-700/50 font-bold transition-colors flex items-center justify-center active:scale-95"
                       title="Reset"
                     >
                       <RotateCcw className="w-5 h-5" />
