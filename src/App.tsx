@@ -44,7 +44,8 @@ export const stopGlobalAudio = () => {
 export default function App() {
   const { 
     appPin, isUnlocked, setIsUnlocked, lang, tasks, notes, 
-    reminderActive, reminderTime, hasCompletedOnboarding, setHasCompletedOnboarding 
+    reminderActive, reminderTime, hasCompletedOnboarding, setHasCompletedOnboarding,
+    isRefreshing, refreshStep
   } = useAppStore();
   const t = useTranslation(lang);
   const [currentScreen, _setCurrentScreen] = useState<ScreenItem>('home');
@@ -388,7 +389,30 @@ export default function App() {
 
   return (
     <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
-        {getBackgroundImageUrl() && <img src={getBackgroundImageUrl()} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" referrerPolicy="no-referrer" />}
+      {isRefreshing && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950 flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300">
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6 shadow-[0_0_30px_rgba(99,102,241,0.3)]"></div>
+          <h2 className="text-2xl font-black text-slate-50 tracking-tight mb-2">
+            {t('refreshingTitle')}
+          </h2>
+          <div className="w-64 h-1.5 bg-slate-800 rounded-full overflow-hidden mb-8 shadow-inner">
+            <div 
+              className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.8)]"
+              style={{ width: `${(refreshStep / 5) * 100}%` }}
+            ></div>
+          </div>
+          <div className="h-6 flex items-center justify-center">
+            <span className="text-sm font-bold text-slate-400 animate-pulse uppercase tracking-wide">
+              {refreshStep === 1 && t('refreshStep1')}
+              {refreshStep === 2 && t('refreshStep2')}
+              {refreshStep === 3 && t('refreshStep3')}
+              {refreshStep === 4 && t('refreshStep4')}
+              {refreshStep === 5 && t('refreshStep5')}
+            </span>
+          </div>
+        </div>
+      )}
+      {getBackgroundImageUrl() && <img src={getBackgroundImageUrl()} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" referrerPolicy="no-referrer" />}
       {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
         <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
       )}

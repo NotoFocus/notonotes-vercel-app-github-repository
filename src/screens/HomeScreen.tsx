@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, CheckSquare, Bell, Clock, Play, Pause, RotateCcw, X, Pin, FileText, Trash2, Flame, Sparkles, ChevronRight, Repeat, Wallet, Target } from 'lucide-react';
+import { Plus, CheckSquare, Bell, Clock, Play, Pause, RotateCcw, X, Pin, FileText, Trash2, Flame, Sparkles, ChevronRight, Repeat, Wallet, Target, RefreshCw } from 'lucide-react';
 import { Note, Task } from '../types';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -32,7 +32,7 @@ const getMoodIcon = (id: string, className = "w-6 h-6") => {
 };
 
 export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNavigate }: HomeProps) {
-  const { notes, tasks, moods, setMood, user, updateUser, toggleTask, deleteTask, deleteNote, setSearchQuery, streak, lang, updateTask, checkInDaily } = useAppStore();
+  const { notes, tasks, moods, setMood, user, updateUser, toggleTask, deleteTask, deleteNote, setSearchQuery, streak, lang, updateTask, checkInDaily, handleRefreshApp } = useAppStore();
   const t = useTranslation(lang);
   
   // Use the current user from the store instead of static data
@@ -299,6 +299,9 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
            </span>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
+          <button className="p-3 text-slate-400 hover:text-indigo-400 hover:rotate-180 transition-all duration-500 relative" onClick={handleRefreshApp} title={t('refreshApp') as string}>
+            <RefreshCw className="w-5 h-5" />
+          </button>
           <button className="p-3 text-slate-400 hover:text-emerald-400 transition-colors relative" onClick={() => onNavigate('finance')} title={t('financeMenu') as string}>
             <Wallet className="w-5 h-5" />
           </button>

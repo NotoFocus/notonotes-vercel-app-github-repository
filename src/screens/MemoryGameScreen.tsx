@@ -515,31 +515,48 @@ export default function MemoryGameScreen({ onBack }: { onBack: () => void }) {
                         handleCardClick(index);
                       }
                     }}
-                    className={`aspect-square w-full cursor-pointer [perspective:1000px] focus:outline-none ${
+                    className={`aspect-square w-full cursor-pointer focus:outline-none ${
                       card.isMatched 
                         ? 'opacity-40 pointer-events-none transition-opacity duration-300' 
                         : 'hover:scale-[1.04] active:scale-[0.96] transition-transform duration-200'
                     }`}
+                    style={{
+                      perspective: '1000px',
+                      WebkitPerspective: '1000px',
+                    }}
                   >
                     <div 
-                      className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${
-                        isRevealed ? '[transform:rotateY(180deg)]' : ''
-                      }`}
+                      className="relative w-full h-full transition-transform duration-500"
+                      style={{
+                        transformStyle: 'preserve-3d',
+                        WebkitTransformStyle: 'preserve-3d',
+                        transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                      }}
                     >
                       {/* Front Side (Emoji) - Rotated by 180deg */}
                       <div 
-                        className={`absolute inset-0 ${sizeConfig.rounded} border-2 flex items-center justify-center ${sizeConfig.text} shadow-md [backface-visibility:hidden] [transform:rotateY(180deg)] ${
+                        className={`absolute inset-0 ${sizeConfig.rounded} border-2 flex items-center justify-center ${sizeConfig.text} shadow-md ${
                           card.isMatched
                             ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
                             : 'bg-indigo-500/10 border-indigo-500/40 text-slate-100'
                         }`}
+                        style={{
+                          backfaceVisibility: 'hidden',
+                          WebkitBackfaceVisibility: 'hidden',
+                          transform: 'rotateY(180deg) translate3d(0,0,0)',
+                        }}
                       >
                         <span className="select-none">{card.emoji}</span>
                       </div>
 
                       {/* Back Side (Help/Pattern) - Face up initially */}
                       <div 
-                        className={`absolute inset-0 ${sizeConfig.rounded} border border-slate-800 bg-slate-900 flex items-center justify-center shadow-md [backface-visibility:hidden] hover:border-indigo-500/40 text-slate-500 transition-colors duration-200`}
+                        className={`absolute inset-0 ${sizeConfig.rounded} border border-slate-800 bg-slate-900 flex items-center justify-center shadow-md hover:border-indigo-500/40 text-slate-500 transition-colors duration-200`}
+                        style={{
+                          backfaceVisibility: 'hidden',
+                          WebkitBackfaceVisibility: 'hidden',
+                          transform: 'rotateY(0deg) translate3d(0,0,0)',
+                        }}
                       >
                         <HelpCircle className={`${sizeConfig.icon} text-slate-600`} />
                       </div>

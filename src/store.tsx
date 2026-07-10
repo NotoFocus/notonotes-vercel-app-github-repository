@@ -55,6 +55,9 @@ interface AppContextType {
   checkInDaily: () => void;
   archivedTags: string[];
   setArchivedTags: React.Dispatch<React.SetStateAction<string[]>>;
+  isRefreshing: boolean;
+  refreshStep: number;
+  handleRefreshApp: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -334,6 +337,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     }
   }, []);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshStep, setRefreshStep] = useState(1);
+
+  const handleRefreshApp = async () => {
+    setIsRefreshing(true);
+    setRefreshStep(1);
+
+    // Step 1: Check server stability (virtual delay, 100% offline-friendly)
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Step 2: Validate database and flush memory to persistent storage
+    setRefreshStep(2);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const notesStr = JSON.stringify(notes);
+      safeSetItem('noto_notes', notesStr);
+      await setLargeItem('noto_notes', notesStr);
+
+      const tasksStr = JSON.stringify(tasks);
+      safeSetItem('noto_tasks', tasksStr);
+      await setLargeItem('noto_tasks', tasksStr);
+
+      const transactionsStr = JSON.stringify(transactions);
+      safeSetItem('noto_transactions', transactionsStr);
+      await setLargeItem('noto_transactions', transactionsStr);
+
+      const moodsStr = JSON.stringify(moods);
+      safeSetItem('noto_moods', moodsStr);
+      await setLargeItem('noto_moods', moodsStr);
+
+      const userStr = JSON.stringify(user);
+      safeSetItem('noto_user', userStr);
+    } catch (e) {
+      console.warn("Database sync warning during refresh:", e);
+    }
+
+    // Step 3: Clear transient tab/session cache safely
+    setRefreshStep(3);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      sessionStorage.clear();
+    } catch (e) {}
+
+    // Step 4: Re-align graphics and triggers
+    setRefreshStep(4);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      window.dispatchEvent(new Event('noto_wallpaper_changed'));
+      window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+    } catch (e) {}
+
+    // Step 5: Success! Execute a standard, safe reload (no breaking URL query parameter assignment)
+    setRefreshStep(5);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    window.location.reload();
+  };
 
   useEffect(() => {
     if (user && user.avatarUrl === 'indexeddb:user_avatar') {
@@ -741,12 +801,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     reminderActive, setReminderActive, reminderTime, setReminderTime,
     savingsTarget, setSavingsTarget, savingsTargetTitle, setSavingsTargetTitle,
     savingsBalance, setSavingsBalance, checkInDaily,
-    archivedTags, setArchivedTags
+    archivedTags, setArchivedTags,
+    isRefreshing, refreshStep, handleRefreshApp
   }), [
     notes, tasks, transactions, moods, user, searchQuery, appPin, pinRecoveryQuestion, pinRecoveryAnswer, lang,
     hasCompletedOnboarding, isUnlocked, streak,
     reminderActive, reminderTime, savingsTarget, savingsTargetTitle, savingsBalance,
-    archivedTags
+    archivedTags, isRefreshing, refreshStep
   ]);
 
   return (

@@ -16,7 +16,8 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
     pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer, 
     setIsUnlocked, importData, importFullBackup, clearAllData, lang, setLang, streak, 
     reminderActive, setReminderActive, reminderTime, setReminderTime,
-    moods, savingsTarget, savingsTargetTitle, savingsBalance, hasCompletedOnboarding, archivedTags
+    moods, savingsTarget, savingsTargetTitle, savingsBalance, hasCompletedOnboarding, archivedTags,
+    isRefreshing, refreshStep, handleRefreshApp
   } = useAppStore();
   const t = useTranslation(lang);
 
@@ -108,89 +109,6 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
   const [showUpdateNotes, setShowUpdateNotes] = useState(false);
   const [backupModalMode, setBackupModalMode] = useState<'export' | 'import' | null>(null);
   const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshStep, setRefreshStep] = useState<number>(1);
-
-  const handleRefreshApp = async () => {
-    setIsRefreshing(true);
-    setRefreshStep(1);
-
-    // Step 1: Check server stability & ping the host with a cache-busting parameter
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      await fetch('/index.html?ping=' + Date.now(), { cache: 'no-store', method: 'HEAD' });
-    } catch (err) {
-      console.warn("Server connection stability check warning:", err);
-    }
-
-    // Step 2: Safe database validation & schema healing (compacts malformed storage items)
-    setRefreshStep(2);
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    try {
-      const keysToValidate = ['noto_notes', 'noto_tasks', 'noto_transactions', 'noto_moods', 'noto_user'];
-      for (const key of keysToValidate) {
-        const item = localStorage.getItem(key);
-        if (item) {
-          try {
-            const parsed = JSON.parse(item);
-            if (key === 'noto_notes' && Array.isArray(parsed)) {
-              const repaired = parsed.filter(n => n && typeof n === 'object').map(n => ({
-                id: n.id || String(Math.random()),
-                title: n.title || 'Untitled',
-                content: n.content || '',
-                date: n.date || new Date().toISOString(),
-                ...n
-              }));
-              localStorage.setItem(key, JSON.stringify(repaired));
-            } else if (key === 'noto_tasks' && Array.isArray(parsed)) {
-              const repaired = parsed.filter(t => t && typeof t === 'object').map(t => ({
-                id: t.id || String(Math.random()),
-                title: t.title || 'Untitled Task',
-                completed: !!t.completed,
-                ...t
-              }));
-              localStorage.setItem(key, JSON.stringify(repaired));
-            }
-          } catch (e) {
-            console.warn(`Database healing repaired key: ${key}`, e);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Local database self-healing failed:", err);
-    }
-
-    // Step 3: Clear transient tab/session cache safely (does not affect browser proxy)
-    setRefreshStep(3);
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    try {
-      sessionStorage.clear();
-    } catch (err) {
-      console.error("Transient session clear warning:", err);
-    }
-
-    // Step 4: Re-align customized graphics & themes
-    setRefreshStep(4);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    try {
-      window.dispatchEvent(new Event('noto_wallpaper_changed'));
-      window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
-    } catch (err) {
-      console.error("UI alignment dispatcher warning:", err);
-    }
-
-    // Step 5: Success! Execute a secure cache-busting hard-reload to fetch fresh server bundles
-    setRefreshStep(5);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    try {
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set('refresh_v', Date.now().toString());
-      window.location.href = currentUrl.toString();
-    } catch (e) {
-      window.location.reload();
-    }
-  };
 
   const handlePinSubmit = async () => {
     if (pinInput.length !== 4) return;
