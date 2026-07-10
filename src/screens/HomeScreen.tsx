@@ -299,7 +299,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
            </span>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
-          <button className="p-3 text-slate-400 hover:text-indigo-400 hover:rotate-180 transition-all duration-500 relative" onClick={handleRefreshApp} title={t('refreshApp') as string}>
+          <button className="hidden sm:block p-3 text-slate-400 hover:text-indigo-400 hover:rotate-180 transition-all duration-500 relative" onClick={handleRefreshApp} title={t('refreshApp') as string}>
             <RefreshCw className="w-5 h-5" />
           </button>
           <button className="p-3 text-slate-400 hover:text-emerald-400 transition-colors relative" onClick={() => onNavigate('finance')} title={t('financeMenu') as string}>
