@@ -360,6 +360,13 @@ export const translations = {
     gameCompleted: 'Selesai!',
     gameYouWonDesc: 'Kamu berhasil dalam {moves} langkah.',
     gamePlayAgain: 'Main Lagi',
+    fontThemeLabel: 'Tema Tulisan (Font)',
+    fontThemeDesc: 'Ubah gaya dan bentuk tulisan seluruh aplikasi Noto',
+    fontSans: 'Sans',
+    fontSerif: 'Serif',
+    fontMono: 'Mono',
+    fontRounded: 'Rounded',
+    fontHandwritten: 'Tulis Tangan',
   },
   en: {
     hello: 'Hello,',
@@ -720,6 +727,13 @@ export const translations = {
     gameCompleted: 'Completed!',
     gameYouWonDesc: 'You succeeded in {moves} moves.',
     gamePlayAgain: 'Play Again',
+    fontThemeLabel: 'Text Theme (Font)',
+    fontThemeDesc: 'Change the style and shape of text across the Noto app',
+    fontSans: 'Sans',
+    fontSerif: 'Serif',
+    fontMono: 'Mono',
+    fontRounded: 'Rounded',
+    fontHandwritten: 'Handwritten',
   }
 };
 

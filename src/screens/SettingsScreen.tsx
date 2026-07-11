@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Moon, Download, Upload, Bell, Lock, FileText, Smartphone, 
+  Moon, Download, Upload, Bell, Lock, FileText, Smartphone, Type,
   ChevronRight, ChevronLeft, User, Globe, Clock, Key, Trash2, Info, Shield, MessageCircle, Gamepad2,
   AlertTriangle, Image as ImageIcon, RefreshCw
 } from 'lucide-react';
@@ -10,7 +10,19 @@ import { ScreenItem } from '../App';
 import { generateId, encryptData, decryptData, hashPin } from '../utils';
 import { getLargeItem, getLargeItemSync, setLargeItem, deleteLargeItem } from '../utils/db';
 
-export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { appTheme: string, setAppTheme: (t: any) => void, onNavigate?: (s: ScreenItem) => void }) {
+export default function SettingsScreen({ 
+  appTheme, 
+  setAppTheme, 
+  fontTheme, 
+  setFontTheme, 
+  onNavigate 
+}: { 
+  appTheme: string, 
+  setAppTheme: (t: any) => void, 
+  fontTheme: 'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten',
+  setFontTheme: (f: 'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten') => void,
+  onNavigate?: (s: ScreenItem) => void 
+}) {
   const { 
     transactions, notes, tasks, user, updateUser, appPin, setAppPin, 
     pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer, 
@@ -693,6 +705,45 @@ export default function SettingsScreen({ appTheme, setAppTheme, onNavigate }: { 
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Font Theme Selector */}
+              <div className="p-4 sm:p-5 flex flex-col gap-3 border-t border-slate-900/60">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)]">
+                    <Type size={16} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-slate-200">{t('fontThemeLabel')}</span>
+                    <span className="text-[11px] text-slate-400 leading-normal">{t('fontThemeDesc')}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {[
+                    { id: 'sans', name: t('fontSans'), fontClass: 'font-style-sans' },
+                    { id: 'serif', name: t('fontSerif'), fontClass: 'font-style-serif' },
+                    { id: 'mono', name: t('fontMono'), fontClass: 'font-style-mono' },
+                    { id: 'rounded', name: t('fontRounded'), fontClass: 'font-style-rounded' },
+                    { id: 'handwritten', name: t('fontHandwritten'), fontClass: 'font-style-handwritten' },
+                  ].map((f) => {
+                    const isActive = fontTheme === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setFontTheme(f.id as any)}
+                        className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all duration-200 active:scale-95 flex items-center gap-2 cursor-pointer ${
+                          isActive 
+                            ? 'border-indigo-500 bg-indigo-500/15 text-indigo-300 font-extrabold shadow-[0_0_12px_rgba(99,102,241,0.15)]' 
+                            : 'border-slate-800 bg-slate-950/20 text-slate-400 hover:border-slate-700 hover:text-slate-200 hover:bg-slate-900/30'
+                        }`}
+                      >
+                        <span className={`text-sm font-black tracking-tight shrink-0 ${f.fontClass}`}>Aa</span>
+                        <span>{f.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Banner Wallpaper */}

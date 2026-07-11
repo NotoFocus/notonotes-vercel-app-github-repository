@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Quicksand:wght@400;500;600;700&family=Caveat:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -181,4 +181,20 @@
   color: var(--color-slate-400, #475569);
   pointer-events: none;
   display: inline-block;
+}
+
+.font-style-sans, .font-style-sans * {
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+}
+.font-style-serif, .font-style-serif * {
+  font-family: "Playfair Display", Georgia, serif !important;
+}
+.font-style-mono, .font-style-mono * {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace !important;
+}
+.font-style-rounded, .font-style-rounded * {
+  font-family: "Quicksand", sans-serif !important;
+}
+.font-style-handwritten, .font-style-handwritten * {
+  font-family: "Caveat", cursive, sans-serif !important;
 }

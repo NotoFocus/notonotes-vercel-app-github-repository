@@ -78,6 +78,14 @@ export default function App() {
     }
   });
 
+  const [fontTheme, setFontTheme] = useState<'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten'>(() => {
+    try {
+      return (localStorage.getItem('noto_font_theme') as 'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten') || 'sans';
+    } catch (e) {
+      return 'sans';
+    }
+  });
+
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => getLargeItemSync("noto_custom_wallpaper"));
   
   useEffect(() => {
@@ -89,6 +97,12 @@ export default function App() {
       localStorage.setItem('noto_theme', appTheme);
     } catch (e) {}
   }, [appTheme]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('noto_font_theme', fontTheme);
+    } catch (e) {}
+  }, [fontTheme]);
 
   useEffect(() => {
     const handleWallpaperChange = () => {
@@ -344,12 +358,15 @@ export default function App() {
   };
 
   const getThemeClass = () => {
-    if (appTheme === 'light') return 'light-theme bg-slate-950';
-    if (appTheme === 'pink') return 'pink-theme bg-slate-950';
-    if (appTheme === 'cool') return 'cool-theme';
-    if (appTheme === 'cute') return 'cute-theme';
-    if (appTheme === 'wallpaper') return 'wallpaper-theme bg-transparent';
-    return 'bg-slate-950';
+    let base = '';
+    if (appTheme === 'light') base = 'light-theme bg-slate-950';
+    else if (appTheme === 'pink') base = 'pink-theme bg-slate-950';
+    else if (appTheme === 'cool') base = 'cool-theme';
+    else if (appTheme === 'cute') base = 'cute-theme';
+    else if (appTheme === 'wallpaper') base = 'wallpaper-theme bg-transparent';
+    else base = 'bg-slate-950';
+    
+    return `${base} font-style-${fontTheme}`;
   };
 
   const getBackgroundImageUrl = () => {
@@ -407,7 +424,7 @@ export default function App() {
           <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
         )}
         <div className="flex-1 w-full mx-auto max-w-[1920px] relative z-10">
-          <PinScreen correctPin={appPin} onUnlock={() => setIsUnlocked(true)} appTheme={appTheme} lang={lang} />
+          <PinScreen correctPin={appPin} onUnlock={() => setIsUnlocked(true)} appTheme={appTheme} lang={lang} fontTheme={fontTheme} />
         </div>
       </div>
     );
@@ -522,7 +539,15 @@ export default function App() {
         {currentScreen === 'finance' && <FinanceScreen appTheme={appTheme} onBack={() => setCurrentScreen('home')} />}
         {currentScreen === 'note-editor' && activeNote && <NoteEditorScreen note={activeNote} onBack={closeNote} />}
         {currentScreen === 'search' && <SearchScreen onOpenNote={openNote} />}
-        {currentScreen === 'settings' && <SettingsScreen appTheme={appTheme} setAppTheme={setAppTheme} onNavigate={(screen) => setCurrentScreen(screen)} />}
+        {currentScreen === 'settings' && (
+          <SettingsScreen 
+            appTheme={appTheme} 
+            setAppTheme={setAppTheme} 
+            fontTheme={fontTheme} 
+            setFontTheme={setFontTheme} 
+            onNavigate={(screen) => setCurrentScreen(screen)} 
+          />
+        )}
         {currentScreen === 'games-hub' && <GamesHubScreen onSelectGame={(g) => setCurrentScreen(g)} onBack={() => setCurrentScreen('settings')} />}
         {currentScreen === 'game' && <GameScreen onBack={() => setCurrentScreen('games-hub')} />}
         {currentScreen === 'tictactoe' && <TicTacToeScreen onBack={() => setCurrentScreen('games-hub')} />}
@@ -554,7 +579,7 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
   );
 }
 
-function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: string, onUnlock: () => void, appTheme: string, lang: 'id' | 'en' }) {
+function PinScreen({ correctPin, onUnlock, appTheme, lang, fontTheme }: { correctPin: string, onUnlock: () => void, appTheme: string, lang: 'id' | 'en', fontTheme: 'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten' }) {
   const t = useTranslation(lang);
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
@@ -608,12 +633,15 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   };
 
   const getThemeClass = () => {
-    if (appTheme === 'light') return 'light-theme bg-slate-950';
-    if (appTheme === 'pink') return 'pink-theme bg-slate-950';
-    if (appTheme === 'cool') return 'cool-theme';
-    if (appTheme === 'cute') return 'cute-theme';
-    if (appTheme === 'wallpaper') return 'wallpaper-theme bg-transparent';
-    return 'bg-slate-950';
+    let base = '';
+    if (appTheme === 'light') base = 'light-theme bg-slate-950';
+    else if (appTheme === 'pink') base = 'pink-theme bg-slate-950';
+    else if (appTheme === 'cool') base = 'cool-theme';
+    else if (appTheme === 'cute') base = 'cute-theme';
+    else if (appTheme === 'wallpaper') base = 'wallpaper-theme bg-transparent';
+    else base = 'bg-slate-950';
+    
+    return `${base} font-style-${fontTheme}`;
   };
 
   return (
