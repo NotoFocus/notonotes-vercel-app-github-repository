@@ -45,17 +45,20 @@ export default function App() {
   const { 
     appPin, isUnlocked, setIsUnlocked, lang, tasks, notes, 
     reminderActive, reminderTime, hasCompletedOnboarding, setHasCompletedOnboarding,
-    isRefreshing, refreshStep
+    isRefreshing, refreshStep, isLiteMode
   } = useAppStore();
   const t = useTranslation(lang);
   const [currentScreen, _setCurrentScreen] = useState<ScreenItem>('home');
 
   const setCurrentScreen = useCallback((screen: ScreenItem) => {
+    if (isLiteMode && ['game', 'tictactoe', 'puzzle', 'tetris', 'memory', 'space-invaders', 'games-hub', 'finance'].includes(screen)) {
+      screen = 'home';
+    }
     if (screen !== currentScreen) {
       window.history.pushState({ screen }, '');
       _setCurrentScreen(screen);
     }
-  }, [currentScreen]);
+  }, [currentScreen, isLiteMode]);
 
   useEffect(() => {
     window.history.replaceState({ screen: 'home' }, '');
@@ -78,14 +81,6 @@ export default function App() {
     }
   });
 
-  const [fontTheme, setFontTheme] = useState<'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten'>(() => {
-    try {
-      return (localStorage.getItem('noto_font_theme') as 'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten') || 'sans';
-    } catch (e) {
-      return 'sans';
-    }
-  });
-
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => getLargeItemSync("noto_custom_wallpaper"));
   
   useEffect(() => {
@@ -97,12 +92,6 @@ export default function App() {
       localStorage.setItem('noto_theme', appTheme);
     } catch (e) {}
   }, [appTheme]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('noto_font_theme', fontTheme);
-    } catch (e) {}
-  }, [fontTheme]);
 
   useEffect(() => {
     const handleWallpaperChange = () => {
@@ -359,17 +348,19 @@ export default function App() {
 
   const getThemeClass = () => {
     let base = '';
-    if (appTheme === 'light') base = 'light-theme bg-slate-950';
-    else if (appTheme === 'pink') base = 'pink-theme bg-slate-950';
-    else if (appTheme === 'cool') base = 'cool-theme';
-    else if (appTheme === 'cute') base = 'cute-theme';
-    else if (appTheme === 'wallpaper') base = 'wallpaper-theme bg-transparent';
+    const activeTheme = isLiteMode ? 'dark' : appTheme;
+    if (activeTheme === 'light') base = 'light-theme bg-slate-950';
+    else if (activeTheme === 'pink') base = 'pink-theme bg-slate-950';
+    else if (activeTheme === 'cool') base = 'cool-theme';
+    else if (activeTheme === 'cute') base = 'cute-theme';
+    else if (activeTheme === 'wallpaper') base = 'wallpaper-theme bg-transparent';
     else base = 'bg-slate-950';
     
-    return `${base} font-style-${fontTheme}`;
+    return base;
   };
 
   const getBackgroundImageUrl = () => {
+    if (isLiteMode) return undefined;
     if (appTheme === 'wallpaper' && customWallpaper) {
       return customWallpaper;
     }
@@ -402,11 +393,13 @@ export default function App() {
     );
   }
 
+  const activeTheme = isLiteMode ? 'dark' : appTheme;
+
   if (!hasCompletedOnboarding) {
     return (
       <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
         {getBackgroundImageUrl() && <img src={getBackgroundImageUrl()} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" referrerPolicy="no-referrer" />}
-        {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
+        {(activeTheme === 'cool' || activeTheme === 'cute' || activeTheme === 'wallpaper') && (
           <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
         )}
         <div className="flex-1 w-full mx-auto max-w-[1920px] relative z-10">
@@ -420,11 +413,11 @@ export default function App() {
     return (
       <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
         {getBackgroundImageUrl() && <img src={getBackgroundImageUrl()} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" referrerPolicy="no-referrer" />}
-        {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
+        {(activeTheme === 'cool' || activeTheme === 'cute' || activeTheme === 'wallpaper') && (
           <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
         )}
         <div className="flex-1 w-full mx-auto max-w-[1920px] relative z-10">
-          <PinScreen correctPin={appPin} onUnlock={() => setIsUnlocked(true)} appTheme={appTheme} lang={lang} fontTheme={fontTheme} />
+          <PinScreen correctPin={appPin} onUnlock={() => setIsUnlocked(true)} appTheme={activeTheme} lang={lang} />
         </div>
       </div>
     );
@@ -433,7 +426,7 @@ export default function App() {
   return (
     <div className={`w-full h-[100dvh] flex flex-col md:flex-row ${getThemeClass()} text-slate-200 font-sans relative overflow-hidden`}>
       {getBackgroundImageUrl() && <img src={getBackgroundImageUrl()} alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" referrerPolicy="no-referrer" />}
-      {(appTheme === 'cool' || appTheme === 'cute' || appTheme === 'wallpaper') && (
+      {(activeTheme === 'cool' || activeTheme === 'cute' || activeTheme === 'wallpaper') && (
         <div className="absolute inset-0 bg-slate-950/40 z-0 pointer-events-none" />
       )}
       <OfflineIndicator lang={lang} />
@@ -533,18 +526,16 @@ export default function App() {
       )}
 
       <div className="flex-1 relative flex flex-col overflow-hidden w-full max-w-[1920px] mx-auto">
-        {currentScreen === 'home' && <HomeScreen appTheme={appTheme} setAppTheme={setAppTheme} onOpenNote={openNote} onNavigate={(screen) => setCurrentScreen(screen)} />}
+        {currentScreen === 'home' && <HomeScreen appTheme={activeTheme} setAppTheme={setAppTheme} onOpenNote={openNote} onNavigate={(screen) => setCurrentScreen(screen)} />}
         {currentScreen === 'tasks' && <TasksScreen onNavigate={(screen) => setCurrentScreen(screen)} />}
         {currentScreen === 'calendar' && <CalendarScreen />}
-        {currentScreen === 'finance' && <FinanceScreen appTheme={appTheme} onBack={() => setCurrentScreen('home')} />}
+        {currentScreen === 'finance' && <FinanceScreen appTheme={activeTheme} onBack={() => setCurrentScreen('home')} />}
         {currentScreen === 'note-editor' && activeNote && <NoteEditorScreen note={activeNote} onBack={closeNote} />}
         {currentScreen === 'search' && <SearchScreen onOpenNote={openNote} />}
         {currentScreen === 'settings' && (
           <SettingsScreen 
-            appTheme={appTheme} 
+            appTheme={activeTheme} 
             setAppTheme={setAppTheme} 
-            fontTheme={fontTheme} 
-            setFontTheme={setFontTheme} 
             onNavigate={(screen) => setCurrentScreen(screen)} 
           />
         )}
@@ -579,7 +570,7 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
   );
 }
 
-function PinScreen({ correctPin, onUnlock, appTheme, lang, fontTheme }: { correctPin: string, onUnlock: () => void, appTheme: string, lang: 'id' | 'en', fontTheme: 'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten' }) {
+function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: string, onUnlock: () => void, appTheme: string, lang: 'id' | 'en' }) {
   const t = useTranslation(lang);
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
@@ -641,7 +632,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang, fontTheme }: { correc
     else if (appTheme === 'wallpaper') base = 'wallpaper-theme bg-transparent';
     else base = 'bg-slate-950';
     
-    return `${base} font-style-${fontTheme}`;
+    return base;
   };
 
   return (

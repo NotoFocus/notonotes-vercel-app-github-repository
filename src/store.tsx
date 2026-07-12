@@ -58,6 +58,8 @@ interface AppContextType {
   isRefreshing: boolean;
   refreshStep: number;
   handleRefreshApp: () => Promise<void>;
+  isLiteMode: boolean;
+  setIsLiteMode: (val: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -273,6 +275,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [savingsBalance]);
 
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isLiteMode, setIsLiteMode] = useState<boolean>(() => {
+    try {
+      const s = localStorage.getItem('noto_lite_mode');
+      if (s !== null) return JSON.parse(s);
+    } catch(e) {}
+    return false;
+  });
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(() => {
     try { 
       const s = localStorage.getItem('noto_onboarding_completed'); 
@@ -787,6 +796,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSavingsBalance(0);
   };
 
+  useEffect(() => {
+    safeSetItem('noto_lite_mode', JSON.stringify(isLiteMode));
+  }, [isLiteMode]);
+
   const contextValue = React.useMemo(() => ({
     notes, tasks, transactions, moods, user, updateUser: setUser,
     addNote, updateNote, deleteNote, 
@@ -802,12 +815,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     savingsTarget, setSavingsTarget, savingsTargetTitle, setSavingsTargetTitle,
     savingsBalance, setSavingsBalance, checkInDaily,
     archivedTags, setArchivedTags,
-    isRefreshing, refreshStep, handleRefreshApp
+    isRefreshing, refreshStep, handleRefreshApp,
+    isLiteMode, setIsLiteMode
   }), [
     notes, tasks, transactions, moods, user, searchQuery, appPin, pinRecoveryQuestion, pinRecoveryAnswer, lang,
     hasCompletedOnboarding, isUnlocked, streak,
     reminderActive, reminderTime, savingsTarget, savingsTargetTitle, savingsBalance,
-    archivedTags, isRefreshing, refreshStep
+    archivedTags, isRefreshing, refreshStep, isLiteMode
   ]);
 
   return (

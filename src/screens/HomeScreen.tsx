@@ -32,8 +32,10 @@ const getMoodIcon = (id: string, className = "w-6 h-6") => {
 };
 
 export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNavigate }: HomeProps) {
-  const { notes, tasks, moods, setMood, user, updateUser, toggleTask, deleteTask, deleteNote, setSearchQuery, streak, lang, updateTask, checkInDaily, handleRefreshApp } = useAppStore();
+  const { notes, tasks, moods, setMood, user, updateUser, toggleTask, deleteTask, deleteNote, setSearchQuery, streak, lang, updateTask, checkInDaily, handleRefreshApp, isLiteMode } = useAppStore();
   const t = useTranslation(lang);
+  
+  const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
   
   // Use the current user from the store instead of static data
   const currentUser = user;
@@ -138,8 +140,6 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
     const sec = seconds % 60;
     return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
-
-  const todayStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
   const { pinnedNotes, pinnedTasks, disciplineTask, todayTasks, activeTasksCount, totalTodayCount, progressPercent } = useMemo(() => {
     const pNotes = (notes || []).filter(n => n && n.pinned && !n.isArchived);
@@ -302,12 +302,16 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           <button className="hidden sm:block p-3 text-slate-400 hover:text-indigo-400 hover:rotate-180 transition-all duration-500 relative" onClick={handleRefreshApp} title={t('refreshApp') as string}>
             <RefreshCw className="w-5 h-5" />
           </button>
-          <button className="p-3 text-slate-400 hover:text-emerald-400 transition-colors relative" onClick={() => onNavigate('finance')} title={t('financeMenu') as string}>
-            <Wallet className="w-5 h-5" />
-          </button>
-          <button className="p-3 text-slate-400 hover:text-indigo-400 transition-colors" onClick={() => setShowTimer(true)}>
-            <Clock className="w-5 h-5" />
-          </button>
+          {!isLiteMode && (
+            <>
+              <button className="p-3 text-slate-400 hover:text-emerald-400 transition-colors relative" onClick={() => onNavigate('finance')} title={t('financeMenu') as string}>
+                <Wallet className="w-5 h-5" />
+              </button>
+              <button className="p-3 text-slate-400 hover:text-indigo-400 transition-colors" onClick={() => setShowTimer(true)}>
+                <Clock className="w-5 h-5" />
+              </button>
+            </>
+          )}
           <button className="p-3 -mr-2 text-slate-400 hover:text-slate-50 transition-colors relative" onClick={() => setShowNotificationModal(true)}>
             <Bell className="w-5 h-5" />
             {!hasSeenUpdate300 && <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></span>}
@@ -316,73 +320,74 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar pb-32 w-full max-w-lg mx-auto">
-        {/* Greeting & Focus Card */}
-        <div 
-          style={bannerWallpaper ? { backgroundImage: `url(${bannerWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-          className="relative w-full rounded-[2rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-6 sm:p-8 flex flex-col justify-between mb-8 text-white shadow-lg shadow-indigo-500/20 overflow-hidden"
-        >
-          {bannerWallpaper && (
-            <div className="absolute inset-0 bg-slate-950/35 backdrop-blur-[0.5px] z-0 pointer-events-none" />
-          )}
-          {/* Subtle decoration elements */}
-          {!bannerWallpaper && (
-            <>
-              <div className="absolute -top-16 -right-16 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-              <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
-            </>
-          )}
-          
-          <div className="relative z-10 flex justify-between items-center mb-6 gap-2 sm:gap-3">
-            <div className="flex gap-2 sm:gap-4 items-center flex-1 min-w-0">
-              {currentUser.avatarUrl === 'indexeddb:user_avatar' ? (
-                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl overflow-hidden border-2 border-white/30 shadow-md shrink-0 bg-slate-800/50 animate-pulse">
-                </div>
-              ) : currentUser.avatarUrl ? (
-                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
-                  <img src={currentUser.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-                </div>
-              ) : null}
+        {!isLiteMode && (
+          <div 
+            style={bannerWallpaper ? { backgroundImage: `url(${bannerWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+            className="relative w-full rounded-[2rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-6 sm:p-8 flex flex-col justify-between mb-8 text-white shadow-lg shadow-indigo-500/20 overflow-hidden"
+          >
+            {bannerWallpaper && (
+              <div className="absolute inset-0 bg-slate-950/35 backdrop-blur-[0.5px] z-0 pointer-events-none" />
+            )}
+            {/* Subtle decoration elements */}
+            {!bannerWallpaper && (
+              <>
+                <div className="absolute -top-16 -right-16 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+              </>
+            )}
+            
+            <div className="relative z-10 flex justify-between items-center mb-6 gap-2 sm:gap-3">
+              <div className="flex gap-2 sm:gap-4 items-center flex-1 min-w-0">
+                {currentUser.avatarUrl === 'indexeddb:user_avatar' ? (
+                  <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl overflow-hidden border-2 border-white/30 shadow-md shrink-0 bg-slate-800/50 animate-pulse">
+                  </div>
+                ) : currentUser.avatarUrl ? (
+                  <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
+                    <img src={currentUser.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  </div>
+                ) : null}
 
-              <div className="flex-1 min-w-0">
-                <p className="text-indigo-100 text-[10px] sm:text-[11px] font-bold tracking-widest uppercase mb-0.5 sm:mb-1 drop-shadow-sm truncate">{getGreeting()}</p>
-                <h2 className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1 tracking-tight text-white drop-shadow-sm truncate">{t('focusToday')}</h2>
-                <p className="text-indigo-50 text-xs sm:text-sm font-medium mt-1 sm:mt-2 flex items-center gap-1.5 sm:gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
-                  <span className="truncate">{activeTasksCount} {t('remainingTask')}</span>
-                </p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-indigo-100 text-[10px] sm:text-[11px] font-bold tracking-widest uppercase mb-0.5 sm:mb-1 drop-shadow-sm truncate">{getGreeting()}</p>
+                  <h2 className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1 tracking-tight text-white drop-shadow-sm truncate">{t('focusToday')}</h2>
+                  <p className="text-indigo-50 text-xs sm:text-sm font-medium mt-1 sm:mt-2 flex items-center gap-1.5 sm:gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></span>
+                    <span className="truncate">{activeTasksCount} {t('remainingTask')}</span>
+                  </p>
+                </div>
+              </div>
+              
+              {/* Streak Badge */}
+              <div 
+                onClick={() => setShowStreakSplash(true)}
+                className="flex-none flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl px-3 py-2 sm:px-5 sm:py-4 cursor-pointer transition-all hover:scale-105 shadow-sm" 
+                title={`${streak} hari berturut-turut!`}
+              >
+                <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400 fill-orange-400 drop-shadow-sm mb-1" />
+                <span className="text-lg sm:text-xl font-black text-white leading-none mb-0.5 sm:mb-1">{streak}</span>
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Streak</span>
               </div>
             </div>
             
-            {/* Streak Badge */}
-            <div 
-              onClick={() => setShowStreakSplash(true)}
-              className="flex-none flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 rounded-2xl px-3 py-2 sm:px-5 sm:py-4 cursor-pointer transition-all hover:scale-105 shadow-sm" 
-              title={`${streak} hari berturut-turut!`}
-            >
-              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400 fill-orange-400 drop-shadow-sm mb-1" />
-              <span className="text-lg sm:text-xl font-black text-white leading-none mb-0.5 sm:mb-1">{streak}</span>
-              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Streak</span>
+            <div className="relative z-10 w-full">
+              <div className="flex justify-between items-end mb-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100">Progress</span>
+                <span className="text-xs font-black text-white">{progressPercent}%</span>
+              </div>
+              <div className="h-2.5 w-full bg-black/20 rounded-full overflow-hidden shadow-inner">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" 
+                />
+              </div>
             </div>
           </div>
-          
-          <div className="relative z-10 w-full">
-            <div className="flex justify-between items-end mb-3">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100">Progress</span>
-              <span className="text-xs font-black text-white">{progressPercent}%</span>
-            </div>
-            <div className="h-2.5 w-full bg-black/20 rounded-full overflow-hidden shadow-inner">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercent}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" 
-              />
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Challenge Card */}
-        {!hideChallenge && (
+        {!hideChallenge && !isLiteMode && (
           <div className="mb-8 pl-4 border-l-2 border-indigo-500/40 relative group py-1">
             <p className="text-slate-400 text-xs italic leading-relaxed pr-8">
               {lang === 'id' 
@@ -434,7 +439,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
         </div>
 
         {/* Target Disiplin */}
-        {disciplineTask && disciplineTask.pinned && (
+        {!isLiteMode && disciplineTask && disciplineTask.pinned && (
           <section className="mb-5 bg-gradient-to-br from-indigo-500/10 via-slate-900 to-slate-900 border border-indigo-500/20 p-5 rounded-3xl shadow-sm relative overflow-hidden group cursor-pointer" onClick={() => onNavigate('tasks')}>
             <div className="absolute -top-10 -right-10 p-6 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity rotate-12 pointer-events-none">
               <Target className="w-40 h-40 text-indigo-400" />

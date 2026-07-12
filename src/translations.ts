@@ -367,6 +367,13 @@ export const translations = {
     fontMono: 'Mono',
     fontRounded: 'Rounded',
     fontHandwritten: 'Tulis Tangan',
+    moodAverageMonth: 'Rata-rata Mood Sebulan',
+    goodCount: 'Baik',
+    neutralCount: 'Biasa',
+    badCount: 'Buruk',
+    selfEvaluation: 'Evaluasi Diri',
+    noMoodData: 'Belum ada data mood bulan ini.',
+    times: 'kali',
   },
   en: {
     hello: 'Hello,',
@@ -734,6 +741,13 @@ export const translations = {
     fontMono: 'Mono',
     fontRounded: 'Rounded',
     fontHandwritten: 'Handwritten',
+    moodAverageMonth: 'Monthly Mood Average',
+    goodCount: 'Good',
+    neutralCount: 'Neutral',
+    badCount: 'Bad',
+    selfEvaluation: 'Self Evaluation',
+    noMoodData: 'No mood data this month.',
+    times: 'times',
   }
 };
 

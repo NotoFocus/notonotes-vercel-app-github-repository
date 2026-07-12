@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Activity, Flame, Repeat, Calendar, CheckCircle2, Smile, Clock, X, TrendingUp, Plus, Trash2, ChevronRight as ChevronRightIcon, Edit2, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Activity, Flame, Repeat, Calendar, CheckCircle2, Smile, Clock, X, TrendingUp, Plus, Trash2, ChevronRight as ChevronRightIcon, Edit2, Check, Sparkles, Heart } from 'lucide-react';
 import { useAppStore } from '../store';
 import { generateId } from '../utils';
 import { useTranslation } from '../translations';
@@ -111,8 +111,14 @@ export default function CalendarScreen() {
   const [selectedDetailTaskId, setSelectedDetailTaskId] = useState<string | null>(null);
   const [selectedDetailModalTab, setSelectedDetailModalTab] = useState<'info' | 'analytics'>('info');
   const [habitCalendarDate, setHabitCalendarDate] = useState(new Date());
-  const { tasks, moods, lang, streak, setMood, toggleTask, addTask, deleteTask, updateTask } = useAppStore();
+  const { tasks, moods, lang, streak, setMood, toggleTask, addTask, deleteTask, updateTask, isLiteMode } = useAppStore();
   const t = useTranslation(lang);
+
+  useEffect(() => {
+    if (isLiteMode && activeTab !== 'calendar') {
+      setActiveTab('calendar');
+    }
+  }, [isLiteMode, activeTab]);
 
   // Calendar task editing state
   const [isEditingCalendarTask, setIsEditingCalendarTask] = useState(false);
@@ -130,6 +136,103 @@ export default function CalendarScreen() {
   const selectedDetailTask = useMemo(() => {
     return tasks.find(tk => tk.id === selectedDetailTaskId) || null;
   }, [tasks, selectedDetailTaskId]);
+
+  const monthlyMoodStats = useMemo(() => {
+    const targetMonth = selectedDate.getMonth();
+    const targetYear = selectedDate.getFullYear();
+    
+    const monthlyMoods = (moods || []).filter(m => {
+      if (!m || !m.date || !m.mood) return false;
+      const d = getLocalDateFromStr(m.date);
+      return d.getMonth() === targetMonth && d.getFullYear() === targetYear;
+    });
+
+    if (monthlyMoods.length === 0) {
+      return null;
+    }
+
+    const counts = {
+      excellent: 0,
+      good: 0,
+      neutral: 0,
+      bad: 0,
+      terrible: 0
+    };
+
+    monthlyMoods.forEach(m => {
+      if (m.mood && m.mood in counts) {
+        counts[m.mood as keyof typeof counts]++;
+      }
+    });
+
+    const totalMoodDays = monthlyMoods.length;
+
+    const moodScores: Record<string, number> = {
+      excellent: 5,
+      good: 4,
+      neutral: 3,
+      bad: 2,
+      terrible: 1
+    };
+
+    const totalScore = monthlyMoods.reduce((sum, m) => sum + (moodScores[m.mood as string] || 3), 0);
+    const averageScore = totalScore / totalMoodDays;
+
+    let averageDetails;
+    if (averageScore >= 4.5) {
+      averageDetails = { 
+        label: lang === 'id' ? 'Sangat Baik' : 'Excellent', 
+        id: 'excellent', 
+        color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        advice: lang === 'id' 
+          ? 'Luar biasa! Bulan ini dipenuhi energi positif. Pertahankan kebiasaan baikmu!' 
+          : 'Outstanding! This month has been filled with positive energy. Keep up your great habits!'
+      };
+    } else if (averageScore >= 3.5) {
+      averageDetails = { 
+        label: lang === 'id' ? 'Baik' : 'Good', 
+        id: 'good', 
+        color: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+        advice: lang === 'id' 
+          ? 'Bulan yang cukup menyenangkan dan damai. Jaga keseimbangan ini!' 
+          : 'A pleasant and peaceful month. Keep up this healthy balance!'
+      };
+    } else if (averageScore >= 2.5) {
+      averageDetails = { 
+        label: lang === 'id' ? 'Biasa' : 'Neutral', 
+        id: 'neutral', 
+        color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
+        advice: lang === 'id' 
+          ? 'Mood stabil, namun terasa datar. Luangkan waktu untuk melakukan hobi baru atau istirahat sejenak.' 
+          : 'Stable mood, but feels a bit flat. Take some time for a new hobby or a brief, refreshing break.'
+      };
+    } else if (averageScore >= 1.5) {
+      averageDetails = { 
+        label: lang === 'id' ? 'Buruk' : 'Bad', 
+        id: 'bad', 
+        color: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+        advice: lang === 'id' 
+          ? 'Sepertinya kamu sedang banyak pikiran. Jangan memaksakan diri, ambil jeda kecil dan bicarakan dengan orang terdekat.' 
+          : 'Seems like you have a lot on your mind. Don\'t push yourself too hard, take a micro-break and talk to close ones.'
+      };
+    } else {
+      averageDetails = { 
+        label: lang === 'id' ? 'Sangat Buruk' : 'Terrible', 
+        id: 'terrible', 
+        color: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+        advice: lang === 'id' 
+          ? 'Kamu melewati masa-masa yang sangat berat. Utamakan kesehatan mentalmu, ambil libur sejenak, dan cari bantuan jika perlu.' 
+          : 'You are going through a very tough time. Prioritize your mental health, take a complete rest, and seek help if needed.'
+      };
+    }
+
+    return {
+      totalMoodDays,
+      counts,
+      averageScore,
+      averageDetails
+    };
+  }, [moods, selectedDate, lang]);
 
   useEffect(() => {
     if (selectedDetailTask) {
@@ -780,27 +883,30 @@ export default function CalendarScreen() {
       </div>
 
       {/* Mode Selector (Tabs switcher) */}
-      <div className="px-4 py-3 flex-none w-full max-w-xl mx-auto">
-        <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 relative shadow-inner">
-          <div 
-            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg transition-transform duration-300 ease-out bg-indigo-600 shadow-sm ${activeTab === 'stats' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} 
-          />
-          <button 
-            onClick={() => setActiveTab('calendar')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-colors z-10 ${activeTab === 'calendar' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <Calendar className="w-4 h-4" />
-            {lang === 'id' ? 'Kalender & Tugas' : 'Calendar & Tasks'}
-          </button>
-          <button 
-            onClick={() => setActiveTab('stats')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-colors z-10 ${activeTab === 'stats' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            <Activity className="w-4 h-4" />
-            {lang === 'id' ? 'Statistik Produktivitas' : 'Productivity Stats'}
-          </button>
+      {/* Tab Switcher - Only show in Full Mode */}
+      {!isLiteMode && (
+        <div className="px-4 py-3 flex-none w-full max-w-xl mx-auto">
+          <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 relative shadow-inner">
+            <div 
+              className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg transition-transform duration-300 ease-out bg-indigo-600 shadow-sm ${activeTab === 'stats' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} 
+            />
+            <button 
+              onClick={() => setActiveTab('calendar')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-colors z-10 ${activeTab === 'calendar' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <Calendar className="w-4 h-4" />
+              {lang === 'id' ? 'Kalender & Tugas' : 'Calendar & Tasks'}
+            </button>
+            <button 
+              onClick={() => setActiveTab('stats')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-colors z-10 ${activeTab === 'stats' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              <Activity className="w-4 h-4" />
+              {lang === 'id' ? 'Statistik Produktivitas' : 'Productivity Stats'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24 w-full">
         <div className="w-full px-4 sm:px-6 py-4 max-w-7xl mx-auto">
@@ -922,11 +1028,11 @@ export default function CalendarScreen() {
                       
                       <div className="grid grid-cols-5 gap-1.5">
                         {[
-                          { id: 'excellent', label: 'Hebat', labelEn: 'Great', colors: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20', activeColors: 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20' },
+                          { id: 'excellent', label: 'Sangat Baik', labelEn: 'Excellent', colors: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20', activeColors: 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20' },
                           { id: 'good', label: 'Baik', labelEn: 'Good', colors: 'bg-teal-500/10 text-teal-400 border-teal-500/20 hover:bg-teal-500/20', activeColors: 'bg-teal-400 text-slate-950 shadow-lg shadow-teal-500/20' },
                           { id: 'neutral', label: 'Biasa', labelEn: 'Neutral', colors: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20', activeColors: 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' },
                           { id: 'bad', label: 'Buruk', labelEn: 'Bad', colors: 'bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20', activeColors: 'bg-orange-500 text-slate-950 shadow-lg shadow-orange-500/20' },
-                          { id: 'terrible', label: 'Lelah', labelEn: 'Tired', colors: 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20', activeColors: 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' }
+                          { id: 'terrible', label: 'Sangat Buruk', labelEn: 'Terrible', colors: 'bg-rose-500/10 text-rose-500 border-rose-500/20 hover:bg-rose-500/20', activeColors: 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' }
                         ].map(m => {
                           const selectedDayMood = (moods || []).find(x => x && x.date === selectedDateStr)?.mood;
                           const isSelected = selectedDayMood === m.id;
@@ -1400,6 +1506,7 @@ export default function CalendarScreen() {
                       </div>
                     </div>
                   </div>
+
                 </div>
 
                 {/* Right Column: Habit Analytics / Calendar Directory & Completed History (Col span 7) */}
@@ -1480,6 +1587,109 @@ export default function CalendarScreen() {
                     ) : (
                       <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-slate-800/60 rounded-xl font-mono">
                         {lang === 'id' ? 'Tidak ada tugas terdaftar di periode ini' : 'No tasks listed in this period'}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Monthly Mood & Evaluation Card */}
+                  <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl shadow-xl p-6">
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-800/50">
+                      <div className="w-8 h-8 bg-indigo-500/10 text-indigo-400 rounded-lg flex items-center justify-center">
+                        <Smile className="w-4 h-4 text-indigo-400" />
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-50 tracking-tight">
+                        {lang === 'id' ? 'Evaluasi & Analisis Mood Bulanan' : 'Monthly Mood & Evaluation'}
+                      </h3>
+                    </div>
+
+                    {monthlyMoodStats ? (
+                      <div className="space-y-4">
+                        {/* Average Banner */}
+                        <div className="flex items-center justify-between bg-slate-950/40 border border-slate-800/80 rounded-2xl p-3.5">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">
+                              {lang === 'id' ? 'Rata-rata Mood Bulanan' : 'Monthly Average Mood'}
+                            </span>
+                            <span className="text-sm font-black text-slate-200 flex items-center gap-2">
+                              <span className={monthlyMoodStats.averageDetails.color.split(' ')[0]}>
+                                {getMoodIcon(monthlyMoodStats.averageDetails.id, "w-5 h-5")}
+                              </span>
+                              <span className={monthlyMoodStats.averageDetails.color.split(' ')[0]}>{monthlyMoodStats.averageDetails.label}</span>
+                              <span className="text-xs text-slate-500 font-mono">({monthlyMoodStats.averageScore.toFixed(1)}/5)</span>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-slate-850 px-2.5 py-1.5 rounded-xl border border-slate-800/60">
+                            <span className="text-xs font-black text-indigo-400">{monthlyMoodStats.totalMoodDays}</span>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{lang === 'id' ? 'hari' : 'days'}</span>
+                          </div>
+                        </div>
+
+                        {/* Segmented Mood Distribution Bar */}
+                        <div className="space-y-2">
+                          <div className="h-3 w-full bg-slate-950 rounded-full overflow-hidden flex border border-slate-850/40">
+                            {[
+                              { id: 'excellent', color: 'bg-emerald-500', count: monthlyMoodStats.counts.excellent },
+                              { id: 'good', color: 'bg-teal-400', count: monthlyMoodStats.counts.good },
+                              { id: 'neutral', color: 'bg-indigo-400', count: monthlyMoodStats.counts.neutral },
+                              { id: 'bad', color: 'bg-orange-400', count: monthlyMoodStats.counts.bad },
+                              { id: 'terrible', color: 'bg-rose-500', count: monthlyMoodStats.counts.terrible }
+                            ].map(m => {
+                              const percent = monthlyMoodStats.totalMoodDays > 0 ? (m.count / monthlyMoodStats.totalMoodDays) * 100 : 0;
+                              if (percent === 0) return null;
+                              return (
+                                <div 
+                                  key={m.id} 
+                                  className={`h-full ${m.color} transition-all duration-500`}
+                                  style={{ width: `${percent}%` }}
+                                  title={`${m.id}: ${m.count}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Compact Horizontal Grid for Frequencies */}
+                        <div className="grid grid-cols-5 gap-1.5 pt-2 border-t border-slate-800/40">
+                          {[
+                            { id: 'excellent', label: lang === 'id' ? 'Sangat Baik' : 'Excellent', textColor: 'text-emerald-400', count: monthlyMoodStats.counts.excellent },
+                            { id: 'good', label: lang === 'id' ? 'Baik' : 'Good', textColor: 'text-teal-400', count: monthlyMoodStats.counts.good },
+                            { id: 'neutral', label: lang === 'id' ? 'Biasa' : 'Neutral', textColor: 'text-indigo-400', count: monthlyMoodStats.counts.neutral },
+                            { id: 'bad', label: lang === 'id' ? 'Buruk' : 'Bad', textColor: 'text-orange-400', count: monthlyMoodStats.counts.bad },
+                            { id: 'terrible', label: lang === 'id' ? 'Sangat Buruk' : 'Terrible', textColor: 'text-rose-400', count: monthlyMoodStats.counts.terrible }
+                          ].map(m => {
+                            const percent = monthlyMoodStats.totalMoodDays > 0 ? Math.round((m.count / monthlyMoodStats.totalMoodDays) * 100) : 0;
+                            return (
+                              <div key={m.id} className="flex flex-col items-center text-center">
+                                <span className={`${m.textColor} transition-transform duration-200 hover:scale-110 mb-1`}>
+                                  {getMoodIcon(m.id, "w-4 h-4")}
+                                </span>
+                                <span className="text-[9px] font-bold text-slate-400 truncate w-full" title={m.label}>
+                                  {m.label}
+                                </span>
+                                <span className="text-[10px] font-black text-slate-200 mt-0.5 font-mono">
+                                  {percent}%
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Self Evaluation Insight Card */}
+                        <div className="bg-slate-950/30 border border-slate-850/30 rounded-2xl p-3.5 mt-2">
+                          <h4 className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-indigo-400" />
+                            {lang === 'id' ? 'Evaluasi Diri' : 'Self Evaluation'}
+                          </h4>
+                          <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                            {monthlyMoodStats.averageDetails.advice}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 px-4 text-xs text-slate-400 border border-dashed border-slate-800/60 rounded-xl italic">
+                        {lang === 'id' 
+                          ? 'Belum ada catatan mood untuk bulan ini. Log mood harianmu di atas untuk melihat analisis lengkap!' 
+                          : 'No mood records logged for this month. Log your daily mood above to see full analysis!'}
                       </div>
                     )}
                   </div>

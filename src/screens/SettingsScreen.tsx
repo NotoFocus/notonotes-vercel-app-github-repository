@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Moon, Download, Upload, Bell, Lock, FileText, Smartphone, Type,
+  Moon, Download, Upload, Bell, Lock, FileText, Smartphone,
   ChevronRight, ChevronLeft, User, Globe, Clock, Key, Trash2, Info, Shield, MessageCircle, Gamepad2,
   AlertTriangle, Image as ImageIcon, RefreshCw
 } from 'lucide-react';
@@ -13,14 +13,10 @@ import { getLargeItem, getLargeItemSync, setLargeItem, deleteLargeItem } from '.
 export default function SettingsScreen({ 
   appTheme, 
   setAppTheme, 
-  fontTheme, 
-  setFontTheme, 
   onNavigate 
 }: { 
   appTheme: string, 
   setAppTheme: (t: any) => void, 
-  fontTheme: 'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten',
-  setFontTheme: (f: 'sans' | 'serif' | 'mono' | 'rounded' | 'handwritten') => void,
   onNavigate?: (s: ScreenItem) => void 
 }) {
   const { 
@@ -29,7 +25,7 @@ export default function SettingsScreen({
     setIsUnlocked, importData, importFullBackup, clearAllData, lang, setLang, streak, 
     reminderActive, setReminderActive, reminderTime, setReminderTime,
     moods, savingsTarget, savingsTargetTitle, savingsBalance, hasCompletedOnboarding, archivedTags,
-    isRefreshing, refreshStep, handleRefreshApp
+    isRefreshing, refreshStep, handleRefreshApp, isLiteMode, setIsLiteMode
   } = useAppStore();
   const t = useTranslation(lang);
 
@@ -624,8 +620,9 @@ export default function SettingsScreen({
               </div>
 
               {/* Theme Selector (Premium visual cards grid instead of ugly dropdown) */}
-              <div className="p-5 sm:p-6 flex flex-col gap-4">
-                <div className="flex items-center gap-3">
+              {!isLiteMode && (
+                <div className="p-5 sm:p-6 flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)]">
                     <Moon size={18} />
                   </div>
@@ -706,47 +703,10 @@ export default function SettingsScreen({
                   </div>
                 )}
               </div>
-
-              {/* Font Theme Selector */}
-              <div className="p-4 sm:p-5 flex flex-col gap-3 border-t border-slate-900/60">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)]">
-                    <Type size={16} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm text-slate-200">{t('fontThemeLabel')}</span>
-                    <span className="text-[11px] text-slate-400 leading-normal">{t('fontThemeDesc')}</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {[
-                    { id: 'sans', name: t('fontSans'), fontClass: 'font-style-sans' },
-                    { id: 'serif', name: t('fontSerif'), fontClass: 'font-style-serif' },
-                    { id: 'mono', name: t('fontMono'), fontClass: 'font-style-mono' },
-                    { id: 'rounded', name: t('fontRounded'), fontClass: 'font-style-rounded' },
-                    { id: 'handwritten', name: t('fontHandwritten'), fontClass: 'font-style-handwritten' },
-                  ].map((f) => {
-                    const isActive = fontTheme === f.id;
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => setFontTheme(f.id as any)}
-                        className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all duration-200 active:scale-95 flex items-center gap-2 cursor-pointer ${
-                          isActive 
-                            ? 'border-indigo-500 bg-indigo-500/15 text-indigo-300 font-extrabold shadow-[0_0_12px_rgba(99,102,241,0.15)]' 
-                            : 'border-slate-800 bg-slate-950/20 text-slate-400 hover:border-slate-700 hover:text-slate-200 hover:bg-slate-900/30'
-                        }`}
-                      >
-                        <span className={`text-sm font-black tracking-tight shrink-0 ${f.fontClass}`}>Aa</span>
-                        <span>{f.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              )}
 
               {/* Banner Wallpaper */}
+              {!isLiteMode && (
               <div className="flex flex-col p-5 sm:p-6 bg-slate-950/10">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3.5 min-w-0 flex-1">
@@ -789,6 +749,7 @@ export default function SettingsScreen({
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Language Selector (Premium Segmented pills instead of select dropdown) */}
               <div className="p-5 sm:p-6">
@@ -823,6 +784,44 @@ export default function SettingsScreen({
                       }`}
                     >
                       English
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lite Mode Toggle */}
+              <div className="p-5 sm:p-6 border-t border-slate-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.06)] shrink-0">
+                      <Smartphone size={18} />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-bold text-[15px] text-slate-200 truncate">{lang === 'id' ? 'Mode Noto Lite' : 'Noto Lite Mode'}</span>
+                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur kompleks (Games, Finance, Dashboard) agar lebih minimalis & ringan.' : 'Hide complex features (Games, Finance, Dashboard) for a minimalist & lightweight experience.'}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
+                    <button
+                      onClick={() => setIsLiteMode(true)}
+                      className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer text-center ${
+                        isLiteMode
+                          ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {lang === 'id' ? 'Lite' : 'Lite'}
+                    </button>
+                    <button
+                      onClick={() => setIsLiteMode(false)}
+                      className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer text-center ${
+                        !isLiteMode
+                          ? 'bg-slate-700 text-white shadow-md font-black'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {lang === 'id' ? 'Full' : 'Full'}
                     </button>
                   </div>
                 </div>
@@ -1016,7 +1015,7 @@ export default function SettingsScreen({
           )}
 
           {/* HIBURAN */}
-          {activeSection === 'about' && (
+          {activeSection === 'about' && !isLiteMode && (
           <section>
             <h3 className="text-[11px] font-bold text-slate-400/80 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2.5">
               <Gamepad2 size={14} className="text-purple-400" /> {t('entertainment')}
