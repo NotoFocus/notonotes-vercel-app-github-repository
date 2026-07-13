@@ -1270,7 +1270,7 @@ export default function CalendarScreen() {
                             {[
                               { val: 'Rendah', label: lang === 'id' ? 'Rendah' : 'Low', bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', activeBg: 'bg-emerald-600 text-white border-transparent' },
                               { val: 'Sedang', label: lang === 'id' ? 'Sedang' : 'Medium', bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20', activeBg: 'bg-amber-500 text-slate-950 border-transparent' },
-                              { val: 'Tinggi', label: lang === 'id' ? 'Tinggi' : 'High', bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20', activeBg: 'bg-rose-600 text-white border-transparent' },
+                              { val: 'Tinggi', label: lang === 'id' ? 'Wajib' : 'High', bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20', activeBg: 'bg-rose-600 text-white border-transparent' },
                             ].map((p) => {
                               const isSel = quickTaskPriority === p.val;
                               return (
@@ -1453,7 +1453,7 @@ export default function CalendarScreen() {
                         <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
                           <span className="text-rose-400 flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-rose-500" />
-                            {lang === 'id' ? 'Tinggi' : 'High'}
+                            {lang === 'id' ? 'Wajib' : 'High'}
                           </span>
                           <span className="text-slate-300">
                             {priorityStats.high.completed} / {priorityStats.high.total} {lang === 'id' ? 'Selesai' : 'Completed'} ({priorityStats.high.rate}%)
@@ -1868,7 +1868,7 @@ export default function CalendarScreen() {
                             {[
                               { val: 'Rendah', label: lang === 'id' ? 'Rndh' : 'Low', activeBg: 'bg-emerald-600 text-white' },
                               { val: 'Sedang', label: lang === 'id' ? 'Sdng' : 'Med', activeBg: 'bg-amber-500 text-slate-950' },
-                              { val: 'Tinggi', label: lang === 'id' ? 'Tggi' : 'High', activeBg: 'bg-rose-600 text-white' },
+                              { val: 'Tinggi', label: lang === 'id' ? 'Wajib' : 'High', activeBg: 'bg-rose-600 text-white' },
                             ].map((p) => {
                               const isSel = editCalTaskPriority === p.val;
                               return (

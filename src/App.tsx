@@ -51,7 +51,7 @@ export default function App() {
   const [currentScreen, _setCurrentScreen] = useState<ScreenItem>('home');
 
   const setCurrentScreen = useCallback((screen: ScreenItem) => {
-    if (isLiteMode && ['game', 'tictactoe', 'puzzle', 'tetris', 'memory', 'space-invaders', 'games-hub', 'finance'].includes(screen)) {
+    if (isLiteMode && ['game', 'tictactoe', 'puzzle', 'tetris', 'memory', 'space-invaders', 'games-hub'].includes(screen)) {
       screen = 'home';
     }
     if (screen !== currentScreen) {

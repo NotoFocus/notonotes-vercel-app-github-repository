@@ -426,7 +426,255 @@ export default function SettingsScreen({
       <div className="flex-1 overflow-y-auto no-scrollbar pb-32 w-full">
         <div className="w-full px-4 sm:px-6 py-6 space-y-6 max-w-2xl mx-auto">
           
-          {activeSection === null ? (
+          {isLiteMode ? (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              {/* 1. LITE USER PROFILE & LANGUAGE CARD */}
+              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+                
+                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em] mb-1">
+                  {lang === 'id' ? 'Profil & Bahasa' : 'Profile & Language'}
+                </h4>
+
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  {/* Profile Avatar Upload */}
+                  <div className="relative group/avatar shrink-0">
+                    <div className="w-20 h-20 rounded-full bg-slate-900 border border-slate-800/80 flex items-center justify-center overflow-hidden">
+                      {user.avatarUrl === 'indexeddb:user_avatar' ? (
+                        <div className="w-full h-full bg-slate-800 animate-pulse" />
+                      ) : user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User size={28} className="text-slate-400" />
+                      )}
+                    </div>
+                    <label className="absolute bottom-0 right-0 w-7 h-7 bg-indigo-600 hover:bg-indigo-500 border-2 border-slate-900 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-md">
+                      <Upload size={12} className="text-white" />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const dataUrl = event.target?.result as string;
+                            updateUser({ ...user, avatarUrl: dataUrl });
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Profile Name */}
+                  <div className="flex-1 w-full space-y-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                        {lang === 'id' ? 'Nama Panggilan' : 'Nickname'}
+                      </span>
+                      <input 
+                        type="text" 
+                        value={user.name}
+                        onChange={(e) => updateUser({ ...user, name: e.target.value })}
+                        placeholder={t('enterNicknamePlaceholder')}
+                        className="bg-slate-950/60 border border-slate-800/80 focus:border-indigo-500 rounded-2xl px-4 py-2.5 text-slate-200 font-extrabold text-sm outline-none w-full"
+                        maxLength={20}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {user.avatarUrl && user.avatarUrl !== 'indexeddb:user_avatar' && (
+                  <button 
+                    onClick={() => updateUser({ ...user, avatarUrl: '' })}
+                    className="py-2 px-4 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 font-bold text-xs transition-all active:scale-[0.98] self-start cursor-pointer"
+                  >
+                    {lang === 'id' ? 'Hapus Foto' : 'Remove Photo'}
+                  </button>
+                )}
+
+                <div className="border-t border-slate-800/40 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[14px] text-slate-300">{lang === 'id' ? 'Bahasa Aplikasi' : 'App Language'}</span>
+                    <span className="text-xs text-slate-500 leading-normal mt-0.5">{lang === 'id' ? 'Atur bahasa tampilan utama.' : 'Set primary display language.'}</span>
+                  </div>
+                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
+                    <button
+                      onClick={() => setLang('id')}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${lang === 'id' ? 'bg-indigo-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      Indonesia
+                    </button>
+                    <button
+                      onClick={() => setLang('en')}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${lang === 'en' ? 'bg-indigo-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      English
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. MODE SELECTOR CARD */}
+              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                      <Smartphone size={18} />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-bold text-[15px] text-slate-200 truncate">{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
+                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur tambahan (Games, Wallpaper) agar lebih bersih & fokus.' : 'Hide extra features (Games, Wallpaper) for a cleaner & focused experience.'}</span>
+                    </div>
+                  </div>
+                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
+                    <button
+                      onClick={() => {
+                        setIsLiteMode(true);
+                        setToastMessage(lang === 'id' ? 'Mode Lite aktif! Tampilan sangat bersih & fokus.' : 'Lite Mode active! Super clean & focused interface.');
+                        setTimeout(() => setToastMessage(null), 3000);
+                      }}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${isLiteMode ? 'bg-emerald-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      Lite Mode ⚡
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsLiteMode(false);
+                        setToastMessage(lang === 'id' ? 'Mode Pro aktif! Semua kustomisasi visual & hiburan terbuka.' : 'Pro Mode active! All visual customizations & leisure enabled.');
+                        setTimeout(() => setToastMessage(null), 3000);
+                      }}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${!isLiteMode ? 'bg-indigo-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      Pro Mode 👑
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. SECURITY & PIN LOCK CARD */}
+              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all shrink-0 ${appPin ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-slate-800/80 text-slate-400 border border-slate-750'}`}>
+                      <Lock size={18} />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-bold text-[15px] text-slate-200 truncate">{t('pinLock')}</span>
+                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Lindungi dompet keuangan & catatan harian Anda.' : 'Secure wallet transactions & private daily logs.'}</span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (appPin) {
+                        setPinInput('');
+                        setPinError(false);
+                        setPinModalMode('remove');
+                      } else {
+                        setPinInput('');
+                        setPinError(false);
+                        setPinModalMode('create');
+                      }
+                    }}
+                    className={`w-12 h-7 rounded-full flex items-center p-1 transition-all duration-300 shadow-inner shrink-0 ml-3 ${appPin ? 'bg-rose-500' : 'bg-slate-700/50 border border-slate-600/20'}`}
+                  >
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-300 shadow-md ${appPin ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+
+                {appPin && (
+                  <button 
+                    onClick={() => {
+                      setPinInput('');
+                      setPinError(false);
+                      setPinModalMode('verify');
+                    }}
+                    className="flex items-center justify-between p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850/80 rounded-2xl transition-all duration-200 text-left active:scale-[0.995] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+                        <Key size={14} />
+                      </div>
+                      <span className="font-bold text-xs text-slate-200 truncate">{t('changePin')}</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 ml-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* 4. BACKUP & DATABASE CARD */}
+              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em] mb-1">
+                  {lang === 'id' ? 'Pencadangan & Database' : 'Database & Backup'}
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button 
+                    onClick={handleExportClick}
+                    className="flex items-center gap-3.5 p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850 rounded-2xl transition-all text-left cursor-pointer active:scale-95"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                      <Download size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-slate-200 leading-none">{t('backupExport')}</p>
+                      <p className="text-[10px] text-slate-500 mt-1.5 leading-none">{lang === 'id' ? 'Unduh file data' : 'Download data file'}</p>
+                    </div>
+                  </button>
+
+                  <button 
+                    onClick={handleImportClick}
+                    className="flex items-center gap-3.5 p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850 rounded-2xl transition-all text-left cursor-pointer active:scale-95"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shrink-0">
+                      <Upload size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-slate-200 leading-none">{t('restoreImport')}</p>
+                      <p className="text-[10px] text-slate-500 mt-1.5 leading-none">{lang === 'id' ? 'Unggah file data' : 'Upload data file'}</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* 5. DIAGNOSTICS & SYSTEM CARE */}
+              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[14px] text-slate-300">{lang === 'id' ? 'Perawatan Sistem' : 'System Care'}</span>
+                    <span className="text-xs text-slate-500 leading-normal mt-0.5">{lang === 'id' ? 'Segarkan aplikasi jika terjadi error.' : 'Refresh app caches if glitches occur.'}</span>
+                  </div>
+                  <button
+                    onClick={handleRefreshApp}
+                    className="w-full sm:w-auto px-4.5 py-2.5 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl active:scale-[0.97] transition-all cursor-pointer shadow-lg shadow-indigo-500/15 shrink-0"
+                  >
+                    {lang === 'id' ? 'Segarkan Noto' : 'Refresh Noto'}
+                  </button>
+                </div>
+
+                <div className="border-t border-slate-800/40 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[14px] text-rose-400">{lang === 'id' ? 'Hapus Semua Data' : 'Hard Reset All Data'}</span>
+                    <span className="text-xs text-slate-500 leading-normal mt-0.5">{lang === 'id' ? 'Menghapus seluruh database harian secara permanen.' : 'Permanently wipe out all records.'}</span>
+                  </div>
+                  <button
+                    onClick={() => setShowResetConfirm(true)}
+                    className="w-full sm:w-auto px-4.5 py-2.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/20 rounded-2xl text-xs font-extrabold cursor-pointer transition-all active:scale-95 text-center shrink-0"
+                  >
+                    {lang === 'id' ? 'Reset Aplikasi' : 'Reset Database'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 6. BRAND FOOTER */}
+              <div className="py-6 text-center opacity-60">
+                <p className="text-xs font-black tracking-[0.3em] text-slate-500 uppercase">NOTO LITE</p>
+                <p className="text-[10px] font-medium text-slate-600 mt-2">{t('madeWithSimplicity')}</p>
+              </div>
+            </div>
+          ) : activeSection === null ? (
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* USER WELCOME DASHBOARD */}
               <div className="p-5 sm:p-6 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-indigo-950/10 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-5 shadow-lg shadow-slate-950/25">
@@ -445,7 +693,7 @@ export default function SettingsScreen({
                       {lang === 'id' ? `Halo, ${user.name || 'Pengguna'}!` : `Hello, ${user.name || 'User'}!`}
                     </h2>
                     <p className="text-xs text-slate-400 mt-1">
-                      {lang === 'id' ? 'Sesuaikan Noto dengan preferensi Anda.' : 'Customize Noto to match your style.'}
+                      {lang === 'id' ? 'Tampilan lengkap dengan kustomisasi visual & fitur ekstra.' : 'Complete interface with visual customization & extra features.'}
                     </p>
                   </div>
                 </div>
@@ -455,6 +703,47 @@ export default function SettingsScreen({
                     <span className="text-xs font-black text-amber-400">{streak} {lang === 'id' ? 'Hari Beruntun' : 'Day Streak'}</span>
                   </div>
                 )}
+              </div>
+
+              {/* MODE SELECTOR (COMPLETE vs SIMPLE/LITE) */}
+              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                      <Smartphone size={18} />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-bold text-[15px] text-slate-200 truncate">{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
+                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur tambahan (Games, Wallpaper) agar lebih bersih & fokus.' : 'Hide extra features (Games, Wallpaper) for a cleaner & focused experience.'}</span>
+                    </div>
+                  </div>
+                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
+                    <button
+                      onClick={() => {
+                        setIsLiteMode(true);
+                        setToastMessage(lang === 'id' ? 'Mode Lite aktif! Tampilan sangat bersih & fokus.' : 'Lite Mode active! Super clean & focused interface.');
+                        setTimeout(() => setToastMessage(null), 3000);
+                      }}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
+                        isLiteMode ? 'bg-emerald-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Lite Mode ⚡
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsLiteMode(false);
+                        setToastMessage(lang === 'id' ? 'Mode Pro aktif! Semua kustomisasi visual & hiburan terbuka.' : 'Pro Mode active! All visual customizations & leisure enabled.');
+                        setTimeout(() => setToastMessage(null), 3000);
+                      }}
+                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
+                        !isLiteMode ? 'bg-indigo-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Pro Mode 👑
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* QUICK REFRESH & DIAGNOSTIC CARD */}
@@ -620,9 +909,8 @@ export default function SettingsScreen({
               </div>
 
               {/* Theme Selector (Premium visual cards grid instead of ugly dropdown) */}
-              {!isLiteMode && (
-                <div className="p-5 sm:p-6 flex flex-col gap-4">
-                  <div className="flex items-center gap-3">
+              <div className="p-5 sm:p-6 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)]">
                     <Moon size={18} />
                   </div>
@@ -640,7 +928,7 @@ export default function SettingsScreen({
                     { id: 'cool', name: t('themeCool'), colorClass: 'bg-cyan-400' },
                     { id: 'cute', name: t('themeCute'), colorClass: 'bg-purple-400' },
                     { id: 'wallpaper', name: t('themeWallpaper'), colorClass: 'bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500' },
-                  ].map((theme) => {
+                  ].filter((theme) => !isLiteMode || ['dark', 'light'].includes(theme.id)).map((theme) => {
                     const isActive = appTheme === theme.id;
                     return (
                       <button
@@ -703,10 +991,8 @@ export default function SettingsScreen({
                   </div>
                 )}
               </div>
-              )}
 
               {/* Banner Wallpaper */}
-              {!isLiteMode && (
               <div className="flex flex-col p-5 sm:p-6 bg-slate-950/10">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3.5 min-w-0 flex-1">
@@ -749,7 +1035,6 @@ export default function SettingsScreen({
                   </div>
                 </div>
               </div>
-              )}
 
               {/* Language Selector (Premium Segmented pills instead of select dropdown) */}
               <div className="p-5 sm:p-6">
@@ -789,16 +1074,16 @@ export default function SettingsScreen({
                 </div>
               </div>
 
-              {/* Lite Mode Toggle */}
+              {/* Display Mode Toggle */}
               <div className="p-5 sm:p-6 border-t border-slate-800/80">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.06)] shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)] shrink-0">
                       <Smartphone size={18} />
                     </div>
                     <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-bold text-[15px] text-slate-200 truncate">{lang === 'id' ? 'Mode Noto Lite' : 'Noto Lite Mode'}</span>
-                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur kompleks (Games, Finance, Dashboard) agar lebih minimalis & ringan.' : 'Hide complex features (Games, Finance, Dashboard) for a minimalist & lightweight experience.'}</span>
+                      <span className="font-bold text-[15px] text-slate-200 truncate">{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
+                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur hiburan tambahan (Games, Tema Kustom, Wallpaper) agar lebih bersih & fokus.' : 'Hide extra entertainment features (Games, Custom Themes, Wallpaper) for a cleaner & focused experience.'}</span>
                     </div>
                   </div>
                   
@@ -811,17 +1096,17 @@ export default function SettingsScreen({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      {lang === 'id' ? 'Lite' : 'Lite'}
+                      {lang === 'id' ? 'Simpel ⚡' : 'Simple ⚡'}
                     </button>
                     <button
                       onClick={() => setIsLiteMode(false)}
                       className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer text-center ${
                         !isLiteMode
-                          ? 'bg-slate-700 text-white shadow-md font-black'
+                          ? 'bg-indigo-500 text-slate-950 shadow-md font-black'
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      {lang === 'id' ? 'Full' : 'Full'}
+                      {lang === 'id' ? 'Lengkap 🚀' : 'Complete 🚀'}
                     </button>
                   </div>
                 </div>

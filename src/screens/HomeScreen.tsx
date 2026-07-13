@@ -183,35 +183,9 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
       return true; // Skip if fails
     }
   });
-  const [showDailyAd, setShowDailyAd] = useState(() => {
-    try {
-      const today = new Date().toDateString();
-      const lastDate = localStorage.getItem('noto_ad_date');
-      const adCount = parseInt(localStorage.getItem('noto_ad_count') || '0', 10);
-      
-      if (lastDate !== today) {
-        return true;
-      }
-      return adCount < 2;
-    } catch(e) {
-      return false; // Skip ad if errors out
-    }
-  });
+  const [showDailyAd, setShowDailyAd] = useState(false);
 
   const handleCloseAd = () => {
-    try {
-      const today = new Date().toDateString();
-      const lastDate = localStorage.getItem('noto_ad_date');
-      let currentCount = parseInt(localStorage.getItem('noto_ad_count') || '0', 10);
-      
-      if (lastDate !== today) {
-         localStorage.setItem('noto_ad_date', today);
-         localStorage.setItem('noto_ad_count', '1');
-      } else {
-         localStorage.setItem('noto_ad_count', (currentCount + 1).toString());
-      }
-    } catch(e) {}
-    
     setShowDailyAd(false);
   };
 
@@ -302,16 +276,12 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           <button className="hidden sm:block p-3 text-slate-400 hover:text-indigo-400 hover:rotate-180 transition-all duration-500 relative" onClick={handleRefreshApp} title={t('refreshApp') as string}>
             <RefreshCw className="w-5 h-5" />
           </button>
-          {!isLiteMode && (
-            <>
-              <button className="p-3 text-slate-400 hover:text-emerald-400 transition-colors relative" onClick={() => onNavigate('finance')} title={t('financeMenu') as string}>
-                <Wallet className="w-5 h-5" />
-              </button>
-              <button className="p-3 text-slate-400 hover:text-indigo-400 transition-colors" onClick={() => setShowTimer(true)}>
-                <Clock className="w-5 h-5" />
-              </button>
-            </>
-          )}
+          <button className="p-3 text-slate-400 hover:text-emerald-400 transition-colors relative" onClick={() => onNavigate('finance')} title={t('financeMenu') as string}>
+            <Wallet className="w-5 h-5" />
+          </button>
+          <button className="p-3 text-slate-400 hover:text-indigo-400 transition-colors" onClick={() => setShowTimer(true)}>
+            <Clock className="w-5 h-5" />
+          </button>
           <button className="p-3 -mr-2 text-slate-400 hover:text-slate-50 transition-colors relative" onClick={() => setShowNotificationModal(true)}>
             <Bell className="w-5 h-5" />
             {!hasSeenUpdate300 && <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></span>}
@@ -320,7 +290,46 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar pb-32 w-full max-w-lg mx-auto">
-        {!isLiteMode && (
+        {isLiteMode ? (
+          <div className="relative w-full rounded-[2rem] bg-slate-900/40 border border-slate-800/80 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-[0_4px_20px_rgba(0,0,0,0.15)] overflow-hidden">
+            {/* Subtle light effect */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex gap-4 items-center min-w-0 flex-1 relative z-10">
+              {currentUser.avatarUrl && currentUser.avatarUrl !== 'indexeddb:user_avatar' ? (
+                <div className="w-12 h-12 rounded-2xl overflow-hidden border border-slate-800 shrink-0 shadow-inner">
+                  <img src={currentUser.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-500/20">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mb-1">{getGreeting()}</p>
+                <h2 className="text-2xl font-black text-slate-100 tracking-tight leading-none mb-2">{currentUser.name || 'User'}</h2>
+                <p className="text-emerald-400 text-xs font-semibold flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                  <span>{activeTasksCount} {t('remainingTask')}</span>
+                </p>
+              </div>
+            </div>
+            
+            {/* Minimal Streak Badge */}
+            <div 
+              onClick={() => setShowStreakSplash(true)}
+              className="flex items-center gap-2.5 bg-slate-950/80 border border-slate-800/80 hover:border-slate-700/80 rounded-2xl px-4 py-2.5 cursor-pointer transition-all hover:scale-[1.02] shadow-inner relative z-10 w-fit shrink-0 self-start sm:self-auto"
+              title={`${streak} hari berturut-turut!`}
+            >
+              <Flame className="w-5 h-5 text-orange-400 fill-orange-400 drop-shadow-[0_0_4px_rgba(251,146,60,0.2)]" />
+              <div className="flex flex-col leading-none">
+                <span className="text-sm font-black text-slate-100">{streak}</span>
+                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Streak</span>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div 
             style={bannerWallpaper ? { backgroundImage: `url(${bannerWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
             className="relative w-full rounded-[2rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-6 sm:p-8 flex flex-col justify-between mb-8 text-white shadow-lg shadow-indigo-500/20 overflow-hidden"
@@ -380,6 +389,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                   animate={{ width: `${progressPercent}%` }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" 
+                  id="noto-lite-progress"
                 />
               </div>
             </div>
@@ -680,74 +690,6 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                   </div>
                 </div>
              </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Daily Ad Modal */}
-      {/* Daily Ad Modal */}
-      <AnimatePresence>
-        {showDailyAd && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-[110] flex flex-col items-center justify-center p-4" 
-            onClick={handleCloseAd}
-          >
-            <motion.div 
-              initial={{ scale: 0.95, y: 10, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.95, y: 10, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-sm flex flex-col items-center text-center shadow-2xl relative overflow-hidden" 
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Subtle ambient light */}
-              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none" />
-            
-              <button 
-                onClick={handleCloseAd}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-200 transition-colors z-10 bg-slate-800 hover:bg-slate-700 rounded-full p-1.5"
-                title={t('close') as string}
-              >
-                <X className="w-5 h-5" />
-              </button>
-              
-              {currentUser.avatarUrl === 'indexeddb:user_avatar' ? (
-                <div className="w-20 h-20 bg-slate-800/50 rounded-3xl mb-6 z-10 shadow-sm border border-indigo-500/20 animate-pulse">
-                </div>
-              ) : currentUser.avatarUrl ? (
-                <div className="w-20 h-20 rounded-3xl overflow-hidden mb-6 z-10 shadow-sm border border-indigo-500/20 relative">
-                  <img src={currentUser.avatarUrl} alt="Welcome Avatar" className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="w-20 h-20 bg-indigo-500/10 text-indigo-400 rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm border border-indigo-500/20">
-                   <Sparkles className="w-10 h-10" />
-                </div>
-              )}
-              
-              <h3 className="text-2xl font-black text-slate-50 mb-3 tracking-tight z-10">
-                {lang === 'id' ? 'Selamat Datang' : 'Welcome'}
-              </h3>
-              
-              <p className="text-[15px] text-slate-400 mb-8 leading-relaxed font-medium z-10 px-2">
-                {lang === 'id' ? 'Mari mulai hari dengan niat yang baik. Fokus, selesaikan tugasmu, dan nikmati prosesnya.' : 'Let\'s start the day with good intentions. Focus, complete your tasks, and enjoy the process.'}
-              </p>
-              
-              <div className="bg-indigo-500/10 rounded-2xl p-5 w-full mb-8 relative border border-indigo-500/20 z-10">
-                 <p className="text-indigo-300 font-medium text-[14px] leading-relaxed italic">
-                   {lang === 'id' ? '"Ini hanyalah sebuah aplikasi. yang bisa merubah mu hanyalah dirimu sendiri"' : '"This is just an app. The only one who can change you is yourself."'}
-                 </p>
-              </div>
-              
-              <button 
-                onClick={handleCloseAd}
-                className="w-full py-4 rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-lg shadow-indigo-600/30 active:scale-95 flex justify-center items-center gap-2 z-10"
-              >
-                <span className="tracking-wide">{lang === 'id' ? 'Mulai Sekarang' : 'Start Now'}</span>
-              </button>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
