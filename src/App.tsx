@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Home, CheckCircle2, Calendar as CalendarIcon, Settings, Lock, Layers, Bell, X, Wallet, WifiOff, FileText } from 'lucide-react';
+import { Home, CheckCircle2, Calendar as CalendarIcon, Settings, Lock, Layers, Bell, X, Wallet, WifiOff, FileText, Database, Download, AlertTriangle } from 'lucide-react';
 import HomeScreen from './screens/HomeScreen';
 import TasksScreen from './screens/TasksScreen';
 import CalendarScreen from './screens/CalendarScreen';
@@ -45,10 +45,134 @@ export default function App() {
   const { 
     appPin, isUnlocked, setIsUnlocked, lang, tasks, notes, 
     reminderActive, reminderTime, hasCompletedOnboarding, setHasCompletedOnboarding,
-    isRefreshing, refreshStep, isLiteMode
+    isRefreshing, refreshStep, isLiteMode,
+    transactions, moods, user, streak, pinRecoveryQuestion, pinRecoveryAnswer, pinHistory,
+    savingsTarget, savingsTargetTitle, savingsBalance, archivedTags,
+    autoBackupFrequency, autoBackupFilenamePrefix, lastAutoBackupTimestamp, setLastAutoBackupTimestamp,
+    autoBackupPin: storeAutoBackupPin, autoBackupPinHistory
   } = useAppStore();
   const t = useTranslation(lang);
   const [currentScreen, _setCurrentScreen] = useState<ScreenItem>('home');
+
+  const [showAutoBackupModal, setShowAutoBackupModal] = useState(false);
+  const [enteredAutoBackupPin, setEnteredAutoBackupPin] = useState('');
+  const [enteredAutoBackupPinError, setEnteredAutoBackupPinError] = useState(false);
+  const [localToastMessage, setLocalToastMessage] = useState<string | null>(null);
+
+  const getAutoBackupFilename = useCallback(() => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    const prefix = autoBackupFilenamePrefix.trim() || 'noto_backup';
+    return `${prefix}_auto_${yyyy}-${mm}-${dd}_${hh}-${min}`;
+  }, [autoBackupFilenamePrefix]);
+
+  useEffect(() => {
+    if (autoBackupFrequency === 'off') return;
+    if (!hasCompletedOnboarding) return;
+    
+    let intervalMs = 0;
+    if (autoBackupFrequency === '3_days') {
+      intervalMs = 3 * 24 * 60 * 60 * 1000;
+    } else if (autoBackupFrequency === '1_week') {
+      intervalMs = 7 * 24 * 60 * 60 * 1000;
+    } else if (autoBackupFrequency === '1_month') {
+      intervalMs = 30 * 24 * 60 * 60 * 1000;
+    }
+    
+    if (intervalMs === 0) return;
+    
+    const now = Date.now();
+    
+    // If it is the first time running (timestamp === 0), set to now so scheduler starts.
+    if (lastAutoBackupTimestamp === 0) {
+      setLastAutoBackupTimestamp(now);
+      return;
+    }
+    
+    const timeDiff = now - lastAutoBackupTimestamp;
+    if (timeDiff >= intervalMs) {
+      setShowAutoBackupModal(true);
+    }
+  }, [autoBackupFrequency, lastAutoBackupTimestamp, hasCompletedOnboarding, setLastAutoBackupTimestamp]);
+
+  const executeAutoBackup = async () => {
+    if (!storeAutoBackupPin) return;
+    const { hashPin, encryptData } = await import('./utils');
+    const hashed = await hashPin(enteredAutoBackupPin);
+    if (hashed !== storeAutoBackupPin && enteredAutoBackupPin !== storeAutoBackupPin) {
+      setEnteredAutoBackupPinError(true);
+      setEnteredAutoBackupPin('');
+      setTimeout(() => setEnteredAutoBackupPinError(false), 2500);
+      return;
+    }
+
+    try {
+      const exportData: any = { 
+         version: "4.0",
+         timestamp: new Date().toISOString(),
+         notes,
+         tasks,
+         transactions,
+         moods,
+         user,
+         streak,
+         appPin,
+         pinHistory,
+         pinRecoveryQuestion,
+         pinRecoveryAnswer,
+         lang,
+         reminderActive,
+         reminderTime,
+         savingsTarget,
+         savingsTargetTitle,
+         savingsBalance,
+         hasCompletedOnboarding,
+         archivedTags,
+         isLiteMode,
+         autoBackupPin: storeAutoBackupPin,
+         autoBackupPinHistory
+      };
+      
+      const dataStr = JSON.stringify(exportData);
+      const encryptedData = await encryptData(dataStr, enteredAutoBackupPin);
+      const blob = new Blob([encryptedData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const filename = `${getAutoBackupFilename()}.json`;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setLastAutoBackupTimestamp(Date.now());
+      setShowAutoBackupModal(false);
+      setEnteredAutoBackupPin('');
+      
+      setLocalToastMessage(lang === 'id' ? `Backup otomatis berhasil diunduh sebagai ${filename}!` : `Auto backup successfully downloaded as ${filename}!`);
+      setTimeout(() => setLocalToastMessage(null), 4000);
+    } catch (e) {
+      console.error("Auto backup failed", e);
+    }
+  };
+
+  const snoozeAutoBackup = () => {
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+    let intervalMs = 0;
+    if (autoBackupFrequency === '3_days') intervalMs = 3 * 24 * 60 * 60 * 1000;
+    else if (autoBackupFrequency === '1_week') intervalMs = 7 * 24 * 60 * 60 * 1000;
+    else if (autoBackupFrequency === '1_month') intervalMs = 30 * 24 * 60 * 60 * 1000;
+    
+    setLastAutoBackupTimestamp(Date.now() - intervalMs + oneDayInMs);
+    setShowAutoBackupModal(false);
+    setEnteredAutoBackupPin('');
+    
+    setLocalToastMessage(lang === 'id' ? "Pencadangan ditunda 1 hari." : "Backup postponed for 1 day.");
+    setTimeout(() => setLocalToastMessage(null), 3000);
+  };
 
   const setCurrentScreen = useCallback((screen: ScreenItem) => {
     if (isLiteMode && ['game', 'tictactoe', 'puzzle', 'tetris', 'memory', 'space-invaders', 'games-hub'].includes(screen)) {
@@ -548,6 +672,151 @@ export default function App() {
         {currentScreen === 'space-invaders' && <SpaceInvadersScreen onBack={() => setCurrentScreen('games-hub')} />}
       </div>
 
+      {/* AUTO BACKUP PROMPT DIALOG */}
+      {showAutoBackupModal && (
+        <div className="fixed inset-0 z-[10000] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 max-w-md w-full flex flex-col relative overflow-hidden shadow-2xl">
+            {/* Ambient bg blur decoration */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                <Database size={24} className="animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-100 font-sans tracking-tight leading-tight">
+                  {lang === 'id' ? 'Pencadangan Otomatis Noto' : 'Noto Auto-Backup'}
+                </h3>
+                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] block mt-1">
+                  {lang === 'id' ? `Jadwal: ${autoBackupFrequency === '3_days' ? 'Setiap 3 Hari' : autoBackupFrequency === '1_week' ? 'Setiap 1 Minggu' : 'Setiap 1 Bulan'}` : `Schedule: ${autoBackupFrequency === '3_days' ? 'Every 3 Days' : autoBackupFrequency === '1_week' ? 'Every Week' : 'Every Month'}`}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              {lang === 'id' 
+                ? 'Sudah waktunya untuk mencadangkan data harian Anda agar tidak hilang jika terjadi kendala pada peramban (browser). Noto menjaga data Anda tetap aman dan tersimpan sepenuhnya secara lokal pada perangkat Anda.'
+                : 'It is time to backup your daily data so it is safe from any browser cache clearings. Noto is offline-first, keeping all your data locally on this device.'}
+            </p>
+
+            {/* Automatic File Name Display */}
+            <div className="space-y-2 mb-4 bg-slate-950/40 border border-slate-800 p-4 rounded-2xl">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                {lang === 'id' ? 'Nama File Otomatis' : 'Automatic Filename'}
+              </label>
+              <div className="flex items-center justify-between gap-2 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2.5">
+                <span className="text-indigo-400 text-xs font-mono font-bold select-all break-all">
+                  {getAutoBackupFilename()}.json
+                </span>
+                <span className="text-[9px] text-slate-950 font-black font-sans uppercase shrink-0 bg-indigo-400 px-2 py-0.5 rounded-md">
+                  {lang === 'id' ? 'Otomatis' : 'Auto'}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 leading-normal mt-1">
+                {lang === 'id'
+                  ? '💡 Nama file dibuat otomatis dengan tanggal & tahun saat ini. Anda selalu dapat mengetahui file mana yang terbaru agar mudah diurutkan.'
+                  : '💡 File name is automatically created with the current date & year. You will always know which one is the newest for easy sorting.'}
+              </p>
+            </div>
+
+            {/* Internal Storage Warning Box */}
+            <div className="flex gap-3 p-3 bg-amber-500/5 border border-amber-500/10 rounded-2xl mb-4 text-left">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-bold text-[10px] text-amber-300 leading-tight">
+                  {lang === 'id' ? 'Peringatan Memori Internal' : 'Internal Storage Warning'}
+                </h4>
+                <p className="text-[9px] text-slate-400 leading-normal mt-0.5">
+                  {lang === 'id'
+                    ? 'File cadangan akan disimpan ke folder Unduhan perangkat Anda. Harap hapus file cadangan lama secara manual.'
+                    : 'Backup files are saved directly into your device\'s Downloads folder. Please delete old ones manually.'}
+                </p>
+              </div>
+            </div>
+
+            {/* PIN Entry for Enrypting Auto Backup */}
+            <div className="space-y-3 mb-5 bg-slate-950/40 border border-slate-800 p-4 rounded-2xl text-left relative overflow-hidden">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-center">
+                {lang === 'id' ? 'Masukkan PIN Cadangan Anda' : 'Enter Your Backup PIN'}
+              </label>
+              
+              <input
+                type="password"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                maxLength={4}
+                value={enteredAutoBackupPin}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setEnteredAutoBackupPin(val);
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                autoFocus
+              />
+
+              <div className="flex justify-center gap-3 py-1 relative z-0">
+                {[0, 1, 2, 3].map((idx) => (
+                  <div 
+                    key={idx} 
+                    className={`w-9 h-11 rounded-xl border flex items-center justify-center font-black text-base transition-all ${
+                      enteredAutoBackupPinError 
+                        ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
+                        : enteredAutoBackupPin.length > idx 
+                          ? 'border-indigo-500 bg-indigo-500/5 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)]' 
+                          : 'border-slate-800 bg-slate-950/60 text-slate-600'
+                    }`}
+                  >
+                    {enteredAutoBackupPin.length > idx ? '●' : ''}
+                  </div>
+                ))}
+              </div>
+
+              <span className="text-[8px] text-slate-500 block text-center mt-1">
+                {lang === 'id' ? 'Ketuk kotak untuk memunculkan keyboard dan ketik PIN Anda' : 'Tap boxes to show keyboard and type your PIN'}
+              </span>
+
+              {enteredAutoBackupPinError && (
+                <p className="text-[10px] text-red-400 font-bold text-center mt-1 animate-pulse">
+                  {lang === 'id' ? '❌ PIN Cadangan salah! Silakan coba lagi.' : '❌ Incorrect Backup PIN! Please try again.'}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button 
+                onClick={snoozeAutoBackup}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-2xl text-xs font-bold text-slate-400 hover:text-slate-200 transition-all active:scale-[0.98]"
+              >
+                {lang === 'id' ? 'Tunda 1 Hari ⏳' : 'Snooze 1 Day ⏳'}
+              </button>
+              <button 
+                onClick={executeAutoBackup}
+                disabled={enteredAutoBackupPin.length !== 4}
+                className={`flex-1 py-3 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98] shadow-lg ${
+                  enteredAutoBackupPin.length === 4
+                    ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10 cursor-pointer'
+                    : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800/80 shadow-none'
+                }`}
+              >
+                {lang === 'id' ? 'Unduh Backup 💾' : 'Download Backup 💾'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LOCAL SUCCESS TOAST */}
+      {localToastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10001] bg-slate-900 border border-slate-800 shadow-2xl rounded-2xl px-5 py-3.5 flex items-center gap-3.5 animate-in slide-in-from-bottom-5 duration-300 max-w-sm w-[90%] md:w-auto">
+          <div className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={12} />
+          </div>
+          <p className="text-xs font-bold text-slate-200 leading-normal">
+            {localToastMessage}
+          </p>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -574,10 +843,27 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   const t = useTranslation(lang);
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
-  const { user, setAppPin, pinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryQuestion, setPinRecoveryAnswer } = useAppStore();
+  const { user, recordPinChange, pinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryQuestion, setPinRecoveryAnswer } = useAppStore();
 
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const [forgotNameInput, setForgotNameInput] = useState('');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // If modal is active, let them type in the text input
+      if (forgotModalVisible) return;
+      
+      if (e.key >= '0' && e.key <= '9') {
+        handleInput(e.key);
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        handleDelete();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [input, forgotModalVisible, correctPin]);
 
   const handleInput = async (num: string) => {
     if (input.length < 4) {
@@ -590,7 +876,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
         const hashed = await hashPin(newVal);
         if (hashed === correctPin || newVal === correctPin) { // support legacy plaintext pin
           if (newVal === correctPin && newVal !== hashed) {
-            setAppPin(hashed); // seamlessly upgrade to hash
+            await recordPinChange(hashed); // seamlessly upgrade to hash
           }
           setTimeout(onUnlock, 200);
         } else {
@@ -606,13 +892,13 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
     setError(false);
   };
 
-  const handleForgotPinSubmit = () => {
+  const handleForgotPinSubmit = async () => {
     const isCorrect = pinRecoveryAnswer 
       ? forgotNameInput.trim().toLowerCase() === pinRecoveryAnswer.trim().toLowerCase()
       : forgotNameInput.trim().toLowerCase() === (user?.name || '').trim().toLowerCase();
 
     if (isCorrect) {
-      setAppPin(null);
+      await recordPinChange(null);
       setPinRecoveryQuestion(null);
       setPinRecoveryAnswer(null);
       setForgotModalVisible(false);
@@ -653,6 +939,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
             <button 
               key={num} 
+              type="button"
               onClick={() => handleInput(num.toString())}
               className="h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl font-bold hover:bg-slate-800 hover:border-indigo-500/30 transition-all font-mono"
             >
@@ -661,12 +948,14 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
           ))}
           <div /> {/* Kosong */}
           <button 
+            type="button"
             onClick={() => handleInput('0')}
             className="h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl font-bold hover:bg-slate-800 hover:border-indigo-500/30 transition-all font-mono"
           >
             0
           </button>
           <button 
+            type="button"
             onClick={handleDelete}
             className="h-16 rounded-full bg-slate-900 flex items-center justify-center text-sm font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-50 transition-all uppercase tracking-widest"
           >
@@ -675,6 +964,7 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
         </div>
 
         <button 
+          type="button"
           onClick={() => setForgotModalVisible(true)}
           className="mt-8 text-sm text-slate-400 hover:text-indigo-400 transition-colors font-medium border-b border-transparent hover:border-indigo-400"
         >

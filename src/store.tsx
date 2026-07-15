@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Note, Task, User, Transaction, MoodEntry } from './types';
+import { Note, Task, User, Transaction, MoodEntry, PinHistoryEntry } from './types';
 import { currentUser, recentNotes, allTasks } from './data';
 import { generateId } from './utils';
 import { getLargeItem, getLargeItemSync, setLargeItem, deleteLargeItem } from './utils/db';
@@ -35,6 +35,9 @@ interface AppContextType {
   setPinRecoveryQuestion: (question: string | null) => void;
   pinRecoveryAnswer: string | null;
   setPinRecoveryAnswer: (answer: string | null) => void;
+  pinHistory: PinHistoryEntry[];
+  setPinHistory: React.Dispatch<React.SetStateAction<PinHistoryEntry[]>>;
+  recordPinChange: (newHashedPin: string | null) => Promise<void>;
   lang: 'id' | 'en';
   setLang: (l: 'id' | 'en') => void;
   isUnlocked: boolean;
@@ -60,6 +63,17 @@ interface AppContextType {
   handleRefreshApp: () => Promise<void>;
   isLiteMode: boolean;
   setIsLiteMode: (val: boolean) => void;
+  autoBackupFrequency: 'off' | '3_days' | '1_week' | '1_month';
+  setAutoBackupFrequency: (val: 'off' | '3_days' | '1_week' | '1_month') => void;
+  autoBackupFilenamePrefix: string;
+  setAutoBackupFilenamePrefix: (val: string) => void;
+  lastAutoBackupTimestamp: number;
+  setLastAutoBackupTimestamp: (val: number) => void;
+  autoBackupPin: string | null;
+  setAutoBackupPin: (pin: string | null) => void;
+  autoBackupPinHistory: PinHistoryEntry[];
+  setAutoBackupPinHistory: React.Dispatch<React.SetStateAction<PinHistoryEntry[]>>;
+  recordAutoBackupPinChange: (newHashedPin: string | null) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -204,6 +218,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try { return localStorage.getItem('noto_pin'); } catch(e){}
     return null;
   });
+  const [pinHistory, setPinHistory] = useState<PinHistoryEntry[]>(() => {
+    try {
+      const s = localStorage.getItem('noto_pin_history');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  useEffect(() => {
+    if (appPin && pinHistory.length === 0) {
+      setPinHistory([
+        {
+          id: generateId(),
+          hashedPin: appPin,
+          startDate: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+          endDate: null
+        }
+      ]);
+    }
+  }, [appPin, pinHistory]);
+
+  const recordPinChange = async (newHashedPin: string | null) => {
+    setAppPin(newHashedPin);
+    setPinHistory(prev => {
+      const now = new Date().toISOString();
+      const updated = prev.map(entry => {
+        if (entry.endDate === null) {
+          return { ...entry, endDate: now };
+        }
+        return entry;
+      });
+      if (newHashedPin) {
+        updated.push({
+          id: generateId(),
+          hashedPin: newHashedPin,
+          startDate: now,
+          endDate: null
+        });
+      }
+      return updated;
+    });
+  };
   const [pinRecoveryQuestion, setPinRecoveryQuestion] = useState<string | null>(() => {
     try { return localStorage.getItem('noto_pin_question'); } catch(e){}
     return null;
@@ -282,6 +341,105 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch(e) {}
     return false;
   });
+
+  const [autoBackupFrequency, setAutoBackupFrequency] = useState<'off' | '3_days' | '1_week' | '1_month'>(() => {
+    try {
+      const s = localStorage.getItem('noto_auto_backup_frequency');
+      if (s !== null) return s as any;
+    } catch (e) {}
+    return 'off';
+  });
+
+  const [autoBackupFilenamePrefix, setAutoBackupFilenamePrefix] = useState<string>(() => {
+    try {
+      const s = localStorage.getItem('noto_auto_backup_filename_prefix');
+      if (s !== null) return s;
+    } catch (e) {}
+    return 'noto_backup';
+  });
+
+  const [lastAutoBackupTimestamp, setLastAutoBackupTimestamp] = useState<number>(() => {
+    try {
+      const s = localStorage.getItem('noto_last_auto_backup_timestamp');
+      if (s !== null) return parseInt(s, 10);
+    } catch (e) {}
+    return 0;
+  });
+
+  const [autoBackupPin, setAutoBackupPin] = useState<string | null>(() => {
+    try { return localStorage.getItem('noto_auto_backup_pin'); } catch(e){}
+    return null;
+  });
+
+  const [autoBackupPinHistory, setAutoBackupPinHistory] = useState<PinHistoryEntry[]>(() => {
+    try {
+      const s = localStorage.getItem('noto_auto_backup_pin_history');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  useEffect(() => {
+    if (autoBackupPin && autoBackupPinHistory.length === 0) {
+      setAutoBackupPinHistory([
+        {
+          id: generateId(),
+          hashedPin: autoBackupPin,
+          startDate: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+          endDate: null
+        }
+      ]);
+    }
+  }, [autoBackupPin, autoBackupPinHistory]);
+
+  const recordAutoBackupPinChange = async (newHashedPin: string | null) => {
+    setAutoBackupPin(newHashedPin);
+    setAutoBackupPinHistory(prev => {
+      const now = new Date().toISOString();
+      const updated = prev.map(entry => {
+        if (entry.endDate === null) {
+          return { ...entry, endDate: now };
+        }
+        return entry;
+      });
+      if (newHashedPin) {
+        updated.push({
+          id: generateId(),
+          hashedPin: newHashedPin,
+          startDate: now,
+          endDate: null
+        });
+      }
+      return updated;
+    });
+  };
+
+  useEffect(() => {
+    try {
+      if (autoBackupPin) safeSetItem('noto_auto_backup_pin', autoBackupPin); else localStorage.removeItem('noto_auto_backup_pin');
+    } catch(e){}
+  }, [autoBackupPin]);
+
+  useEffect(() => {
+    try {
+      safeSetItem('noto_auto_backup_pin_history', JSON.stringify(autoBackupPinHistory));
+    } catch(e){}
+  }, [autoBackupPinHistory]);
+
+  useEffect(() => {
+    safeSetItem('noto_auto_backup_frequency', autoBackupFrequency);
+  }, [autoBackupFrequency]);
+
+  useEffect(() => {
+    safeSetItem('noto_auto_backup_filename_prefix', autoBackupFilenamePrefix);
+  }, [autoBackupFilenamePrefix]);
+
+  useEffect(() => {
+    safeSetItem('noto_last_auto_backup_timestamp', JSON.stringify(lastAutoBackupTimestamp));
+  }, [lastAutoBackupTimestamp]);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(() => {
     try { 
       const s = localStorage.getItem('noto_onboarding_completed'); 
@@ -454,6 +612,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (appPin) safeSetItem('noto_pin', appPin); else localStorage.removeItem('noto_pin');
     } catch(e){}
   }, [appPin]);
+  useEffect(() => {
+    try {
+      safeSetItem('noto_pin_history', JSON.stringify(pinHistory));
+    } catch(e){}
+  }, [pinHistory]);
+
   useEffect(() => {
     try {
       if (pinRecoveryQuestion) safeSetItem('noto_pin_question', pinRecoveryQuestion); else localStorage.removeItem('noto_pin_question');
@@ -699,6 +863,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (backup.appPin !== undefined) {
       setAppPin(backup.appPin);
     }
+    if (Array.isArray(backup.pinHistory)) {
+      setPinHistory(backup.pinHistory);
+    }
+    if (backup.autoBackupPin !== undefined) {
+      setAutoBackupPin(backup.autoBackupPin);
+    }
+    if (Array.isArray(backup.autoBackupPinHistory)) {
+      setAutoBackupPinHistory(backup.autoBackupPinHistory);
+    }
+
     if (backup.pinRecoveryQuestion !== undefined) {
       setPinRecoveryQuestion(backup.pinRecoveryQuestion);
     }
@@ -785,6 +959,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setStreak(0);
     setLastTaskCompleted(null);
     setAppPin(null);
+    setPinHistory([]);
+    setAutoBackupPin(null);
+    setAutoBackupPinHistory([]);
     setPinRecoveryQuestion(null);
     setPinRecoveryAnswer(null);
     setHasCompletedOnboarding(false);
@@ -794,6 +971,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSavingsTarget(null);
     setSavingsTargetTitle('');
     setSavingsBalance(0);
+    setAutoBackupFrequency('off');
+    setAutoBackupFilenamePrefix('noto_backup');
+    setLastAutoBackupTimestamp(0);
   };
 
   useEffect(() => {
@@ -807,6 +987,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addTransaction, updateTransaction, deleteTransaction, clearAllTransactions, importTransactions,
     importData, importFullBackup, clearAllData,
     searchQuery, setSearchQuery, appPin, setAppPin,
+    pinHistory, setPinHistory, recordPinChange,
     pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer,
     lang, setLang,
     hasCompletedOnboarding, setHasCompletedOnboarding,
@@ -816,12 +997,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     savingsBalance, setSavingsBalance, checkInDaily,
     archivedTags, setArchivedTags,
     isRefreshing, refreshStep, handleRefreshApp,
-    isLiteMode, setIsLiteMode
+    isLiteMode, setIsLiteMode,
+    autoBackupFrequency, setAutoBackupFrequency,
+    autoBackupFilenamePrefix, setAutoBackupFilenamePrefix,
+    lastAutoBackupTimestamp, setLastAutoBackupTimestamp,
+    autoBackupPin, setAutoBackupPin,
+    autoBackupPinHistory, setAutoBackupPinHistory,
+    recordAutoBackupPinChange
   }), [
-    notes, tasks, transactions, moods, user, searchQuery, appPin, pinRecoveryQuestion, pinRecoveryAnswer, lang,
+    notes, tasks, transactions, moods, user, searchQuery, appPin, pinHistory, pinRecoveryQuestion, pinRecoveryAnswer, lang,
     hasCompletedOnboarding, isUnlocked, streak,
     reminderActive, reminderTime, savingsTarget, savingsTargetTitle, savingsBalance,
-    archivedTags, isRefreshing, refreshStep, isLiteMode
+    archivedTags, isRefreshing, refreshStep, isLiteMode,
+    autoBackupFrequency, autoBackupFilenamePrefix, lastAutoBackupTimestamp,
+    autoBackupPin, autoBackupPinHistory
   ]);
 
   return (

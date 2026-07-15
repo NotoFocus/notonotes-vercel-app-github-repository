@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Moon, Download, Upload, Bell, Lock, FileText, Smartphone,
   ChevronRight, ChevronLeft, User, Globe, Clock, Key, Trash2, Info, Shield, MessageCircle, Gamepad2,
-  AlertTriangle, Image as ImageIcon, RefreshCw
+  AlertTriangle, Image as ImageIcon, RefreshCw, Database, ChevronDown, History
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -22,10 +22,13 @@ export default function SettingsScreen({
   const { 
     transactions, notes, tasks, user, updateUser, appPin, setAppPin, 
     pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer, 
+    pinHistory, recordPinChange,
     setIsUnlocked, importData, importFullBackup, clearAllData, lang, setLang, streak, 
     reminderActive, setReminderActive, reminderTime, setReminderTime,
     moods, savingsTarget, savingsTargetTitle, savingsBalance, hasCompletedOnboarding, archivedTags,
-    isRefreshing, refreshStep, handleRefreshApp, isLiteMode, setIsLiteMode
+    isRefreshing, refreshStep, handleRefreshApp, isLiteMode, setIsLiteMode,
+    autoBackupFrequency, setAutoBackupFrequency, autoBackupFilenamePrefix, setAutoBackupFilenamePrefix, lastAutoBackupTimestamp, setLastAutoBackupTimestamp,
+    autoBackupPin, setAutoBackupPin, autoBackupPinHistory, setAutoBackupPinHistory, recordAutoBackupPinChange
   } = useAppStore();
   const t = useTranslation(lang);
 
@@ -40,6 +43,265 @@ export default function SettingsScreen({
     settings: true,
     wallpaper: true
   });
+
+  const renderAutoBackupSettings = () => {
+    const nowObj = new Date();
+    const yyyy = nowObj.getFullYear();
+    const mm = String(nowObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(nowObj.getDate()).padStart(2, '0');
+    const hh = String(nowObj.getHours()).padStart(2, '0');
+    const min = String(nowObj.getMinutes()).padStart(2, '0');
+    const previewFilename = `${autoBackupFilenamePrefix || 'noto_backup'}_auto_${yyyy}-${mm}-${dd}_${hh}-${min}.json`;
+
+    const lastBackupDateStr = lastAutoBackupTimestamp > 0 
+      ? new Date(lastAutoBackupTimestamp).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : (lang === 'id' ? 'Belum pernah' : 'Never');
+
+    return (
+      <div className="mt-5 p-5 bg-slate-950/40 border border-slate-800/80 rounded-2xl flex flex-col gap-5">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+            <Database size={14} />
+          </div>
+          <div>
+            <h5 className="text-xs font-extrabold text-slate-200">
+              {lang === 'id' ? 'Pencadangan Otomatis' : 'Automatic Backup'}
+            </h5>
+            <p className="text-[10px] text-slate-500 mt-0.5">
+              {lang === 'id' 
+                ? 'Amankan data berkala secara offline tanpa repot' 
+                : 'Secure data periodically offline automatically'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+            {lang === 'id' ? 'Frekuensi Pencadangan' : 'Backup Frequency'}
+          </label>
+          <div className="grid grid-cols-4 gap-1.5 bg-slate-950/80 border border-slate-850/80 p-1 rounded-xl">
+            {(['off', '3_days', '1_week', '1_month'] as const).map((freq) => {
+              const isActive = autoBackupFrequency === freq;
+              let label = '';
+              if (freq === 'off') label = lang === 'id' ? 'Nonaktif' : 'Off';
+              else if (freq === '3_days') label = lang === 'id' ? '3 Hari' : '3 Days';
+              else if (freq === '1_week') label = lang === 'id' ? '1 Minggu' : '1 Wk';
+              else if (freq === '1_month') label = lang === 'id' ? '1 Bulan' : '1 Mo';
+
+              return (
+                <button
+                  key={freq}
+                  type="button"
+                  onClick={() => {
+                    if (freq === 'off') {
+                      setAutoBackupFrequency('off');
+                    } else {
+                      setPendingAutoBackupFreq(freq);
+                      if (!autoBackupPin) {
+                        setShowAutoBackupPinSetup(true);
+                        setAutoBackupPinSetupPin('');
+                        setAutoBackupPinSetupConfirm('');
+                        setAutoBackupPinSetupStep(1);
+                        setAutoBackupPinSetupError(false);
+                      } else {
+                        setShowAutoBackupEnableVerify(true);
+                        setAutoBackupEnableVerifyPin('');
+                        setAutoBackupEnableVerifyError(false);
+                      }
+                    }
+                  }}
+                  className={`py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    isActive 
+                      ? 'bg-indigo-500 text-slate-950 font-black shadow-lg shadow-indigo-500/10' 
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {autoBackupFrequency !== 'off' && (
+          <>
+            <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                {lang === 'id' ? 'Awalan Nama File (Prefix)' : 'Filename Prefix'}
+              </label>
+              <input
+                type="text"
+                value={autoBackupFilenamePrefix}
+                onChange={(e) => {
+                  const sanitized = e.target.value.replace(/[^a-zA-Z0-9_.-]/g, '');
+                  setAutoBackupFilenamePrefix(sanitized);
+                }}
+                placeholder="noto_backup"
+                className="w-full bg-slate-950/80 border border-slate-850/85 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-200 outline-none focus:border-indigo-500/40 transition-colors"
+              />
+              <div className="bg-slate-950/90 border border-slate-900/60 p-3 rounded-xl">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">
+                  {lang === 'id' ? 'Pratinjau File Cadangan' : 'Backup File Preview'}
+                </span>
+                <span className="text-[11px] font-mono font-extrabold text-indigo-400 block mt-1 select-all break-all">
+                  {previewFilename}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl animate-in fade-in duration-300">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h6 className="font-bold text-[10px] text-amber-300">
+                  {lang === 'id' ? 'Peringatan Memori Perangkat' : 'Device Storage Alert'}
+                </h6>
+                <p className="text-[9px] text-slate-400 leading-normal mt-0.5">
+                  {lang === 'id'
+                    ? 'Pencadangan otomatis akan mengunduh file baru ke folder Unduhan Anda. Harap hapus file cadangan lama secara manual agar tidak memenuhi memori internal.'
+                    : 'Auto-backup downloads new files into your Downloads folder. Please delete older backup files manually to keep storage clean.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold border-t border-slate-800/40 pt-3">
+              <span>{lang === 'id' ? 'Terakhir Dicadangkan:' : 'Last Backed Up:'}</span>
+              <span className="font-mono text-slate-400">{lastBackupDateStr}</span>
+            </div>
+
+            {/* Auto-Backup PIN Controls & History */}
+            <div className="flex flex-col gap-2 border-t border-slate-800/40 pt-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                    {lang === 'id' ? 'PIN Cadangan Otomatis' : 'Auto-Backup PIN'}
+                  </span>
+                  <span className="text-[8px] text-slate-500 font-medium block mt-0.5">
+                    {lang === 'id' ? 'Untuk enkripsi file cadangan otomatis' : 'For encrypting auto-backup files'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAutoBackupPinChange(true);
+                    setAutoBackupPinChangeCurrent('');
+                    setAutoBackupPinChangeNew('');
+                    setAutoBackupPinChangeConfirm('');
+                    setAutoBackupPinChangeStep(1);
+                    setAutoBackupPinChangeError(false);
+                  }}
+                  className="px-2.5 py-1 text-[9px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/5 hover:bg-indigo-500/10 border border-indigo-500/10 rounded-lg transition-all"
+                >
+                  {lang === 'id' ? 'Ubah PIN 🔑' : 'Change PIN 🔑'}
+                </button>
+              </div>
+
+              {/* Auto Backup PIN History Dropdown button */}
+              <div className="mt-2 bg-slate-950/80 border border-slate-900 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowAutoBackupPinHistoryDropdown(prev => !prev)}
+                  className="w-full flex items-center justify-between p-3 hover:bg-slate-900/60 transition-all text-left cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <History size={12} className="text-indigo-400 shrink-0" />
+                    <div>
+                      <span className="font-bold text-[10px] text-slate-300 block">
+                        {lang === 'id' ? 'Riwayat PIN Cadangan Otomatis' : 'Auto-Backup PIN History'}
+                      </span>
+                      <span className="text-[8px] text-slate-500 leading-none block mt-0.5">
+                        {lang === 'id' ? 'Lacak PIN untuk mengimpor cadangan lama' : 'Track PINs to import older backups'}
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 shrink-0 ${showAutoBackupPinHistoryDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showAutoBackupPinHistoryDropdown && (
+                  <div className="p-3 border-t border-slate-900/80 space-y-2 bg-slate-950/60 max-h-[180px] overflow-y-auto custom-scrollbar">
+                    {autoBackupPinHistory.length === 0 ? (
+                      <p className="text-[9px] text-slate-500 text-center py-2">
+                        {lang === 'id' ? 'Tidak ada riwayat perubahan PIN.' : 'No PIN change history recorded.'}
+                      </p>
+                    ) : (
+                      [...autoBackupPinHistory].reverse().map((entry, index) => {
+                        const start = new Date(entry.startDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                        const end = entry.endDate 
+                          ? new Date(entry.endDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : (lang === 'id' ? 'Sekarang' : 'Present');
+                        
+                        const isCurrent = entry.endDate === null;
+
+                        return (
+                          <div key={entry.id} className={`p-2.5 rounded-lg border flex flex-col gap-1.5 transition-all ${isCurrent ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-slate-900/40 border-slate-850'}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-black uppercase text-indigo-400">
+                                  {lang === 'id' ? `PIN #${autoBackupPinHistory.length - index}` : `PIN #${autoBackupPinHistory.length - index}`}
+                                </span>
+                                {isCurrent && (
+                                  <span className="text-[7px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black px-1.5 py-0.5 rounded-md uppercase">
+                                    {lang === 'id' ? 'Aktif' : 'Active'}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[8px] font-mono font-bold text-slate-400">
+                                {start} - {end}
+                              </span>
+                            </div>
+
+                            {/* PIN Test tool */}
+                            <div className="flex gap-2 items-center bg-slate-950/50 p-1 rounded border border-slate-900">
+                              <input 
+                                type="password" 
+                                maxLength={4}
+                                placeholder="••••"
+                                onChange={async (e) => {
+                                  const val = e.target.value;
+                                  if (val.length === 4) {
+                                    const { hashPin } = await import('../utils');
+                                    const h = await hashPin(val);
+                                    if (h === entry.hashedPin) {
+                                      e.target.style.borderColor = '#10b981';
+                                      e.target.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                                      e.target.value = lang === 'id' ? 'COCOK ✓' : 'MATCH ✓';
+                                      setTimeout(() => {
+                                        e.target.style.borderColor = '';
+                                        e.target.style.backgroundColor = '';
+                                        e.target.value = '';
+                                      }, 2000);
+                                    } else {
+                                      e.target.style.borderColor = '#ef4444';
+                                      e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                                      setTimeout(() => {
+                                        e.target.style.borderColor = '';
+                                        e.target.style.backgroundColor = '';
+                                        e.target.value = '';
+                                      }, 1500);
+                                    }
+                                  }
+                                }}
+                                className="flex-1 min-w-0 bg-transparent text-center font-mono text-[10px] text-slate-200 placeholder-slate-600 border border-transparent focus:border-indigo-500/20 rounded outline-none p-0.5 transition-colors"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   const [localCustomWallpaper, setLocalCustomWallpaper] = useState<string | null>(() => getLargeItemSync("noto_custom_wallpaper"));
   const [localBannerWallpaper, setLocalBannerWallpaper] = useState<string | null>(() => getLargeItemSync("noto_banner_wallpaper"));
@@ -117,6 +379,27 @@ export default function SettingsScreen({
   const [showUpdateNotes, setShowUpdateNotes] = useState(false);
   const [backupModalMode, setBackupModalMode] = useState<'export' | 'import' | null>(null);
   const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
+  const [pendingAutoBackupFreq, setPendingAutoBackupFreq] = useState<'off' | '3_days' | '1_week' | '1_month' | null>(null);
+  const [showAutoBackupEnableVerify, setShowAutoBackupEnableVerify] = useState(false);
+  const [autoBackupEnableVerifyPin, setAutoBackupEnableVerifyPin] = useState('');
+  const [autoBackupEnableVerifyError, setAutoBackupEnableVerifyError] = useState(false);
+  const [showPinHistoryDropdown, setShowPinHistoryDropdown] = useState(false);
+
+  const [showAutoBackupPinSetup, setShowAutoBackupPinSetup] = useState(false);
+  const [autoBackupPinSetupPin, setAutoBackupPinSetupPin] = useState('');
+  const [autoBackupPinSetupConfirm, setAutoBackupPinSetupConfirm] = useState('');
+  const [autoBackupPinSetupStep, setAutoBackupPinSetupStep] = useState<1 | 2>(1);
+  const [autoBackupPinSetupError, setAutoBackupPinSetupError] = useState(false);
+
+  const [showAutoBackupPinChange, setShowAutoBackupPinChange] = useState(false);
+  const [autoBackupPinChangeCurrent, setAutoBackupPinChangeCurrent] = useState('');
+  const [autoBackupPinChangeNew, setAutoBackupPinChangeNew] = useState('');
+  const [autoBackupPinChangeConfirm, setAutoBackupPinChangeConfirm] = useState('');
+  const [autoBackupPinChangeStep, setAutoBackupPinChangeStep] = useState<1 | 2 | 3>(1);
+  const [autoBackupPinChangeError, setAutoBackupPinChangeError] = useState(false);
+  const [autoBackupPinChangeErrorType, setAutoBackupPinChangeErrorType] = useState<'wrong_current' | 'mismatch' | null>(null);
+
+  const [showAutoBackupPinHistoryDropdown, setShowAutoBackupPinHistoryDropdown] = useState(false);
 
   const handlePinSubmit = async () => {
     if (pinInput.length !== 4) return;
@@ -128,7 +411,7 @@ export default function SettingsScreen({
         return;
       }
       const hashed = await hashPin(pinInput);
-      setAppPin(hashed);
+      await recordPinChange(hashed);
       setPinRecoveryQuestion(pinQuestionInput.trim());
       setPinRecoveryAnswer(pinAnswerInput.trim().toLowerCase());
       setIsUnlocked(true);
@@ -149,7 +432,7 @@ export default function SettingsScreen({
     } else if (pinModalMode === 'remove') {
       const hashed = await hashPin(pinInput);
       if (hashed === appPin || pinInput === appPin) {
-        setAppPin(null);
+        await recordPinChange(null);
         setPinRecoveryQuestion(null);
         setPinRecoveryAnswer(null);
         setPinModalMode(null);
@@ -157,6 +440,121 @@ export default function SettingsScreen({
         setPinError(true);
         setPinInput('');
         setTimeout(() => setPinError(false), 500);
+      }
+    }
+  };
+
+  const handleAutoBackupVerifySubmit = async () => {
+    if (autoBackupEnableVerifyPin.length !== 4) return;
+    const { hashPin } = await import('../utils');
+    const hashed = await hashPin(autoBackupEnableVerifyPin);
+    if (hashed === autoBackupPin || autoBackupEnableVerifyPin === autoBackupPin) {
+      if (pendingAutoBackupFreq) {
+        setAutoBackupFrequency(pendingAutoBackupFreq);
+        setToastMessage(lang === 'id' 
+          ? `Pencadangan otomatis diaktifkan!` 
+          : `Automatic backup enabled!`);
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+      setShowAutoBackupEnableVerify(false);
+      setAutoBackupEnableVerifyPin('');
+      setAutoBackupEnableVerifyError(false);
+      setPendingAutoBackupFreq(null);
+    } else {
+      setAutoBackupEnableVerifyError(true);
+      setAutoBackupEnableVerifyPin('');
+      setTimeout(() => setAutoBackupEnableVerifyError(false), 2000);
+    }
+  };
+
+  const handleAutoBackupPinSetupSubmit = async () => {
+    if (autoBackupPinSetupStep === 1) {
+      if (autoBackupPinSetupPin.length !== 4) return;
+      setAutoBackupPinSetupStep(2);
+    } else {
+      if (autoBackupPinSetupConfirm.length !== 4) return;
+      if (autoBackupPinSetupPin === autoBackupPinSetupConfirm) {
+        const { hashPin } = await import('../utils');
+        const hashed = await hashPin(autoBackupPinSetupPin);
+        await recordAutoBackupPinChange(hashed);
+        
+        if (pendingAutoBackupFreq) {
+          setAutoBackupFrequency(pendingAutoBackupFreq);
+          setToastMessage(lang === 'id' 
+            ? `PIN Cadangan dibuat & Pencadangan otomatis aktif!` 
+            : `Backup PIN created & Automatic backup enabled!`);
+          setTimeout(() => setToastMessage(null), 3500);
+        } else {
+          setToastMessage(lang === 'id' 
+            ? `PIN Cadangan Otomatis berhasil dibuat!` 
+            : `Auto-Backup PIN successfully created!`);
+          setTimeout(() => setToastMessage(null), 3500);
+        }
+
+        // Clean up
+        setShowAutoBackupPinSetup(false);
+        setAutoBackupPinSetupPin('');
+        setAutoBackupPinSetupConfirm('');
+        setAutoBackupPinSetupStep(1);
+        setAutoBackupPinSetupError(false);
+        setPendingAutoBackupFreq(null);
+      } else {
+        setAutoBackupPinSetupError(true);
+        setAutoBackupPinSetupConfirm('');
+        setTimeout(() => setAutoBackupPinSetupError(false), 2000);
+      }
+    }
+  };
+
+  const handleAutoBackupPinChangeSubmit = async () => {
+    const { hashPin } = await import('../utils');
+    
+    if (autoBackupPinChangeStep === 1) {
+      if (autoBackupPinChangeCurrent.length !== 4) return;
+      const hashed = await hashPin(autoBackupPinChangeCurrent);
+      if (hashed === autoBackupPin || autoBackupPinChangeCurrent === autoBackupPin) {
+        setAutoBackupPinChangeStep(2);
+        setAutoBackupPinChangeError(false);
+        setAutoBackupPinChangeErrorType(null);
+      } else {
+        setAutoBackupPinChangeError(true);
+        setAutoBackupPinChangeErrorType('wrong_current');
+        setAutoBackupPinChangeCurrent('');
+        setTimeout(() => {
+          setAutoBackupPinChangeError(false);
+          setAutoBackupPinChangeErrorType(null);
+        }, 2000);
+      }
+    } else if (autoBackupPinChangeStep === 2) {
+      if (autoBackupPinChangeNew.length !== 4) return;
+      setAutoBackupPinChangeStep(3);
+    } else {
+      if (autoBackupPinChangeConfirm.length !== 4) return;
+      if (autoBackupPinChangeNew === autoBackupPinChangeConfirm) {
+        const hashed = await hashPin(autoBackupPinChangeNew);
+        await recordAutoBackupPinChange(hashed);
+        
+        setToastMessage(lang === 'id' 
+          ? `PIN Cadangan Otomatis berhasil diperbarui!` 
+          : `Auto-Backup PIN successfully updated!`);
+        setTimeout(() => setToastMessage(null), 3500);
+
+        // Clean up
+        setShowAutoBackupPinChange(false);
+        setAutoBackupPinChangeCurrent('');
+        setAutoBackupPinChangeNew('');
+        setAutoBackupPinChangeConfirm('');
+        setAutoBackupPinChangeStep(1);
+        setAutoBackupPinChangeError(false);
+        setAutoBackupPinChangeErrorType(null);
+      } else {
+        setAutoBackupPinChangeError(true);
+        setAutoBackupPinChangeErrorType('mismatch');
+        setAutoBackupPinChangeConfirm('');
+        setTimeout(() => {
+          setAutoBackupPinChangeError(false);
+          setAutoBackupPinChangeErrorType(null);
+        }, 2000);
       }
     }
   };
@@ -275,7 +673,13 @@ export default function SettingsScreen({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `noto_backup_${new Date().toISOString().split('T')[0]}.json`;
+      const dObj = new Date();
+      const yyyy = dObj.getFullYear();
+      const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(dObj.getDate()).padStart(2, '0');
+      const hh = String(dObj.getHours()).padStart(2, '0');
+      const min = String(dObj.getMinutes()).padStart(2, '0');
+      a.download = `noto_backup_${yyyy}-${mm}-${dd}_${hh}-${min}.json`;
       a.click();
       URL.revokeObjectURL(url);
       setToastMessage(t('toastExportSuccess'));
@@ -585,22 +989,126 @@ export default function SettingsScreen({
                 </div>
 
                 {appPin && (
-                  <button 
-                    onClick={() => {
-                      setPinInput('');
-                      setPinError(false);
-                      setPinModalMode('verify');
-                    }}
-                    className="flex items-center justify-between p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850/80 rounded-2xl transition-all duration-200 text-left active:scale-[0.995] cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
-                        <Key size={14} />
+                  <>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setPinInput('');
+                        setPinError(false);
+                        setPinModalMode('verify');
+                      }}
+                      className="flex items-center justify-between p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850/80 rounded-2xl transition-all duration-200 text-left active:scale-[0.995] cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+                          <Key size={14} />
+                        </div>
+                        <span className="font-bold text-xs text-slate-200 truncate">{t('changePin')}</span>
                       </div>
-                      <span className="font-bold text-xs text-slate-200 truncate">{t('changePin')}</span>
+                      <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 ml-3" />
+                    </button>
+
+                    {/* PIN HISTORY EXPANDABLE ACCORDION */}
+                    <div className="border border-slate-800/80 rounded-2xl overflow-hidden bg-slate-950/30">
+                      <button 
+                        type="button"
+                        onClick={() => setShowPinHistoryDropdown(prev => !prev)}
+                        className="w-full flex items-center justify-between p-3.5 hover:bg-slate-950/60 transition-all text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                            <History size={14} />
+                          </div>
+                          <div>
+                            <span className="font-bold text-xs text-slate-200 block">
+                              {lang === 'id' ? 'Riwayat PIN Keamanan' : 'Security PIN History'}
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-medium leading-none block mt-1">
+                              {lang === 'id' ? 'Lacak masa aktif PIN untuk memulihkan cadangan lama' : 'Track active PIN periods to decrypt older backups'}
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 shrink-0 ${showPinHistoryDropdown ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {showPinHistoryDropdown && (
+                        <div className="p-4 border-t border-slate-850 space-y-3 bg-slate-950/60 max-h-[220px] overflow-y-auto custom-scrollbar">
+                          {pinHistory.length === 0 ? (
+                            <p className="text-[10px] text-slate-500 text-center py-2">
+                              {lang === 'id' ? 'Tidak ada riwayat perubahan PIN.' : 'No PIN change history recorded.'}
+                            </p>
+                          ) : (
+                            [...pinHistory].reverse().map((entry, index) => {
+                              const start = new Date(entry.startDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+                              const end = entry.endDate 
+                                ? new Date(entry.endDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+                                : (lang === 'id' ? 'Sekarang' : 'Present');
+                              
+                              const isCurrent = entry.endDate === null;
+
+                              return (
+                                <div key={entry.id} className={`p-3 rounded-xl border flex flex-col gap-2 transition-all ${isCurrent ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-slate-900/40 border-slate-800/80'}`}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-black uppercase text-indigo-400">
+                                        {lang === 'id' ? `PIN #${pinHistory.length - index}` : `PIN #${pinHistory.length - index}`}
+                                      </span>
+                                      {isCurrent && (
+                                        <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black px-1.5 py-0.5 rounded-md uppercase">
+                                          {lang === 'id' ? 'Aktif' : 'Active'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[9px] font-mono font-bold text-slate-400">
+                                      {start} - {end}
+                                    </span>
+                                  </div>
+
+                                  {/* PIN Test tool inside history */}
+                                  <div className="flex gap-2 items-center bg-slate-950/50 p-1.5 rounded-lg border border-slate-850">
+                                    <input 
+                                      type="password" 
+                                      maxLength={4}
+                                      placeholder="••••"
+                                      onChange={async (e) => {
+                                        const val = e.target.value;
+                                        if (val.length === 4) {
+                                          const { hashPin } = await import('../utils');
+                                          const h = await hashPin(val);
+                                          if (h === entry.hashedPin) {
+                                            e.target.style.borderColor = '#10b981';
+                                            e.target.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                                            e.target.value = lang === 'id' ? 'COCOK ✓' : 'MATCH ✓';
+                                            setTimeout(() => {
+                                              e.target.style.borderColor = '';
+                                              e.target.style.backgroundColor = '';
+                                              e.target.value = '';
+                                            }, 2000);
+                                          } else {
+                                            e.target.style.borderColor = '#ef4444';
+                                            e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                                            setTimeout(() => {
+                                              e.target.style.borderColor = '';
+                                              e.target.style.backgroundColor = '';
+                                              e.target.value = '';
+                                            }, 1500);
+                                          }
+                                        }
+                                      }}
+                                      className="flex-1 min-w-0 bg-transparent text-center font-mono text-xs text-slate-200 placeholder-slate-600 border border-transparent focus:border-indigo-500/20 rounded outline-none p-1 transition-colors"
+                                    />
+                                    <span className="text-[8px] font-black uppercase text-slate-500 pr-1 shrink-0">
+                                      {lang === 'id' ? 'Tes PIN ini' : 'Test this PIN'}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 ml-3" />
-                  </button>
+                  </>
                 )}
               </div>
 
@@ -637,6 +1145,8 @@ export default function SettingsScreen({
                     </div>
                   </button>
                 </div>
+
+                {renderAutoBackupSettings()}
               </div>
 
               {/* 5. DIAGNOSTICS & SYSTEM CARE */}
@@ -1222,6 +1732,8 @@ export default function SettingsScreen({
               </button>
 
             </div>
+
+            {renderAutoBackupSettings()}
           </section>
           )}
 
@@ -1911,6 +2423,365 @@ export default function SettingsScreen({
               >
                 {t('close')}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* AUTO BACKUP PIN ENABLE VERIFICATION MODAL */}
+        {showAutoBackupEnableVerify && (
+          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="text-center mb-5">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3 shrink-0">
+                  <Key size={20} />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-100 font-sans tracking-tight">
+                  {lang === 'id' ? 'Konfirmasi PIN Cadangan Otomatis' : 'Verify Auto-Backup PIN'}
+                </h3>
+                <p className="text-[11px] text-slate-400 leading-normal mt-1.5">
+                  {lang === 'id' 
+                    ? 'Masukkan PIN Cadangan Otomatis 4 digit Anda untuk melanjutkan.' 
+                    : 'Enter your 4-digit Auto-Backup PIN to proceed.'}
+                </p>
+              </div>
+
+              {/* Invisible focusable input */}
+              <div className="relative mb-6">
+                <input
+                  type="password"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={autoBackupEnableVerifyPin}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setAutoBackupEnableVerifyPin(val);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  autoFocus
+                />
+
+                {/* PIN circles */}
+                <div className="flex justify-center gap-3 relative z-0">
+                  {[0, 1, 2, 3].map((idx) => (
+                    <div 
+                      key={idx} 
+                      className={`w-10 h-12 rounded-xl border flex items-center justify-center font-black text-lg transition-all ${
+                        autoBackupEnableVerifyError 
+                          ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
+                          : autoBackupEnableVerifyPin.length > idx 
+                            ? 'border-indigo-500 bg-indigo-500/5 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)]' 
+                            : 'border-slate-800 bg-slate-950 text-slate-600'
+                      }`}
+                    >
+                      {autoBackupEnableVerifyPin.length > idx ? '●' : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <span className="text-[8px] text-slate-500 block text-center mb-6">
+                {lang === 'id' ? 'Ketuk kotak untuk memunculkan keyboard dan ketik PIN Anda' : 'Tap boxes to show keyboard and type your PIN'}
+              </span>
+
+              {autoBackupEnableVerifyError && (
+                <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">
+                  {lang === 'id' ? '❌ PIN salah! Silakan coba lagi.' : '❌ Incorrect PIN! Please try again.'}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowAutoBackupEnableVerify(false);
+                    setAutoBackupEnableVerifyPin('');
+                    setPendingAutoBackupFreq(null);
+                  }}
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-2xl text-xs font-bold text-slate-400 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  {lang === 'id' ? 'Batal' : 'Cancel'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleAutoBackupVerifySubmit}
+                  disabled={autoBackupEnableVerifyPin.length !== 4}
+                  className={`flex-1 py-3 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98] shadow-lg ${
+                    autoBackupEnableVerifyPin.length === 4
+                      ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10 cursor-pointer'
+                      : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800/80 shadow-none'
+                  }`}
+                >
+                  {lang === 'id' ? 'Verifikasi' : 'Verify'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SETUP AUTO BACKUP PIN MODAL */}
+        {showAutoBackupPinSetup && (
+          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="text-center mb-5">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3 shrink-0">
+                  <Key size={20} />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-100 font-sans tracking-tight">
+                  {autoBackupPinSetupStep === 1 
+                    ? (lang === 'id' ? 'Buat PIN Cadangan Otomatis' : 'Create Auto-Backup PIN')
+                    : (lang === 'id' ? 'Konfirmasi PIN Cadangan' : 'Confirm Auto-Backup PIN')}
+                </h3>
+                <p className="text-[11px] text-slate-400 leading-normal mt-1.5">
+                  {autoBackupPinSetupStep === 1 
+                    ? (lang === 'id' 
+                        ? 'Buat PIN 4 digit terpisah khusus untuk mengenkripsi file cadangan otomatis Anda.' 
+                        : 'Create a separate 4-digit PIN used specifically to encrypt your automatic backup files.')
+                    : (lang === 'id' 
+                        ? 'Masukkan kembali PIN yang baru saja Anda buat untuk konfirmasi.' 
+                        : 'Re-enter the PIN you just created to confirm.')}
+                </p>
+              </div>
+
+              {/* Invisible focusable input */}
+              <div className="relative mb-6">
+                <input
+                  type="password"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    if (autoBackupPinSetupStep === 1) {
+                      setAutoBackupPinSetupPin(val);
+                    } else {
+                      setAutoBackupPinSetupConfirm(val);
+                    }
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  autoFocus
+                />
+
+                {/* PIN circles */}
+                <div className="flex justify-center gap-3 relative z-0">
+                  {[0, 1, 2, 3].map((idx) => {
+                    const val = autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm;
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`w-10 h-12 rounded-xl border flex items-center justify-center font-black text-lg transition-all ${
+                          autoBackupPinSetupError 
+                            ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
+                            : val.length > idx 
+                              ? 'border-indigo-500 bg-indigo-500/5 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)]' 
+                              : 'border-slate-800 bg-slate-950 text-slate-600'
+                        }`}
+                      >
+                        {val.length > idx ? '●' : ''}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <span className="text-[8px] text-slate-500 block text-center mb-6">
+                {lang === 'id' ? 'Ketuk kotak untuk memunculkan keyboard dan ketik PIN Anda' : 'Tap boxes to show keyboard and type your PIN'}
+              </span>
+
+              {autoBackupPinSetupError && (
+                <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">
+                  {lang === 'id' ? '❌ PIN konfirmasi tidak cocok! Silakan coba lagi.' : '❌ Confirmation PIN does not match! Please try again.'}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    if (autoBackupPinSetupStep === 2) {
+                      setAutoBackupPinSetupStep(1);
+                      setAutoBackupPinSetupConfirm('');
+                    } else {
+                      setShowAutoBackupPinSetup(false);
+                      setAutoBackupPinSetupPin('');
+                      setAutoBackupPinSetupConfirm('');
+                      setPendingAutoBackupFreq(null);
+                    }
+                  }}
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-2xl text-xs font-bold text-slate-400 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  {autoBackupPinSetupStep === 2 
+                    ? (lang === 'id' ? 'Kembali' : 'Back')
+                    : (lang === 'id' ? 'Batal' : 'Cancel')}
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleAutoBackupPinSetupSubmit}
+                  disabled={autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin.length !== 4 : autoBackupPinSetupConfirm.length !== 4}
+                  className={`flex-1 py-3 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98] shadow-lg ${
+                    (autoBackupPinSetupStep === 1 && autoBackupPinSetupPin.length === 4) || (autoBackupPinSetupStep === 2 && autoBackupPinSetupConfirm.length === 4)
+                      ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10 cursor-pointer'
+                      : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800/80 shadow-none'
+                  }`}
+                >
+                  {autoBackupPinSetupStep === 1 
+                    ? (lang === 'id' ? 'Lanjut' : 'Next')
+                    : (lang === 'id' ? 'Simpan' : 'Save')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CHANGE AUTO BACKUP PIN MODAL */}
+        {showAutoBackupPinChange && (
+          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="text-center mb-5">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3 shrink-0">
+                  <Key size={20} />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-100 font-sans tracking-tight">
+                  {autoBackupPinChangeStep === 1 
+                    ? (lang === 'id' ? 'Verifikasi PIN Cadangan Lama' : 'Verify Old Backup PIN')
+                    : autoBackupPinChangeStep === 2
+                      ? (lang === 'id' ? 'Masukkan PIN Cadangan Baru' : 'Enter New Backup PIN')
+                      : (lang === 'id' ? 'Konfirmasi PIN Baru' : 'Confirm New Backup PIN')}
+                </h3>
+                <p className="text-[11px] text-slate-400 leading-normal mt-1.5">
+                  {autoBackupPinChangeStep === 1 
+                    ? (lang === 'id' 
+                        ? 'Demi keamanan, masukkan PIN Cadangan Otomatis Anda yang aktif saat ini.' 
+                        : 'For security, please enter your currently active Auto-Backup PIN.')
+                    : autoBackupPinChangeStep === 2
+                      ? (lang === 'id' 
+                          ? 'Masukkan PIN 4 digit baru khusus untuk cadangan berikutnya.' 
+                          : 'Enter a new 4-digit PIN for encrypting future automatic backups.')
+                      : (lang === 'id' 
+                          ? 'Masukkan kembali PIN cadangan baru untuk konfirmasi.' 
+                          : 'Re-enter your new backup PIN to confirm.')}
+                </p>
+              </div>
+
+              {/* Invisible focusable input */}
+              <div className="relative mb-6">
+                <input
+                  type="password"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={
+                    autoBackupPinChangeStep === 1 
+                      ? autoBackupPinChangeCurrent 
+                      : autoBackupPinChangeStep === 2 
+                        ? autoBackupPinChangeNew 
+                        : autoBackupPinChangeConfirm
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    if (autoBackupPinChangeStep === 1) {
+                      setAutoBackupPinChangeCurrent(val);
+                    } else if (autoBackupPinChangeStep === 2) {
+                      setAutoBackupPinChangeNew(val);
+                    } else {
+                      setAutoBackupPinChangeConfirm(val);
+                    }
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  autoFocus
+                />
+
+                {/* PIN circles */}
+                <div className="flex justify-center gap-3 relative z-0">
+                  {[0, 1, 2, 3].map((idx) => {
+                    const val = autoBackupPinChangeStep === 1 
+                      ? autoBackupPinChangeCurrent 
+                      : autoBackupPinChangeStep === 2 
+                        ? autoBackupPinChangeNew 
+                        : autoBackupPinChangeConfirm;
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`w-10 h-12 rounded-xl border flex items-center justify-center font-black text-lg transition-all ${
+                          autoBackupPinChangeError 
+                            ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
+                            : val.length > idx 
+                              ? 'border-indigo-500 bg-indigo-500/5 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)]' 
+                              : 'border-slate-800 bg-slate-950 text-slate-600'
+                        }`}
+                      >
+                        {val.length > idx ? '●' : ''}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <span className="text-[8px] text-slate-500 block text-center mb-6">
+                {lang === 'id' ? 'Ketuk kotak untuk memunculkan keyboard dan ketik PIN Anda' : 'Tap boxes to show keyboard and type your PIN'}
+              </span>
+
+              {autoBackupPinChangeError && (
+                <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">
+                  {autoBackupPinChangeErrorType === 'wrong_current' 
+                    ? (lang === 'id' ? '❌ PIN Cadangan Lama salah!' : '❌ Incorrect Old Backup PIN!')
+                    : (lang === 'id' ? '❌ PIN Baru konfirmasi tidak cocok!' : '❌ Confirmation PIN does not match!')}
+                </p>
+              )}
+
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    if (autoBackupPinChangeStep === 3) {
+                      setAutoBackupPinChangeStep(2);
+                      setAutoBackupPinChangeConfirm('');
+                    } else if (autoBackupPinChangeStep === 2) {
+                      setAutoBackupPinChangeStep(1);
+                      setAutoBackupPinChangeNew('');
+                    } else {
+                      setShowAutoBackupPinChange(false);
+                      setAutoBackupPinChangeCurrent('');
+                      setAutoBackupPinChangeNew('');
+                      setAutoBackupPinChangeConfirm('');
+                    }
+                  }}
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-2xl text-xs font-bold text-slate-400 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  {autoBackupPinChangeStep > 1 
+                    ? (lang === 'id' ? 'Kembali' : 'Back')
+                    : (lang === 'id' ? 'Batal' : 'Cancel')}
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleAutoBackupPinChangeSubmit}
+                  disabled={
+                    autoBackupPinChangeStep === 1 
+                      ? autoBackupPinChangeCurrent.length !== 4 
+                      : autoBackupPinChangeStep === 2 
+                        ? autoBackupPinChangeNew.length !== 4 
+                        : autoBackupPinChangeConfirm.length !== 4
+                  }
+                  className={`flex-1 py-3 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98] shadow-lg ${
+                    (autoBackupPinChangeStep === 1 && autoBackupPinChangeCurrent.length === 4) || 
+                    (autoBackupPinChangeStep === 2 && autoBackupPinChangeNew.length === 4) || 
+                    (autoBackupPinChangeStep === 3 && autoBackupPinChangeConfirm.length === 4)
+                      ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10 cursor-pointer'
+                      : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800/80 shadow-none'
+                  }`}
+                >
+                  {autoBackupPinChangeStep < 3 
+                    ? (lang === 'id' ? 'Lanjut' : 'Next')
+                    : (lang === 'id' ? 'Simpan' : 'Save')}
+                </button>
+              </div>
             </div>
           </div>
         )}

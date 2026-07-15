@@ -289,8 +289,12 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar pb-32 w-full max-w-lg mx-auto">
-        {isLiteMode ? (
+      <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar pb-32 w-full max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Left Column: Profile, Challenge, Mood, Discipline */}
+          <div className="lg:col-span-7 space-y-6">
+            {isLiteMode ? (
           <div className="relative w-full rounded-[2rem] bg-slate-900/40 border border-slate-800/80 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-[0_4px_20px_rgba(0,0,0,0.15)] overflow-hidden">
             {/* Subtle light effect */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
@@ -509,8 +513,12 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           </section>
         )}
 
-        {/* Prioritas Utama */}
-        <section className="mb-5 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-sm">
+          </div>
+
+          {/* Right Column: Prioritas Utama */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Prioritas Utama */}
+            <section className="mb-5 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-sm">
           <div className="flex justify-between items-center mb-4">
              <h3 className="text-lg font-black text-slate-50 flex items-center gap-2">
                 <Pin className={`w-5 h-5 text-orange-400 fill-orange-400 drop-shadow-sm`} />
@@ -605,6 +613,8 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             )}
           </div>
         </section>
+          </div> {/* Right Column End */}
+        </div> {/* Grid End */}
       </div>
 
       {/* FAB Add */}

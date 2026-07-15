@@ -333,7 +333,7 @@ export default function NoteEditorScreen({ note, onBack }: NoteEditorProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar w-full">
-        <div className="w-full px-6 py-6 flex flex-col min-h-full">
+        <div className="w-full max-w-4xl mx-auto px-6 py-6 flex flex-col min-h-full">
           {/* Title */}
           <input
             type="text"

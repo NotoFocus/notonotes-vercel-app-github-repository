@@ -267,7 +267,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-32 w-full">
-        <div className="w-full px-4 md:px-6 py-6 space-y-6">
+        <div className="w-full max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
           
           {activeTab === 'Disiplin' ? (
             <DisciplineView task={disciplineTask} onSelectExisting={handleSelectExisting} lang={lang} />

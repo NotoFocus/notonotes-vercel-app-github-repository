@@ -294,6 +294,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+        <div className="w-full max-w-5xl mx-auto">
         <div className="mb-4 sm:hidden">
           <input 
             type="month"
@@ -667,6 +668,7 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
 
 
           </div>
+        </div>
         </div>
       </div>
 

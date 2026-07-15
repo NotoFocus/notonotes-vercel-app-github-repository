@@ -70,3 +70,10 @@ export interface Transaction {
   description: string;
   currency?: 'IDR' | 'USD';
 }
+
+export interface PinHistoryEntry {
+  id: string;
+  hashedPin: string;
+  startDate: string; // ISO date string or formatted date
+  endDate: string | null; // ISO date string or null if currently active
+}
