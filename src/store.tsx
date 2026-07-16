@@ -824,11 +824,77 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addTransaction = (t: Transaction) => setTransactions(prev => [t, ...prev]);
-  const updateTransaction = (id: string, updates: Partial<Transaction>) => setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-  const deleteTransaction = (id: string) => setTransactions(prev => prev.filter(t => t.id !== id));
-  const clearAllTransactions = () => setTransactions([]);
-  const importTransactions = (importedTransactions: Transaction[]) => setTransactions(importedTransactions);
+  const addTransaction = (t: Transaction) => {
+    setTransactions(prev => [t, ...prev]);
+    if (t.category === 'Savings') {
+      if (t.type === 'income') {
+        setSavingsBalance(prev => prev + t.amount);
+      } else {
+        setSavingsBalance(prev => Math.max(0, prev - t.amount));
+      }
+    }
+  };
+
+  const updateTransaction = (id: string, updates: Partial<Transaction>) => {
+    setTransactions(prev => {
+      const oldT = prev.find(t => t.id === id);
+      if (oldT) {
+        // Revert old transaction effect on savings
+        if (oldT.category === 'Savings') {
+          if (oldT.type === 'income') {
+            setSavingsBalance(s => Math.max(0, s - oldT.amount));
+          } else {
+            setSavingsBalance(s => s + oldT.amount);
+          }
+        }
+        
+        // Apply new transaction effect on savings
+        const newCategory = updates.category !== undefined ? updates.category : oldT.category;
+        const newType = updates.type !== undefined ? updates.type : oldT.type;
+        const newAmount = updates.amount !== undefined ? updates.amount : oldT.amount;
+        
+        if (newCategory === 'Savings') {
+          if (newType === 'income') {
+            setSavingsBalance(s => s + newAmount);
+          } else {
+            setSavingsBalance(s => Math.max(0, s - newAmount));
+          }
+        }
+      }
+      return prev.map(t => t.id === id ? { ...t, ...updates } : t);
+    });
+  };
+
+  const deleteTransaction = (id: string) => {
+    setTransactions(prev => {
+      const target = prev.find(t => t.id === id);
+      if (target && target.category === 'Savings') {
+        if (target.type === 'income') {
+          setSavingsBalance(s => Math.max(0, s - target.amount));
+        } else {
+          setSavingsBalance(s => s + target.amount);
+        }
+      }
+      return prev.filter(t => t.id !== id);
+    });
+  };
+
+  const clearAllTransactions = () => {
+    setTransactions([]);
+    setSavingsBalance(0);
+  };
+
+  const importTransactions = (importedTransactions: Transaction[]) => {
+    setTransactions(importedTransactions);
+    // Recalculate savingsBalance based on imported transactions
+    const totalSavings = importedTransactions
+      .filter(t => t.category === 'Savings')
+      .reduce((acc, t) => {
+        if (t.type === 'income') return acc + t.amount;
+        return Math.max(0, acc - t.amount);
+      }, 0);
+    setSavingsBalance(totalSavings);
+  };
 
   const importData = (importedNotes: Note[], importedTasks: Task[], importedTransactions?: Transaction[]) => {
     setNotes(importedNotes);

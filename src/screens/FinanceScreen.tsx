@@ -235,6 +235,11 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
   const totalExpense = monthlyTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
   const totalBalance = totalIncome - totalExpense;
 
+  // Calculate overall all-time balance for savings limit checking and total cash display
+  const allTimeIncome = transactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
+  const allTimeExpense = transactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+  const allTimeBalance = allTimeIncome - allTimeExpense;
+
   // Calculate category breakdown based on selected chart type
   const chartCategories = useMemo(() => {
     const records = monthlyTransactions.filter(t => t.type === chartType);
@@ -313,12 +318,12 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400">{lang === 'id' ? 'Total Uang Kamu' : 'Total Cash'}</span>
             </div>
             <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-50 truncate w-full">
-              {totalBalance < 0 ? '-' : ''}Rp {Math.abs(totalBalance).toLocaleString('id-ID')}
+              {allTimeBalance < 0 ? '-' : ''}Rp {Math.abs(allTimeBalance).toLocaleString('id-ID')}
             </span>
             <div className="mt-3 pt-3 border-t border-slate-800/50 flex justify-between items-center text-xs">
               <div className="flex flex-col">
                 <span className="text-slate-400 font-medium">{lang === 'id' ? 'Tersedia' : 'Available'}</span>
-                <span className="text-slate-50 font-bold truncate max-w-[100px] sm:max-w-[120px]">Rp {(totalBalance - savingsBalance).toLocaleString('id-ID')}</span>
+                <span className="text-slate-50 font-bold truncate max-w-[100px] sm:max-w-[120px]">Rp {(allTimeBalance - savingsBalance).toLocaleString('id-ID')}</span>
               </div>
               <div className="flex flex-col text-right">
                 <span className="text-slate-400 font-medium">{lang === 'id' ? 'Ditabung' : 'Saved'}</span>
@@ -1030,9 +1035,14 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                   onClick={() => {
                     const val = Number(savingsDepositAmount);
                     if (!isNaN(val) && val > 0) {
-                      setSavingsBalance(prev => {
-                        const available = Math.max(0, totalBalance - prev);
-                        return prev + Math.min(val, available);
+                      addTransaction({
+                        id: generateId(),
+                        type: 'income',
+                        amount: val,
+                        category: 'Savings',
+                        date: new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0],
+                        description: lang === 'id' ? 'Setoran Tabungan' : 'Savings Deposit',
+                        currency: 'IDR'
                       });
                     }
                     setShowSavingsDepositModal(false);
@@ -1086,7 +1096,15 @@ export default function FinanceScreen({ appTheme, onBack }: { appTheme: string; 
                   onClick={() => {
                     const val = Number(savingsWithdrawAmount);
                     if (!isNaN(val) && val > 0) {
-                      setSavingsBalance(prev => Math.max(0, prev - val));
+                      addTransaction({
+                        id: generateId(),
+                        type: 'expense',
+                        amount: val,
+                        category: 'Savings',
+                        date: new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0],
+                        description: lang === 'id' ? 'Penarikan Tabungan' : 'Savings Withdrawal',
+                        currency: 'IDR'
+                      });
                     }
                     setShowSavingsWithdrawModal(false);
                   }}
