@@ -53,6 +53,7 @@ export default function App() {
   } = useAppStore();
   const t = useTranslation(lang);
   const [currentScreen, _setCurrentScreen] = useState<ScreenItem>('home');
+  const [activeSettingsSection, setActiveSettingsSection] = useState<'appearance' | 'security' | 'backup' | 'about' | null>(null);
 
   const [showAutoBackupModal, setShowAutoBackupModal] = useState(false);
   const [enteredAutoBackupPin, setEnteredAutoBackupPin] = useState('');
@@ -179,18 +180,21 @@ export default function App() {
       screen = 'home';
     }
     if (screen !== currentScreen) {
-      window.history.pushState({ screen }, '');
+      window.history.pushState({ screen, section: null }, '');
       _setCurrentScreen(screen);
+      setActiveSettingsSection(null);
     }
   }, [currentScreen, isLiteMode]);
 
   useEffect(() => {
-    window.history.replaceState({ screen: 'home' }, '');
+    window.history.replaceState({ screen: 'home', section: null }, '');
     const handlePopState = (e: PopStateEvent) => {
       if (e.state && e.state.screen) {
         _setCurrentScreen(e.state.screen);
+        setActiveSettingsSection(e.state.section || null);
       } else {
         _setCurrentScreen('home');
+        setActiveSettingsSection(null);
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -252,15 +256,17 @@ export default function App() {
               
               if (targetTime.getTime() > now.getTime() && targetTime.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
                 const message = lang === 'id' ? `Ayo lakukan tugas "${task.title}" kamu!` : `Time to do your task: "${task.title}"!`;
-                // @ts-ignore
-                reg.showNotification(lang === 'id' ? "Waktunya Tugas!" : "Task Due!", {
+                const notificationOptions: any = {
                   tag: `noto_task_${task.id}_${todayDate}`,
                   body: message,
                   icon: '/icon.png',
-                  badge: '/icon.png',
+                  badge: '/icon.png'
+                };
+                if (typeof window !== 'undefined' && 'TimestampTrigger' in window) {
                   // @ts-ignore
-                  showTrigger: new TimestampTrigger(targetTime.getTime())
-                }).catch(() => {});
+                  notificationOptions.showTrigger = new (window as any).TimestampTrigger(targetTime.getTime());
+                }
+                reg.showNotification(lang === 'id' ? "Waktunya Tugas!" : "Task Due!", notificationOptions).catch(() => {});
               }
             }
           });
@@ -274,15 +280,17 @@ export default function App() {
                 const message = t('notifNoteBody')
                   ? t('notifNoteBody').replace('{title}', note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note'))
                   : `Ketuk untuk membuka catatan: "${note.title || 'Catatan'}"`;
-                // @ts-ignore
-                reg.showNotification(t('noteReminderTitle') || "Catatan Pengingat! 🔔", {
+                const notificationOptions: any = {
                   tag: `noto_note_${note.id}`,
                   body: message,
                   icon: '/icon.png',
-                  badge: '/icon.png',
+                  badge: '/icon.png'
+                };
+                if (typeof window !== 'undefined' && 'TimestampTrigger' in window) {
                   // @ts-ignore
-                  showTrigger: new TimestampTrigger(targetTime.getTime())
-                }).catch(() => {});
+                  notificationOptions.showTrigger = new (window as any).TimestampTrigger(targetTime.getTime());
+                }
+                reg.showNotification(t('noteReminderTitle') || "Catatan Pengingat! 🔔", notificationOptions).catch(() => {});
               }
             } catch(e) {}
           });
@@ -356,10 +364,18 @@ export default function App() {
               navigator.serviceWorker.ready.then(reg => {
                 reg.showNotification(title, options);
               }).catch(() => {
-                new window.Notification(title, options);
+                try {
+                  new window.Notification(title, options);
+                } catch (e) {
+                  console.warn("Notification constructor failed:", e);
+                }
               });
             } else {
-              new window.Notification(title, options);
+              try {
+                new window.Notification(title, options);
+              } catch (e) {
+                console.warn("Notification constructor failed:", e);
+              }
             }
           }
         }
@@ -661,6 +677,16 @@ export default function App() {
             appTheme={activeTheme} 
             setAppTheme={setAppTheme} 
             onNavigate={(screen) => setCurrentScreen(screen)} 
+            activeSection={activeSettingsSection}
+            setActiveSection={(section) => {
+              if (section !== activeSettingsSection) {
+                window.history.pushState({ screen: 'settings', section }, '');
+                setActiveSettingsSection(section);
+              }
+            }}
+            onBack={() => {
+              window.history.back();
+            }}
           />
         )}
         {currentScreen === 'games-hub' && <GamesHubScreen onSelectGame={(g) => setCurrentScreen(g)} onBack={() => setCurrentScreen('settings')} />}
@@ -740,40 +766,31 @@ export default function App() {
                 {lang === 'id' ? 'Masukkan PIN Cadangan Anda' : 'Enter Your Backup PIN'}
               </label>
               
-              <input
-                type="password"
-                pattern="[0-9]*"
-                inputMode="numeric"
-                maxLength={4}
-                value={enteredAutoBackupPin}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, '');
-                  setEnteredAutoBackupPin(val);
-                }}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                autoFocus
-              />
-
-              <div className="flex justify-center gap-3 py-1 relative z-0">
-                {[0, 1, 2, 3].map((idx) => (
-                  <div 
-                    key={idx} 
-                    className={`w-9 h-11 rounded-xl border flex items-center justify-center font-black text-base transition-all ${
-                      enteredAutoBackupPinError 
-                        ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
-                        : enteredAutoBackupPin.length > idx 
-                          ? 'border-indigo-500 bg-indigo-500/5 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)]' 
-                          : 'border-slate-800 bg-slate-950/60 text-slate-600'
-                    }`}
-                  >
-                    {enteredAutoBackupPin.length > idx ? '●' : ''}
-                  </div>
-                ))}
+              <div className="relative">
+                <input
+                  type="password"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={enteredAutoBackupPin}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setEnteredAutoBackupPin(val);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && enteredAutoBackupPin.length === 4) {
+                      executeAutoBackup();
+                    }
+                  }}
+                  placeholder="••••"
+                  className={`w-full text-center text-3xl tracking-[0.5em] font-mono bg-slate-950 border-2 py-3 px-4 rounded-xl outline-none transition-all ${
+                    enteredAutoBackupPinError 
+                      ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
+                      : 'border-slate-800 focus:border-indigo-500 focus:bg-slate-950/90 focus:shadow-[0_0_10px_rgba(99,102,241,0.15)] text-indigo-400'
+                  }`}
+                  autoFocus
+                />
               </div>
-
-              <span className="text-[8px] text-slate-500 block text-center mt-1">
-                {lang === 'id' ? 'Ketuk kotak untuk memunculkan keyboard dan ketik PIN Anda' : 'Tap boxes to show keyboard and type your PIN'}
-              </span>
 
               {enteredAutoBackupPinError && (
                 <p className="text-[10px] text-red-400 font-bold text-center mt-1 animate-pulse">
@@ -848,50 +865,6 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const [forgotNameInput, setForgotNameInput] = useState('');
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // If modal is active, let them type in the text input
-      if (forgotModalVisible) return;
-      
-      if (e.key >= '0' && e.key <= '9') {
-        handleInput(e.key);
-      } else if (e.key === 'Backspace' || e.key === 'Delete') {
-        handleDelete();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [input, forgotModalVisible, correctPin]);
-
-  const handleInput = async (num: string) => {
-    if (input.length < 4) {
-      const newVal = input + num;
-      setInput(newVal);
-      setError(false);
-      
-      if (newVal.length === 4) {
-        const { hashPin } = await import('./utils');
-        const hashed = await hashPin(newVal);
-        if (hashed === correctPin || newVal === correctPin) { // support legacy plaintext pin
-          if (newVal === correctPin && newVal !== hashed) {
-            await recordPinChange(hashed); // seamlessly upgrade to hash
-          }
-          setTimeout(onUnlock, 200);
-        } else {
-          setError(true);
-          setTimeout(() => setInput(''), 400);
-        }
-      }
-    }
-  };
-
-  const handleDelete = () => {
-    setInput(input.slice(0, -1));
-    setError(false);
-  };
-
   const handleForgotPinSubmit = async () => {
     const isCorrect = pinRecoveryAnswer 
       ? forgotNameInput.trim().toLowerCase() === pinRecoveryAnswer.trim().toLowerCase()
@@ -929,44 +902,49 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
         <h2 className="text-xl font-bold tracking-tight mb-2">{t('pinLocked')}</h2>
         <p className="text-slate-400 text-sm mb-12">{t('enterPin')}</p>
         
-        <div className={`flex gap-4 mb-20 ${error ? 'animate-pulse' : ''}`}>
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className={`w-4 h-4 rounded-full transition-colors ${error ? 'bg-red-500' : input.length > i ? 'bg-indigo-500' : 'bg-slate-800'}`} />
-          ))}
-        </div>
-
-        <div className="grid grid-cols-3 gap-6 w-full max-w-[280px] mb-8">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-            <button 
-              key={num} 
-              type="button"
-              onClick={() => handleInput(num.toString())}
-              className="h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl font-bold hover:bg-slate-800 hover:border-indigo-500/30 transition-all font-mono"
-            >
-              {num}
-            </button>
-          ))}
-          <div /> {/* Kosong */}
-          <button 
-            type="button"
-            onClick={() => handleInput('0')}
-            className="h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl font-bold hover:bg-slate-800 hover:border-indigo-500/30 transition-all font-mono"
-          >
-            0
-          </button>
-          <button 
-            type="button"
-            onClick={handleDelete}
-            className="h-16 rounded-full bg-slate-900 flex items-center justify-center text-sm font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-50 transition-all uppercase tracking-widest"
-          >
-            Del
-          </button>
+        <div className="w-full max-w-[280px] mb-12">
+          <input
+            type="password"
+            pattern="[0-9]*"
+            inputMode="numeric"
+            maxLength={4}
+            value={input}
+            onChange={async (e) => {
+              const val = e.target.value.replace(/[^0-9]/g, '');
+              setInput(val);
+              setError(false);
+              
+              if (val.length === 4) {
+                const { hashPin } = await import('./utils');
+                const hashed = await hashPin(val);
+                if (hashed === correctPin || val === correctPin) { // support legacy plaintext pin
+                  if (val === correctPin && val !== hashed) {
+                    await recordPinChange(hashed); // seamlessly upgrade to hash
+                  }
+                  setTimeout(onUnlock, 150);
+                } else {
+                  setError(true);
+                  setTimeout(() => {
+                    setInput('');
+                    setError(false);
+                  }, 800);
+                }
+              }
+            }}
+            placeholder="••••"
+            className={`w-full text-center text-3xl tracking-[0.5em] font-mono bg-slate-900/80 border-2 py-4 px-6 rounded-2xl outline-none transition-all ${
+              error 
+                ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
+                : 'border-slate-800 focus:border-indigo-500 focus:bg-slate-950 focus:shadow-[0_0_15px_rgba(99,102,241,0.25)] text-indigo-400'
+            }`}
+            autoFocus
+          />
         </div>
 
         <button 
           type="button"
           onClick={() => setForgotModalVisible(true)}
-          className="mt-8 text-sm text-slate-400 hover:text-indigo-400 transition-colors font-medium border-b border-transparent hover:border-indigo-400"
+          className="mt-4 text-sm text-slate-400 hover:text-indigo-400 transition-colors font-medium border-b border-transparent hover:border-indigo-400"
         >
           {t('forgotPin') || 'Lupa PIN?'}
         </button>

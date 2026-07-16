@@ -1,39 +1,109 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Moon, Download, Upload, Bell, Lock, FileText, Smartphone,
-  ChevronRight, ChevronLeft, User, Globe, Clock, Key, Trash2, Info, Shield, MessageCircle, Gamepad2,
-  AlertTriangle, Image as ImageIcon, RefreshCw, Database, ChevronDown, History
+  Download, Upload, Lock, Smartphone, ChevronRight, ChevronLeft, User, 
+  Globe, Key, Trash2, Info, AlertTriangle, Image as ImageIcon, RefreshCw, 
+  Database, ChevronDown, Check, UserCheck, ShieldCheck, HelpCircle, Palette,
+  History as HistoryIcon
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { ScreenItem } from '../App';
 import { generateId, encryptData, decryptData, hashPin } from '../utils';
-import { getLargeItem, getLargeItemSync, setLargeItem, deleteLargeItem } from '../utils/db';
+import { getLargeItem, getLargeItemSync, setLargeItem } from '../utils/db';
+import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
+import UpdateNotesModal from '../components/UpdateNotesModal';
 
 export default function SettingsScreen({ 
   appTheme, 
   setAppTheme, 
-  onNavigate 
+  onNavigate,
+  activeSection: activeSectionProp,
+  setActiveSection: setActiveSectionProp,
+  onBack
 }: { 
   appTheme: string, 
   setAppTheme: (t: any) => void, 
-  onNavigate?: (s: ScreenItem) => void 
+  onNavigate?: (s: ScreenItem) => void,
+  activeSection?: 'appearance' | 'security' | 'backup' | 'about' | null,
+  setActiveSection?: (s: 'appearance' | 'security' | 'backup' | 'about' | null) => void,
+  onBack?: () => void
 }) {
   const { 
     transactions, notes, tasks, user, updateUser, appPin, setAppPin, 
     pinRecoveryQuestion, setPinRecoveryQuestion, pinRecoveryAnswer, setPinRecoveryAnswer, 
     pinHistory, recordPinChange,
     setIsUnlocked, importData, importFullBackup, clearAllData, lang, setLang, streak, 
-    reminderActive, setReminderActive, reminderTime, setReminderTime,
     moods, savingsTarget, savingsTargetTitle, savingsBalance, hasCompletedOnboarding, archivedTags,
     isRefreshing, refreshStep, handleRefreshApp, isLiteMode, setIsLiteMode,
-    autoBackupFrequency, setAutoBackupFrequency, autoBackupFilenamePrefix, setAutoBackupFilenamePrefix, lastAutoBackupTimestamp, setLastAutoBackupTimestamp,
-    autoBackupPin, setAutoBackupPin, autoBackupPinHistory, setAutoBackupPinHistory, recordAutoBackupPinChange
+    autoBackupFrequency, setAutoBackupFrequency, autoBackupFilenamePrefix, setAutoBackupFilenamePrefix, 
+    lastAutoBackupTimestamp, setLastAutoBackupTimestamp,
+    autoBackupPin: storeAutoBackupPin, setAutoBackupPin, autoBackupPinHistory, setAutoBackupPinHistory, 
+    recordAutoBackupPinChange
   } = useAppStore();
+  
   const t = useTranslation(lang);
 
-  const [activeSection, setActiveSection] = useState<'appearance' | 'notifications' | 'security' | 'backup' | 'about' | null>(null);
+  // Categorized active section (prop controlled or fallback local state)
+  const [localActiveSection, setLocalActiveSection] = useState<'appearance' | 'security' | 'backup' | 'about' | null>(null);
+  const currentActiveSection = activeSectionProp !== undefined ? activeSectionProp : localActiveSection;
+  const updateActiveSection = (section: 'appearance' | 'security' | 'backup' | 'about' | null) => {
+    if (setActiveSectionProp) {
+      setActiveSectionProp(section);
+    } else {
+      setLocalActiveSection(section);
+    }
+  };
 
+  const handleBackSection = () => {
+    if (setActiveSectionProp) {
+      window.history.back();
+    } else {
+      setLocalActiveSection(null);
+    }
+  };
+
+  const handleMainBack = () => {
+    if (currentActiveSection !== null) {
+      handleBackSection();
+    } else if (onBack) {
+      onBack();
+    } else if (onNavigate) {
+      onNavigate('home');
+    }
+  };
+
+  // Re-map for existing code to work seamlessly
+  const activeSection = currentActiveSection;
+  const setActiveSection = (section: 'appearance' | 'security' | 'backup' | 'about' | null) => {
+    if (section === null) {
+      handleBackSection();
+    } else {
+      updateActiveSection(section);
+    }
+  };
+
+  // Modal display states
+  const [pinModalMode, setPinModalMode] = useState<'create' | 'verify' | 'change' | 'remove' | null>(null);
+  const [pinInput, setPinInput] = useState('');
+  const [pinQuestionInput, setPinQuestionInput] = useState('');
+  const [pinAnswerInput, setPinAnswerInput] = useState('');
+  const [pinError, setPinError] = useState(false);
+  
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showUpdateNotes, setShowUpdateNotes] = useState(false);
+  
+  // Custom wallpaper states
+  const [localCustomWallpaper, setLocalCustomWallpaper] = useState<string | null>(() => getLargeItemSync("noto_custom_wallpaper"));
+  const [localBannerWallpaper, setLocalBannerWallpaper] = useState<string | null>(() => getLargeItemSync("noto_banner_wallpaper"));
+
+  // Auto-backup configuration
+  const [backupModalMode, setBackupModalMode] = useState<'export' | 'import' | null>(null);
+  const [backupPassword, setBackupPassword] = useState('');
+  const [backupFileContent, setBackupFileContent] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState(false);
   const [exportOptions, setExportOptions] = useState({
     notes: true,
     tasks: true,
@@ -41,271 +111,66 @@ export default function SettingsScreen({
     moods: true,
     userProfile: true,
     settings: true,
-    wallpaper: true
   });
 
-  const renderAutoBackupSettings = () => {
-    const nowObj = new Date();
-    const yyyy = nowObj.getFullYear();
-    const mm = String(nowObj.getMonth() + 1).padStart(2, '0');
-    const dd = String(nowObj.getDate()).padStart(2, '0');
-    const hh = String(nowObj.getHours()).padStart(2, '0');
-    const min = String(nowObj.getMinutes()).padStart(2, '0');
-    const previewFilename = `${autoBackupFilenamePrefix || 'noto_backup'}_auto_${yyyy}-${mm}-${dd}_${hh}-${min}.json`;
+  const [pendingAutoBackupFreq, setPendingAutoBackupFreq] = useState<'off' | '3_days' | '1_week' | '1_month' | null>(null);
+  const [showAutoBackupEnableVerify, setShowAutoBackupEnableVerify] = useState(false);
+  const [autoBackupEnableVerifyPin, setAutoBackupEnableVerifyPin] = useState('');
+  const [autoBackupEnableVerifyError, setAutoBackupEnableVerifyError] = useState(false);
 
-    const lastBackupDateStr = lastAutoBackupTimestamp > 0 
-      ? new Date(lastAutoBackupTimestamp).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      : (lang === 'id' ? 'Belum pernah' : 'Never');
+  const [showAutoBackupPinSetup, setShowAutoBackupPinSetup] = useState(false);
+  const [autoBackupPinSetupPin, setAutoBackupPinSetupPin] = useState('');
+  const [autoBackupPinSetupConfirm, setAutoBackupPinSetupConfirm] = useState('');
+  const [autoBackupPinSetupStep, setAutoBackupPinSetupStep] = useState<1 | 2>(1);
+  const [autoBackupPinSetupError, setAutoBackupPinSetupError] = useState(false);
 
-    return (
-      <div className="mt-5 p-5 bg-slate-950/40 border border-slate-800/80 rounded-2xl flex flex-col gap-5">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
-            <Database size={14} />
-          </div>
-          <div>
-            <h5 className="text-xs font-extrabold text-slate-200">
-              {lang === 'id' ? 'Pencadangan Otomatis' : 'Automatic Backup'}
-            </h5>
-            <p className="text-[10px] text-slate-500 mt-0.5">
-              {lang === 'id' 
-                ? 'Amankan data berkala secara offline tanpa repot' 
-                : 'Secure data periodically offline automatically'}
-            </p>
-          </div>
-        </div>
+  const [showAutoBackupPinChange, setShowAutoBackupPinChange] = useState(false);
+  const [autoBackupPinChangeCurrent, setAutoBackupPinChangeCurrent] = useState('');
+  const [autoBackupPinChangeNew, setAutoBackupPinChangeNew] = useState('');
+  const [autoBackupPinChangeConfirm, setAutoBackupPinChangeConfirm] = useState('');
+  const [autoBackupPinChangeStep, setAutoBackupPinChangeStep] = useState<1 | 2 | 3>(1);
+  const [autoBackupPinChangeError, setAutoBackupPinChangeError] = useState(false);
+  const [autoBackupPinChangeErrorType, setAutoBackupPinChangeErrorType] = useState<'wrong_current' | 'mismatch' | null>(null);
 
-        <div className="flex flex-col gap-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-            {lang === 'id' ? 'Frekuensi Pencadangan' : 'Backup Frequency'}
-          </label>
-          <div className="grid grid-cols-4 gap-1.5 bg-slate-950/80 border border-slate-850/80 p-1 rounded-xl">
-            {(['off', '3_days', '1_week', '1_month'] as const).map((freq) => {
-              const isActive = autoBackupFrequency === freq;
-              let label = '';
-              if (freq === 'off') label = lang === 'id' ? 'Nonaktif' : 'Off';
-              else if (freq === '3_days') label = lang === 'id' ? '3 Hari' : '3 Days';
-              else if (freq === '1_week') label = lang === 'id' ? '1 Minggu' : '1 Wk';
-              else if (freq === '1_month') label = lang === 'id' ? '1 Bulan' : '1 Mo';
+  const [showPinHistoryDropdown, setShowPinHistoryDropdown] = useState(false);
+  const [showAutoBackupPinHistoryDropdown, setShowAutoBackupPinHistoryDropdown] = useState(false);
+  const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
 
-              return (
-                <button
-                  key={freq}
-                  type="button"
-                  onClick={() => {
-                    if (freq === 'off') {
-                      setAutoBackupFrequency('off');
-                    } else {
-                      setPendingAutoBackupFreq(freq);
-                      if (!autoBackupPin) {
-                        setShowAutoBackupPinSetup(true);
-                        setAutoBackupPinSetupPin('');
-                        setAutoBackupPinSetupConfirm('');
-                        setAutoBackupPinSetupStep(1);
-                        setAutoBackupPinSetupError(false);
-                      } else {
-                        setShowAutoBackupEnableVerify(true);
-                        setAutoBackupEnableVerifyPin('');
-                        setAutoBackupEnableVerifyError(false);
-                      }
-                    }
-                  }}
-                  className={`py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    isActive 
-                      ? 'bg-indigo-500 text-slate-950 font-black shadow-lg shadow-indigo-500/10' 
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+  // Refs for focusing inputs
+  const enableVerifyInputRef = React.useRef<HTMLInputElement | null>(null);
+  const pinSetupInputRef = React.useRef<HTMLInputElement | null>(null);
+  const pinChangeInputRef = React.useRef<HTMLInputElement | null>(null);
 
-        {autoBackupFrequency !== 'off' && (
-          <>
-            <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                {lang === 'id' ? 'Awalan Nama File (Prefix)' : 'Filename Prefix'}
-              </label>
-              <input
-                type="text"
-                value={autoBackupFilenamePrefix}
-                onChange={(e) => {
-                  const sanitized = e.target.value.replace(/[^a-zA-Z0-9_.-]/g, '');
-                  setAutoBackupFilenamePrefix(sanitized);
-                }}
-                placeholder="noto_backup"
-                className="w-full bg-slate-950/80 border border-slate-850/85 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-200 outline-none focus:border-indigo-500/40 transition-colors"
-              />
-              <div className="bg-slate-950/90 border border-slate-900/60 p-3 rounded-xl">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">
-                  {lang === 'id' ? 'Pratinjau File Cadangan' : 'Backup File Preview'}
-                </span>
-                <span className="text-[11px] font-mono font-extrabold text-indigo-400 block mt-1 select-all break-all">
-                  {previewFilename}
-                </span>
-              </div>
-            </div>
+  // Auto-focus verify modal input
+  useEffect(() => {
+    if (showAutoBackupEnableVerify) {
+      setTimeout(() => enableVerifyInputRef.current?.focus(), 100);
+    }
+  }, [showAutoBackupEnableVerify]);
 
-            <div className="flex gap-2.5 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl animate-in fade-in duration-300">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h6 className="font-bold text-[10px] text-amber-300">
-                  {lang === 'id' ? 'Peringatan Memori Perangkat' : 'Device Storage Alert'}
-                </h6>
-                <p className="text-[9px] text-slate-400 leading-normal mt-0.5">
-                  {lang === 'id'
-                    ? 'Pencadangan otomatis akan mengunduh file baru ke folder Unduhan Anda. Harap hapus file cadangan lama secara manual agar tidak memenuhi memori internal.'
-                    : 'Auto-backup downloads new files into your Downloads folder. Please delete older backup files manually to keep storage clean.'}
-                </p>
-              </div>
-            </div>
+  // Auto-focus setup modal input
+  useEffect(() => {
+    if (showAutoBackupPinSetup) {
+      setTimeout(() => pinSetupInputRef.current?.focus(), 100);
+    }
+  }, [showAutoBackupPinSetup, autoBackupPinSetupStep]);
 
-            <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold border-t border-slate-800/40 pt-3">
-              <span>{lang === 'id' ? 'Terakhir Dicadangkan:' : 'Last Backed Up:'}</span>
-              <span className="font-mono text-slate-400">{lastBackupDateStr}</span>
-            </div>
+  // Auto-focus change modal input
+  useEffect(() => {
+    if (showAutoBackupPinChange) {
+      setTimeout(() => pinChangeInputRef.current?.focus(), 100);
+    }
+  }, [showAutoBackupPinChange, autoBackupPinChangeStep]);
 
-            {/* Auto-Backup PIN Controls & History */}
-            <div className="flex flex-col gap-2 border-t border-slate-800/40 pt-3">
-              <div className="flex justify-between items-center">
-                <div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
-                    {lang === 'id' ? 'PIN Cadangan Otomatis' : 'Auto-Backup PIN'}
-                  </span>
-                  <span className="text-[8px] text-slate-500 font-medium block mt-0.5">
-                    {lang === 'id' ? 'Untuk enkripsi file cadangan otomatis' : 'For encrypting auto-backup files'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAutoBackupPinChange(true);
-                    setAutoBackupPinChangeCurrent('');
-                    setAutoBackupPinChangeNew('');
-                    setAutoBackupPinChangeConfirm('');
-                    setAutoBackupPinChangeStep(1);
-                    setAutoBackupPinChangeError(false);
-                  }}
-                  className="px-2.5 py-1 text-[9px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/5 hover:bg-indigo-500/10 border border-indigo-500/10 rounded-lg transition-all"
-                >
-                  {lang === 'id' ? 'Ubah PIN 🔑' : 'Change PIN 🔑'}
-                </button>
-              </div>
+  // Sync recovery question/answer pre-filling when creating or changing app PIN
+  useEffect(() => {
+    if (pinModalMode === 'create' || pinModalMode === 'change') {
+      setPinQuestionInput(pinRecoveryQuestion || '');
+      setPinAnswerInput(pinRecoveryAnswer || '');
+    }
+  }, [pinModalMode, pinRecoveryQuestion, pinRecoveryAnswer]);
 
-              {/* Auto Backup PIN History Dropdown button */}
-              <div className="mt-2 bg-slate-950/80 border border-slate-900 rounded-xl overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowAutoBackupPinHistoryDropdown(prev => !prev)}
-                  className="w-full flex items-center justify-between p-3 hover:bg-slate-900/60 transition-all text-left cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <History size={12} className="text-indigo-400 shrink-0" />
-                    <div>
-                      <span className="font-bold text-[10px] text-slate-300 block">
-                        {lang === 'id' ? 'Riwayat PIN Cadangan Otomatis' : 'Auto-Backup PIN History'}
-                      </span>
-                      <span className="text-[8px] text-slate-500 leading-none block mt-0.5">
-                        {lang === 'id' ? 'Lacak PIN untuk mengimpor cadangan lama' : 'Track PINs to import older backups'}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 shrink-0 ${showAutoBackupPinHistoryDropdown ? 'rotate-180' : ''}`} />
-                </button>
-
-                {showAutoBackupPinHistoryDropdown && (
-                  <div className="p-3 border-t border-slate-900/80 space-y-2 bg-slate-950/60 max-h-[180px] overflow-y-auto custom-scrollbar">
-                    {autoBackupPinHistory.length === 0 ? (
-                      <p className="text-[9px] text-slate-500 text-center py-2">
-                        {lang === 'id' ? 'Tidak ada riwayat perubahan PIN.' : 'No PIN change history recorded.'}
-                      </p>
-                    ) : (
-                      [...autoBackupPinHistory].reverse().map((entry, index) => {
-                        const start = new Date(entry.startDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-                        const end = entry.endDate 
-                          ? new Date(entry.endDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-                          : (lang === 'id' ? 'Sekarang' : 'Present');
-                        
-                        const isCurrent = entry.endDate === null;
-
-                        return (
-                          <div key={entry.id} className={`p-2.5 rounded-lg border flex flex-col gap-1.5 transition-all ${isCurrent ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-slate-900/40 border-slate-850'}`}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] font-black uppercase text-indigo-400">
-                                  {lang === 'id' ? `PIN #${autoBackupPinHistory.length - index}` : `PIN #${autoBackupPinHistory.length - index}`}
-                                </span>
-                                {isCurrent && (
-                                  <span className="text-[7px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black px-1.5 py-0.5 rounded-md uppercase">
-                                    {lang === 'id' ? 'Aktif' : 'Active'}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[8px] font-mono font-bold text-slate-400">
-                                {start} - {end}
-                              </span>
-                            </div>
-
-                            {/* PIN Test tool */}
-                            <div className="flex gap-2 items-center bg-slate-950/50 p-1 rounded border border-slate-900">
-                              <input 
-                                type="password" 
-                                maxLength={4}
-                                placeholder="••••"
-                                onChange={async (e) => {
-                                  const val = e.target.value;
-                                  if (val.length === 4) {
-                                    const { hashPin } = await import('../utils');
-                                    const h = await hashPin(val);
-                                    if (h === entry.hashedPin) {
-                                      e.target.style.borderColor = '#10b981';
-                                      e.target.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
-                                      e.target.value = lang === 'id' ? 'COCOK ✓' : 'MATCH ✓';
-                                      setTimeout(() => {
-                                        e.target.style.borderColor = '';
-                                        e.target.style.backgroundColor = '';
-                                        e.target.value = '';
-                                      }, 2000);
-                                    } else {
-                                      e.target.style.borderColor = '#ef4444';
-                                      e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                                      setTimeout(() => {
-                                        e.target.style.borderColor = '';
-                                        e.target.style.backgroundColor = '';
-                                        e.target.value = '';
-                                      }, 1500);
-                                    }
-                                  }
-                                }}
-                                className="flex-1 min-w-0 bg-transparent text-center font-mono text-[10px] text-slate-200 placeholder-slate-600 border border-transparent focus:border-indigo-500/20 rounded outline-none p-0.5 transition-colors"
-                              />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  };
-
-  const [localCustomWallpaper, setLocalCustomWallpaper] = useState<string | null>(() => getLargeItemSync("noto_custom_wallpaper"));
-  const [localBannerWallpaper, setLocalBannerWallpaper] = useState<string | null>(() => getLargeItemSync("noto_banner_wallpaper"));
-
+  // Initialize and load custom wallpapers
   useEffect(() => {
     const loadWallpapers = () => {
       getLargeItem('noto_custom_wallpaper').then(setLocalCustomWallpaper);
@@ -313,7 +178,6 @@ export default function SettingsScreen({
     };
 
     loadWallpapers();
-
     window.addEventListener('noto_wallpaper_changed', loadWallpapers);
     window.addEventListener('noto_banner_wallpaper_changed', loadWallpapers);
 
@@ -323,6 +187,7 @@ export default function SettingsScreen({
     };
   }, []);
 
+  // Wallpaper Upload triggers
   const handleWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -334,12 +199,10 @@ export default function SettingsScreen({
         .then(() => {
           setLocalCustomWallpaper(dataUrl);
           window.dispatchEvent(new Event('noto_wallpaper_changed'));
-          setToastMessage(lang === 'id' ? 'Wallpaper berhasil diperbarui!' : 'Wallpaper updated successfully!');
-          setTimeout(() => setToastMessage(null), 3000);
+          showNotificationToast(lang === 'id' ? 'Wallpaper berhasil diperbarui!' : 'Wallpaper updated successfully!');
         })
         .catch(() => {
-          setToastMessage(lang === 'id' ? 'Gagal menyimpan wallpaper!' : 'Failed to save wallpaper!');
-          setTimeout(() => setToastMessage(null), 3000);
+          showNotificationToast(lang === 'id' ? 'Gagal menyimpan wallpaper!' : 'Failed to save wallpaper!');
         });
     };
     reader.readAsDataURL(file);
@@ -356,51 +219,71 @@ export default function SettingsScreen({
         .then(() => {
           setLocalBannerWallpaper(dataUrl);
           window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
-          setToastMessage(lang === 'id' ? 'Wallpaper kotak utama berhasil diperbarui!' : 'Main box wallpaper updated successfully!');
-          setTimeout(() => setToastMessage(null), 3000);
+          showNotificationToast(lang === 'id' ? 'Wallpaper kotak utama diperbarui!' : 'Main wallpaper updated!');
         })
         .catch(() => {
-          setToastMessage(lang === 'id' ? 'Gagal menyimpan wallpaper!' : 'Failed to save wallpaper!');
-          setTimeout(() => setToastMessage(null), 3000);
+          showNotificationToast(lang === 'id' ? 'Gagal menyimpan wallpaper!' : 'Failed to save wallpaper!');
         });
     };
     reader.readAsDataURL(file);
   };
 
-  const [pinModalMode, setPinModalMode] = useState<'create' | 'verify' | 'change' | 'remove' | null>(null);
-  const [pinInput, setPinInput] = useState('');
-  const [pinQuestionInput, setPinQuestionInput] = useState('');
-  const [pinAnswerInput, setPinAnswerInput] = useState('');
-  const [pinError, setPinError] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
-  const [showUpdateNotes, setShowUpdateNotes] = useState(false);
-  const [backupModalMode, setBackupModalMode] = useState<'export' | 'import' | null>(null);
-  const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
-  const [pendingAutoBackupFreq, setPendingAutoBackupFreq] = useState<'off' | '3_days' | '1_week' | '1_month' | null>(null);
-  const [showAutoBackupEnableVerify, setShowAutoBackupEnableVerify] = useState(false);
-  const [autoBackupEnableVerifyPin, setAutoBackupEnableVerifyPin] = useState('');
-  const [autoBackupEnableVerifyError, setAutoBackupEnableVerifyError] = useState(false);
-  const [showPinHistoryDropdown, setShowPinHistoryDropdown] = useState(false);
+  const showNotificationToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
-  const [showAutoBackupPinSetup, setShowAutoBackupPinSetup] = useState(false);
-  const [autoBackupPinSetupPin, setAutoBackupPinSetupPin] = useState('');
-  const [autoBackupPinSetupConfirm, setAutoBackupPinSetupConfirm] = useState('');
-  const [autoBackupPinSetupStep, setAutoBackupPinSetupStep] = useState<1 | 2>(1);
-  const [autoBackupPinSetupError, setAutoBackupPinSetupError] = useState(false);
+  // Notification Test helper
+  const triggerTestNotif = () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      window.Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          const title = t('notifTitleTest') || 'Uji Coba Notifikasi Noto!';
+          const body = t('notifBodyTest') || 'Hebat! Notifikasi dari aplikasi Noto berfungsi dengan benar 100%.';
+          const options = {
+            body: body,
+            icon: '/icon.png',
+            badge: '/icon.png',
+            vibrate: [200, 100, 200]
+          };
+          
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification(title, options).catch(() => {
+                try {
+                  new window.Notification(title, options);
+                } catch (e) {
+                  console.warn("Notification construction failed:", e);
+                }
+              });
+            }).catch(() => {
+              try {
+                new window.Notification(title, options);
+              } catch (e) {
+                console.warn("Notification construction failed:", e);
+              }
+            });
+          } else {
+            try {
+              new window.Notification(title, options);
+            } catch (e) {
+              console.warn("Notification construction failed:", e);
+            }
+          }
+          setTestNotifMsg(t('testNotifSuccess') || 'Uji coba sukses! Jika Anda tidak melihat spanduk, silakan aktifkan izin di pengaturan browser Anda.');
+        } else {
+          setTestNotifMsg(lang === 'id' ? 'Gagal: Izin notifikasi ditolak oleh browser.' : 'Failed: Notification permission denied.');
+        }
+      }).catch(() => {
+        setTestNotifMsg(lang === 'id' ? 'Gagal: Tidak dapat meminta izin notifikasi.' : 'Failed: Could not request permission.');
+      });
+    } else {
+      setTestNotifMsg(lang === 'id' ? 'Browser Anda tidak mendukung Notifikasi.' : 'Your browser does not support Notifications.');
+    }
+    setTimeout(() => setTestNotifMsg(null), 5000);
+  };
 
-  const [showAutoBackupPinChange, setShowAutoBackupPinChange] = useState(false);
-  const [autoBackupPinChangeCurrent, setAutoBackupPinChangeCurrent] = useState('');
-  const [autoBackupPinChangeNew, setAutoBackupPinChangeNew] = useState('');
-  const [autoBackupPinChangeConfirm, setAutoBackupPinChangeConfirm] = useState('');
-  const [autoBackupPinChangeStep, setAutoBackupPinChangeStep] = useState<1 | 2 | 3>(1);
-  const [autoBackupPinChangeError, setAutoBackupPinChangeError] = useState(false);
-  const [autoBackupPinChangeErrorType, setAutoBackupPinChangeErrorType] = useState<'wrong_current' | 'mismatch' | null>(null);
-
-  const [showAutoBackupPinHistoryDropdown, setShowAutoBackupPinHistoryDropdown] = useState(false);
-
+  // Security PIN validation logic
   const handlePinSubmit = async () => {
     if (pinInput.length !== 4) return;
     const { hashPin } = await import('../utils');
@@ -416,8 +299,10 @@ export default function SettingsScreen({
       setPinRecoveryAnswer(pinAnswerInput.trim().toLowerCase());
       setIsUnlocked(true);
       setPinModalMode(null);
+      setPinInput('');
       setPinQuestionInput('');
       setPinAnswerInput('');
+      showNotificationToast(lang === 'id' ? 'PIN Keamanan berhasil dipasang!' : 'Security PIN successfully saved!');
     } else if (pinModalMode === 'verify') {
       const hashed = await hashPin(pinInput);
       if (hashed === appPin || pinInput === appPin) {
@@ -436,6 +321,8 @@ export default function SettingsScreen({
         setPinRecoveryQuestion(null);
         setPinRecoveryAnswer(null);
         setPinModalMode(null);
+        setPinInput('');
+        showNotificationToast(lang === 'id' ? 'PIN Keamanan berhasil dinonaktifkan.' : 'Security PIN disabled.');
       } else {
         setPinError(true);
         setPinInput('');
@@ -444,21 +331,18 @@ export default function SettingsScreen({
     }
   };
 
+  // Auto-backup verification and pin submits
   const handleAutoBackupVerifySubmit = async () => {
     if (autoBackupEnableVerifyPin.length !== 4) return;
     const { hashPin } = await import('../utils');
     const hashed = await hashPin(autoBackupEnableVerifyPin);
-    if (hashed === autoBackupPin || autoBackupEnableVerifyPin === autoBackupPin) {
+    if (hashed === storeAutoBackupPin || autoBackupEnableVerifyPin === storeAutoBackupPin) {
       if (pendingAutoBackupFreq) {
         setAutoBackupFrequency(pendingAutoBackupFreq);
-        setToastMessage(lang === 'id' 
-          ? `Pencadangan otomatis diaktifkan!` 
-          : `Automatic backup enabled!`);
-        setTimeout(() => setToastMessage(null), 3000);
+        showNotificationToast(lang === 'id' ? 'Pencadangan otomatis diaktifkan!' : 'Auto-backup enabled!');
       }
       setShowAutoBackupEnableVerify(false);
       setAutoBackupEnableVerifyPin('');
-      setAutoBackupEnableVerifyError(false);
       setPendingAutoBackupFreq(null);
     } else {
       setAutoBackupEnableVerifyError(true);
@@ -469,10 +353,10 @@ export default function SettingsScreen({
 
   const handleAutoBackupPinSetupSubmit = async () => {
     if (autoBackupPinSetupStep === 1) {
-      if (autoBackupPinSetupPin.length !== 4) return;
-      setAutoBackupPinSetupStep(2);
+      if (autoBackupPinSetupPin.length === 4) {
+        setAutoBackupPinSetupStep(2);
+      }
     } else {
-      if (autoBackupPinSetupConfirm.length !== 4) return;
       if (autoBackupPinSetupPin === autoBackupPinSetupConfirm) {
         const { hashPin } = await import('../utils');
         const hashed = await hashPin(autoBackupPinSetupPin);
@@ -480,23 +364,12 @@ export default function SettingsScreen({
         
         if (pendingAutoBackupFreq) {
           setAutoBackupFrequency(pendingAutoBackupFreq);
-          setToastMessage(lang === 'id' 
-            ? `PIN Cadangan dibuat & Pencadangan otomatis aktif!` 
-            : `Backup PIN created & Automatic backup enabled!`);
-          setTimeout(() => setToastMessage(null), 3500);
-        } else {
-          setToastMessage(lang === 'id' 
-            ? `PIN Cadangan Otomatis berhasil dibuat!` 
-            : `Auto-Backup PIN successfully created!`);
-          setTimeout(() => setToastMessage(null), 3500);
+          showNotificationToast(lang === 'id' ? 'PIN dibuat & Pencadangan diaktifkan!' : 'PIN saved & Auto-backup enabled!');
         }
-
-        // Clean up
         setShowAutoBackupPinSetup(false);
         setAutoBackupPinSetupPin('');
         setAutoBackupPinSetupConfirm('');
         setAutoBackupPinSetupStep(1);
-        setAutoBackupPinSetupError(false);
         setPendingAutoBackupFreq(null);
       } else {
         setAutoBackupPinSetupError(true);
@@ -508,96 +381,41 @@ export default function SettingsScreen({
 
   const handleAutoBackupPinChangeSubmit = async () => {
     const { hashPin } = await import('../utils');
-    
     if (autoBackupPinChangeStep === 1) {
-      if (autoBackupPinChangeCurrent.length !== 4) return;
       const hashed = await hashPin(autoBackupPinChangeCurrent);
-      if (hashed === autoBackupPin || autoBackupPinChangeCurrent === autoBackupPin) {
+      if (hashed === storeAutoBackupPin || autoBackupPinChangeCurrent === storeAutoBackupPin) {
         setAutoBackupPinChangeStep(2);
         setAutoBackupPinChangeError(false);
-        setAutoBackupPinChangeErrorType(null);
       } else {
         setAutoBackupPinChangeError(true);
         setAutoBackupPinChangeErrorType('wrong_current');
         setAutoBackupPinChangeCurrent('');
-        setTimeout(() => {
-          setAutoBackupPinChangeError(false);
-          setAutoBackupPinChangeErrorType(null);
-        }, 2000);
+        setTimeout(() => setAutoBackupPinChangeError(false), 2000);
       }
     } else if (autoBackupPinChangeStep === 2) {
-      if (autoBackupPinChangeNew.length !== 4) return;
-      setAutoBackupPinChangeStep(3);
+      if (autoBackupPinChangeNew.length === 4) {
+        setAutoBackupPinChangeStep(3);
+      }
     } else {
-      if (autoBackupPinChangeConfirm.length !== 4) return;
       if (autoBackupPinChangeNew === autoBackupPinChangeConfirm) {
         const hashed = await hashPin(autoBackupPinChangeNew);
         await recordAutoBackupPinChange(hashed);
-        
-        setToastMessage(lang === 'id' 
-          ? `PIN Cadangan Otomatis berhasil diperbarui!` 
-          : `Auto-Backup PIN successfully updated!`);
-        setTimeout(() => setToastMessage(null), 3500);
-
-        // Clean up
         setShowAutoBackupPinChange(false);
         setAutoBackupPinChangeCurrent('');
         setAutoBackupPinChangeNew('');
         setAutoBackupPinChangeConfirm('');
         setAutoBackupPinChangeStep(1);
-        setAutoBackupPinChangeError(false);
-        setAutoBackupPinChangeErrorType(null);
+        showNotificationToast(lang === 'id' ? 'PIN cadangan diperbarui!' : 'Backup PIN updated!');
       } else {
         setAutoBackupPinChangeError(true);
         setAutoBackupPinChangeErrorType('mismatch');
         setAutoBackupPinChangeConfirm('');
-        setTimeout(() => {
-          setAutoBackupPinChangeError(false);
-          setAutoBackupPinChangeErrorType(null);
-        }, 2000);
+        setTimeout(() => setAutoBackupPinChangeError(false), 2000);
       }
     }
   };
 
-  const triggerTestNotif = () => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      window.Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          const title = t('notifTitleTest') || 'Uji Coba Notifikasi Noto!';
-          const body = t('notifBodyTest') || 'Hebat! Notifikasi dari aplikasi Noto berfungsi dengan benar 100%.';
-          const options = {
-            body: body,
-            icon: '/icon.png',
-            badge: '/icon.png',
-            vibrate: [200, 100, 200]
-          };
-          
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(reg => {
-              reg.showNotification(title, options).catch(() => {
-                new window.Notification(title, options);
-              });
-            }).catch(() => {
-              new window.Notification(title, options);
-            });
-          } else {
-            new window.Notification(title, options);
-          }
-          setTestNotifMsg(t('testNotifSuccess') || 'Uji coba sukses! Jika Anda tidak melihat spanduk sistem, silakan aktifkan izin notifikasi di browser Anda.');
-        } else {
-          setTestNotifMsg(lang === 'id' ? 'Gagal: Izin notifikasi ditolak oleh browser.' : 'Failed: Notification permission denied by the browser.');
-        }
-      }).catch(() => {
-        setTestNotifMsg(lang === 'id' ? 'Gagal: Tidak dapat meminta izin notifikasi.' : 'Failed: Could not request notification permission.');
-      });
-    } else {
-      setTestNotifMsg(lang === 'id' ? 'Browser Anda tidak mendukung Notifikasi sistem.' : 'Your browser does not support system Notifications.');
-    }
-  };
-  const [backupPassword, setBackupPassword] = useState('');
-  const [backupFileContent, setBackupFileContent] = useState<string | null>(null);
-  const [backupError, setBackupError] = useState(false);
-
+  // Manual Backup trigger events
   const handleExportClick = () => {
     setBackupPassword('');
     setBackupError(false);
@@ -646,45 +464,33 @@ export default function SettingsScreen({
         exportData.pinRecoveryQuestion = pinRecoveryQuestion;
         exportData.pinRecoveryAnswer = pinRecoveryAnswer;
         exportData.lang = lang;
-        exportData.reminderActive = reminderActive;
-        exportData.reminderTime = reminderTime;
-        exportData.savingsTarget = savingsTarget;
-        exportData.savingsTargetTitle = savingsTargetTitle;
-        exportData.savingsBalance = savingsBalance;
-        exportData.hasCompletedOnboarding = hasCompletedOnboarding;
-        exportData.archivedTags = archivedTags;
+        exportData.isLiteMode = isLiteMode;
+        exportData.autoBackupFrequency = autoBackupFrequency;
+        exportData.autoBackupFilenamePrefix = autoBackupFilenamePrefix;
+        exportData.autoBackupPin = storeAutoBackupPin;
+        exportData.autoBackupPinHistory = autoBackupPinHistory;
       }
-      
-      if (exportOptions.wallpaper) {
-        exportData.customWallpaper = localCustomWallpaper;
-        exportData.bannerWallpaper = localBannerWallpaper;
-        exportData.appTheme = appTheme;
-      }
-      
-      const data = JSON.stringify(exportData);
-      let finalData = data;
+
+      const dataStr = JSON.stringify(exportData);
+      let finalContent = dataStr;
       
       if (backupPassword) {
         const { encryptData } = await import('../utils');
-        finalData = await encryptData(data, backupPassword);
+        finalContent = await encryptData(dataStr, backupPassword);
       }
-      
-      const blob = new Blob([finalData], { type: 'application/json' });
+
+      const blob = new Blob([finalContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const dObj = new Date();
-      const yyyy = dObj.getFullYear();
-      const mm = String(dObj.getMonth() + 1).padStart(2, '0');
-      const dd = String(dObj.getDate()).padStart(2, '0');
-      const hh = String(dObj.getHours()).padStart(2, '0');
-      const min = String(dObj.getMinutes()).padStart(2, '0');
-      a.download = `noto_backup_${yyyy}-${mm}-${dd}_${hh}-${min}.json`;
+      
+      const d = new Date();
+      const timestamp = `${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getDate().toString().padStart(2,'0')}`;
+      a.download = `noto_backup_${timestamp}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      setToastMessage(t('toastExportSuccess'));
       setBackupModalMode(null);
-      setTimeout(() => setToastMessage(null), 3000);
+      showNotificationToast(lang === 'id' ? 'Ekspor data berhasil!' : 'Data export successful!');
     } catch (e) {
       setBackupError(true);
       setTimeout(() => setBackupError(false), 2000);
@@ -738,27 +544,39 @@ export default function SettingsScreen({
           seenNoteIds.add(n.id);
           return n;
         });
-        
-        const fullBackup = {
-          ...data,
+
+        const parsedMoods = data.moods || [];
+        const seenMoodIds = new Set();
+        const uniqueMoods = parsedMoods.map((m: any) => {
+          if (seenMoodIds.has(m.id)) m.id = generateId();
+          seenMoodIds.add(m.id);
+          return m;
+        });
+
+        await importFullBackup({
           notes: uniqueNotes,
           tasks: uniqueTasks,
-          transactions: uniqueTransactions
-        };
+          transactions: uniqueTransactions,
+          moods: uniqueMoods,
+          user: data.user || user,
+          streak: data.streak || streak,
+          appPin: data.appPin || appPin,
+          pinRecoveryQuestion: data.pinRecoveryQuestion || pinRecoveryQuestion,
+          pinRecoveryAnswer: data.pinRecoveryAnswer || pinRecoveryAnswer,
+          lang: data.lang || lang,
+          isLiteMode: data.isLiteMode !== undefined ? data.isLiteMode : isLiteMode,
+          autoBackupFrequency: data.autoBackupFrequency || autoBackupFrequency,
+          autoBackupFilenamePrefix: data.autoBackupFilenamePrefix || autoBackupFilenamePrefix,
+          autoBackupPin: data.autoBackupPin || storeAutoBackupPin,
+          autoBackupPinHistory: data.autoBackupPinHistory || autoBackupPinHistory
+        });
 
-        await importFullBackup(fullBackup);
-
-        if (data.appTheme) {
-          setAppTheme(data.appTheme);
-        }
-
-        setToastMessage(t('toastImportSuccess'));
         setBackupModalMode(null);
-        setTimeout(() => setToastMessage(null), 3000);
+        showNotificationToast(lang === 'id' ? 'Pemulihan data berhasil! Memuat ulang...' : 'Restore successful! Reloading...');
+        setTimeout(() => window.location.reload(), 1000);
       } else {
-        setToastMessage(t('toastImportInvalid'));
-        setBackupModalMode(null);
-        setTimeout(() => setToastMessage(null), 3000);
+        setBackupError(true);
+        setTimeout(() => setBackupError(false), 2000);
       }
     } catch(e) {
       setBackupError(true);
@@ -766,8 +584,169 @@ export default function SettingsScreen({
     }
   };
 
+  const handleFrequencySelect = (freq: 'off' | '3_days' | '1_week' | '1_month') => {
+    if (freq === 'off') {
+      setAutoBackupFrequency('off');
+      showNotificationToast(lang === 'id' ? 'Pencadangan otomatis dinonaktifkan.' : 'Auto-backup disabled.');
+    } else {
+      setPendingAutoBackupFreq(freq);
+      if (!storeAutoBackupPin) {
+        setAutoBackupPinSetupStep(1);
+        setAutoBackupPinSetupPin('');
+        setAutoBackupPinSetupConfirm('');
+        setShowAutoBackupPinSetup(true);
+      } else {
+        setAutoBackupEnableVerifyPin('');
+        setShowAutoBackupEnableVerify(true);
+      }
+    }
+  };
+
+  const renderAutoBackupSettings = () => {
+    const frequencies = [
+      { id: 'off', label: lang === 'id' ? 'Mati' : 'Off' },
+      { id: '3_days', label: lang === 'id' ? '3 Hari' : '3 Days' },
+      { id: '1_week', label: lang === 'id' ? '1 Mggu' : '1 Wk' },
+      { id: '1_month', label: lang === 'id' ? '1 Bln' : '1 Mo' },
+    ];
+
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
+            <Database size={18} />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-[14px] text-slate-200 block">
+              {lang === 'id' ? 'Pencadangan Otomatis' : 'Auto Backup'}
+            </h4>
+            <span className="text-[11px] text-slate-400 block">
+              {lang === 'id' 
+                ? 'Secara otomatis mengunduh cadangan terenkripsi ke penyimpanan lokal Anda.' 
+                : 'Automatically download encrypted backups to local storage.'}
+            </span>
+          </div>
+        </div>
+
+        {/* Frequency selector buttons */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">
+            {lang === 'id' ? 'Frekuensi Pencadangan' : 'Backup Frequency'}
+          </label>
+          <div className="flex bg-slate-950 p-1 border border-slate-850 rounded-2xl w-full">
+            {frequencies.map((freq) => {
+              const isSelected = autoBackupFrequency === freq.id;
+              return (
+                <button
+                  key={freq.id}
+                  type="button"
+                  onClick={() => handleFrequencySelect(freq.id as any)}
+                  className={`flex-1 py-2 text-center text-xs font-black rounded-xl transition-all cursor-pointer ${
+                    isSelected 
+                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/10' 
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {freq.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Filename Prefix Input */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">
+            {lang === 'id' ? 'Nama Awalan File' : 'Filename Prefix'}
+          </label>
+          <input 
+            type="text"
+            value={autoBackupFilenamePrefix}
+            onChange={(e) => setAutoBackupFilenamePrefix(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-850 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-indigo-500/40 transition-colors placeholder-slate-700 font-medium"
+            placeholder={lang === 'id' ? 'Nama file cadangan...' : 'Backup prefix...'}
+          />
+          {lastAutoBackupTimestamp > 0 && (
+            <p className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {lang === 'id' 
+                ? `Terakhir dicadangkan: ${new Date(lastAutoBackupTimestamp).toLocaleString('id-ID')}` 
+                : `Last backup: ${new Date(lastAutoBackupTimestamp).toLocaleString()}`}
+            </p>
+          )}
+        </div>
+
+        {/* PIN Management for backup */}
+        <div className="pt-3 border-t border-slate-850/60 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-extrabold text-slate-300 block">
+                {lang === 'id' ? 'Keamanan PIN Cadangan' : 'Backup PIN Security'}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                {storeAutoBackupPin 
+                  ? (lang === 'id' ? 'PIN aktif (Semua cadangan terenkripsi)' : 'PIN active (All backups are encrypted)')
+                  : (lang === 'id' ? 'PIN tidak aktif (Cadangan tidak terenkripsi)' : 'No PIN (Backups are unencrypted)')}
+              </span>
+            </div>
+            {storeAutoBackupPin && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAutoBackupPinChangeStep(1);
+                    setAutoBackupPinChangeCurrent('');
+                    setAutoBackupPinChangeNew('');
+                    setAutoBackupPinChangeConfirm('');
+                    setShowAutoBackupPinChange(true);
+                  }}
+                  className="px-3 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-bold text-indigo-400 transition-all cursor-pointer"
+                >
+                  {lang === 'id' ? 'Ubah PIN' : 'Change PIN'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAutoBackupPinHistoryDropdown(!showAutoBackupPinHistoryDropdown)}
+                  className="px-3 py-1.5 bg-slate-950 hover:bg-slate-900 border border-slate-800 rounded-xl text-[10px] font-bold text-slate-400 transition-all cursor-pointer"
+                >
+                  {showAutoBackupPinHistoryDropdown ? (lang === 'id' ? 'Tutup Riwayat' : 'Hide History') : (lang === 'id' ? 'Riwayat' : 'History')}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Backup PIN History Dropdown */}
+          {showAutoBackupPinHistoryDropdown && storeAutoBackupPin && (
+            <div className="p-4 bg-slate-950/65 border border-slate-850 rounded-2xl space-y-2 animate-in fade-in duration-200 max-h-40 overflow-y-auto no-scrollbar">
+              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                {lang === 'id' ? 'Riwayat PIN Cadangan' : 'Backup PIN Audit Log'}
+              </span>
+              {autoBackupPinHistory.length === 0 ? (
+                <p className="text-[10px] text-slate-500 italic">
+                  {lang === 'id' ? 'Tidak ada riwayat perubahan.' : 'No change history.'}
+                </p>
+              ) : (
+                autoBackupPinHistory.map((entry, index) => (
+                  <div key={index} className="flex items-center justify-between text-[10px] py-1 border-b border-slate-900 last:border-0">
+                    <span className="font-mono text-slate-400">
+                      PIN Hashed: {entry.hashedPin.substring(0, 8)}...
+                    </span>
+                    <span className="text-slate-500">
+                      {new Date(entry.startDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US')}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full font-sans text-slate-200">
+      {/* Reset progress overlay */}
       {isResetting && (
         <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-6 text-center">
           <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
@@ -779,293 +758,468 @@ export default function SettingsScreen({
           </p>
         </div>
       )}
-      {isRefreshing && (
-        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300">
-          <div className="relative mb-8 flex items-center justify-center">
-            <div className="w-20 h-20 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin absolute" />
-            <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.25)] animate-pulse">
-              <RefreshCw size={24} className="animate-spin duration-[3000ms]" />
-            </div>
-          </div>
-          
-          <h2 className="text-slate-50 font-black text-xl tracking-tight mb-2">
-            {t('refreshingTitle')}
-          </h2>
-          <p className="text-slate-400 text-xs mb-8 max-w-xs leading-relaxed">
-            {lang === 'id'
-              ? 'Membersihkan cache sistem dan menyegarkan data agar Noto berjalan lancar kembali.'
-              : 'Clearing system cache and refreshing data to keep Noto running smoothly.'}
-          </p>
 
-          <div className="w-full max-w-xs bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 text-left space-y-3.5 shadow-xl">
-            {[1, 2, 3, 4, 5].map((stepNum) => {
-              const isCurrent = refreshStep === stepNum;
-              const isDone = refreshStep > stepNum;
-              
-              let stepLabel = '';
-              if (stepNum === 1) stepLabel = t('refreshStep1');
-              else if (stepNum === 2) stepLabel = t('refreshStep2');
-              else if (stepNum === 3) stepLabel = t('refreshStep3');
-              else if (stepNum === 4) stepLabel = t('refreshStep4');
-              else if (stepNum === 5) stepLabel = t('refreshStep5');
-
-              return (
-                <div key={stepNum} className={`flex items-center gap-3.5 transition-all duration-300 ${isCurrent ? 'scale-[1.02] opacity-100' : isDone ? 'opacity-80' : 'opacity-30'}`}>
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isDone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : isCurrent ? 'bg-indigo-500 text-slate-950 animate-bounce' : 'bg-slate-850 text-slate-500 border border-slate-800'}`}>
-                    {isDone ? '✓' : stepNum}
-                  </div>
-                  <span className={`text-[12px] font-semibold leading-none truncate ${isCurrent ? 'text-indigo-400 font-bold' : isDone ? 'text-slate-300 line-through decoration-slate-600/60' : 'text-slate-500'}`}>
-                    {stepLabel}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      <div className="flex-none h-16 pt-[env(safe-area-inset-top)] border-b border-slate-800/40 bg-slate-900/80 backdrop-blur-md px-6 flex items-center justify-between z-10">
+      {/* Header bar */}
+      <div className="flex-none h-16 pt-[env(safe-area-inset-top)] border-b border-slate-800/40 bg-slate-900/80 backdrop-blur-md px-4 sm:px-6 flex items-center gap-3 z-10">
+        <button 
+          onClick={handleMainBack}
+          className="p-2 hover:bg-slate-800/60 text-slate-400 hover:text-slate-200 rounded-xl transition-all active:scale-95 cursor-pointer flex items-center justify-center shrink-0"
+          title={lang === 'id' ? 'Kembali' : 'Back'}
+        >
+          <ChevronLeft size={20} />
+        </button>
         <span className="font-bold text-xl text-slate-50 tracking-tight">{t('settingsMenu')}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-32 w-full">
         <div className="w-full px-4 sm:px-6 py-6 space-y-6 max-w-2xl mx-auto">
           
-          {isLiteMode ? (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              {/* 1. LITE USER PROFILE & LANGUAGE CARD */}
-              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+          {/* CATEGORY DASHBOARD INDEX */}
+          {activeSection === null && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Profile Card Banner */}
+              <div className="p-6 bg-slate-900/40 border border-slate-800/80 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-36 h-36 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
                 
-                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em] mb-1">
-                  {lang === 'id' ? 'Profil & Bahasa' : 'Profile & Language'}
-                </h4>
+                <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row w-full sm:w-auto">
+                  <div className="w-16 h-16 rounded-full bg-slate-950 border-2 border-indigo-500/20 overflow-hidden flex items-center justify-center shrink-0">
+                    {user.avatarUrl === 'indexeddb:user_avatar' ? (
+                      <div className="w-full h-full bg-slate-800 animate-pulse" />
+                    ) : user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={24} className="text-slate-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-slate-100 tracking-tight">
+                      {lang === 'id' ? `Halo, ${user.name || 'Pengguna'}!` : `Hello, ${user.name || 'User'}!`}
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {isLiteMode 
+                        ? (lang === 'id' ? 'Tampilan Lite aktif untuk fokus maksimal.' : 'Lite mode active for maximum focus.')
+                        : (lang === 'id' ? 'Tampilan Pro aktif dengan penyesuaian visual penuh.' : 'Pro mode active with full personalization.')
+                      }
+                    </p>
+                  </div>
+                </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-6">
-                  {/* Profile Avatar Upload */}
-                  <div className="relative group/avatar shrink-0">
-                    <div className="w-20 h-20 rounded-full bg-slate-900 border border-slate-800/80 flex items-center justify-center overflow-hidden">
-                      {user.avatarUrl === 'indexeddb:user_avatar' ? (
-                        <div className="w-full h-full bg-slate-800 animate-pulse" />
-                      ) : user.avatarUrl ? (
-                        <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                {streak > 0 && (
+                  <div className="px-4 py-2 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center gap-2 shrink-0 self-center sm:self-auto animate-pulse">
+                    <span className="text-base">🔥</span>
+                    <span className="text-xs font-black text-amber-400">{streak} {lang === 'id' ? 'Hari Beruntun' : 'Day Streak'}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Mode Selector Option (Pro vs Lite switch) */}
+              <div className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                    <Smartphone size={18} />
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-bold text-[14px] text-slate-200">{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
+                    <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur tambahan (Games, Wallpaper) agar lebih fokus.' : 'Hide extra features (Games, Wallpaper) for a cleaner layout.'}</span>
+                  </div>
+                </div>
+                <div className="flex bg-slate-950/60 p-1 border border-slate-850 rounded-xl shrink-0 w-full sm:w-auto">
+                  <button
+                    onClick={() => {
+                      setIsLiteMode(true);
+                      showNotificationToast(lang === 'id' ? 'Mode Lite aktif! Tampilan sangat bersih.' : 'Lite Mode active! Clean interface.');
+                    }}
+                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+                      isLiteMode ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Lite Mode ⚡
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsLiteMode(false);
+                      showNotificationToast(lang === 'id' ? 'Mode Pro aktif! Semua fitur kustomisasi terbuka.' : 'Pro Mode active! All customizations enabled.');
+                    }}
+                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+                      !isLiteMode ? 'bg-indigo-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Pro Mode 👑
+                  </button>
+                </div>
+              </div>
+
+              {/* Categorized Menu List */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 1. Appearance Section Card */}
+                <button 
+                  onClick={() => setActiveSection('appearance')}
+                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Palette size={18} />
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Tampilan & Profil' : 'Appearance & Profile'}</span>
+                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Kelola nama, avatar, bahasa aplikasi, dan tema warna.' : 'Manage name, avatar, app language, and color theme.'}</p>
+                  </div>
+                </button>
+
+                {/* 2. Security Section Card */}
+                <button 
+                  onClick={() => setActiveSection('security')}
+                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Lock size={18} />
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Keamanan PIN' : 'Security PIN'}</span>
+                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Kunci aplikasi Anda menggunakan PIN 4-digit yang aman.' : 'Lock your application using a secure 4-digit PIN.'}</p>
+                  </div>
+                </button>
+
+                {/* 3. Backup Section Card */}
+                <button 
+                  onClick={() => setActiveSection('backup')}
+                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Database size={18} />
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Cadangan & Database' : 'Backup & Database'}</span>
+                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Ekspor, impor cadangan, dan reset semua data aplikasi.' : 'Export, import backups, and reset all app database records.'}</p>
+                  </div>
+                </button>
+
+                {/* 4. About Section Card */}
+                <button 
+                  onClick={() => setActiveSection('about')}
+                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Info size={18} />
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Tentang Noto' : 'About Noto'}</span>
+                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Informasi legalitas, uji notifikasi, dan perawatan sistem.' : 'Legal info, test notifications, and system diagnostic care.'}</p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Minimal Brand Tag */}
+              <div className="pt-8 text-center opacity-40">
+                <p className="text-[10px] font-black tracking-[0.3em] text-slate-500 uppercase">NOTO APP</p>
+                <p className="text-[9px] font-medium text-slate-600 mt-1">{t('madeWithSimplicity')}</p>
+              </div>
+            </div>
+          )}
+
+          {/* CHOSEN CATEGORY DETAILS */}
+          {activeSection !== null && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-300">
+              {/* Back button and Category Title */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800/30">
+                <button 
+                  onClick={() => setActiveSection(null)}
+                  className="flex items-center gap-1.5 text-xs font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest cursor-pointer transition-colors"
+                >
+                  <ChevronLeft size={16} />
+                  {lang === 'id' ? 'Kembali' : 'Back'}
+                </button>
+                <span className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                  {activeSection === 'appearance' && (lang === 'id' ? 'Tampilan & Profil' : 'Appearance & Profile')}
+                  {activeSection === 'security' && (lang === 'id' ? 'Keamanan PIN' : 'Security PIN')}
+                  {activeSection === 'backup' && (lang === 'id' ? 'Cadangan & Database' : 'Backup & Database')}
+                  {activeSection === 'about' && (lang === 'id' ? 'Tentang Noto' : 'About Noto')}
+                </span>
+              </div>
+
+              {/* SECTION: APPEARANCE */}
+              {activeSection === 'appearance' && (
+                <div className="space-y-6">
+                  {/* Avatar & Profile Card */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-6">
+                    <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{lang === 'id' ? 'Identitas Pengguna' : 'User Identity'}</h4>
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      {/* Avatar upload */}
+                      <div className="relative group shrink-0">
+                        <div className="w-20 h-20 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden">
+                          {user.avatarUrl === 'indexeddb:user_avatar' ? (
+                            <div className="w-full h-full bg-slate-800 animate-pulse" />
+                          ) : user.avatarUrl ? (
+                            <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={24} className="text-slate-400" />
+                          )}
+                        </div>
+                        <label className="absolute bottom-0 right-0 w-7 h-7 bg-indigo-600 hover:bg-indigo-500 border-2 border-slate-900 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-md">
+                          <Upload size={12} className="text-white" />
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  const dataUrl = event.target?.result as string;
+                                  updateUser({ ...user, avatarUrl: dataUrl });
+                                  showNotificationToast(lang === 'id' ? 'Foto profil berhasil diperbarui!' : 'Avatar updated!');
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="hidden" 
+                          />
+                        </label>
+                      </div>
+
+                      {/* Name input */}
+                      <div className="flex-1 w-full space-y-2">
+                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">{lang === 'id' ? 'Nama Panggilan' : 'Profile Name'}</label>
+                        <input 
+                          type="text" 
+                          value={user.name}
+                          onChange={(e) => updateUser({ ...user, name: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-indigo-500/40 transition-colors placeholder-slate-600"
+                          placeholder={lang === 'id' ? 'Nama Anda...' : 'Your name...'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Language Card */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center">
+                          <Globe size={18} />
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-[14px] text-slate-200 block">{lang === 'id' ? 'Bahasa Aplikasi' : 'App Language'}</span>
+                          <span className="text-[11px] text-slate-400">{lang === 'id' ? 'Bahasa tampilan navigasi.' : 'Localization of text content.'}</span>
+                        </div>
+                      </div>
+                      <div className="flex bg-slate-950/60 p-1 border border-slate-850 rounded-xl">
+                        <button 
+                          onClick={() => setLang('id')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${lang === 'id' ? 'bg-indigo-500 text-slate-950 font-black' : 'text-slate-400'}`}
+                        >
+                          ID
+                        </button>
+                        <button 
+                          onClick={() => setLang('en')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${lang === 'en' ? 'bg-indigo-500 text-slate-950 font-black' : 'text-slate-400'}`}
+                        >
+                          EN
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Themes selection Card */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                    <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{lang === 'id' ? 'Tema Warna Aplikasi' : 'Application Theme'}</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {[
+                        { id: 'slate', name: 'Slate', color: 'bg-slate-700' },
+                        { id: 'light', name: 'Light', color: 'bg-slate-200' },
+                        { id: 'cool', name: 'Cool Blue', color: 'bg-blue-600' },
+                        { id: 'pink', name: 'Pink Rose', color: 'bg-rose-500' },
+                        { id: 'cute', name: 'Warm Amber', color: 'bg-amber-500' }
+                      ].map((theme) => {
+                        const isCurrent = appTheme === theme.id;
+                        return (
+                          <button 
+                            key={theme.id}
+                            onClick={() => {
+                              setAppTheme(theme.id);
+                              showNotificationToast(lang === 'id' ? `Tema diganti ke ${theme.name}` : `Theme changed to ${theme.name}`);
+                            }}
+                            className={`flex items-center gap-2 px-3 py-2 border rounded-2xl transition-all cursor-pointer ${
+                              isCurrent 
+                                ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 font-extrabold shadow-sm' 
+                                : 'bg-slate-950/40 border-slate-800/80 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            <span className={`w-3.5 h-3.5 rounded-full ${theme.color} border border-slate-950/40 shrink-0`} />
+                            <span className="text-xs font-bold">{theme.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Wallpaper uploads (Only in Pro Mode) */}
+                  {!isLiteMode ? (
+                    <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                      <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{lang === 'id' ? 'Kustomisasi Wallpaper (Pro)' : 'Custom Wallpapers (Pro)'}</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Box 1: Custom wallpaper */}
+                        <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-2xl space-y-3">
+                          <span className="text-[11px] font-extrabold text-slate-300 block">{lang === 'id' ? 'Latar Belakang Utama' : 'Main Background Wallpaper'}</span>
+                          <div className="flex gap-2">
+                            <label className="flex-1 py-2 px-3 bg-indigo-500 hover:bg-indigo-400 text-slate-950 text-xs font-black uppercase text-center rounded-xl cursor-pointer transition-all">
+                              {lang === 'id' ? 'Unggah' : 'Upload'}
+                              <input type="file" accept="image/*" onChange={handleWallpaperUpload} className="hidden" />
+                            </label>
+                            {localCustomWallpaper && (
+                              <button 
+                                onClick={async () => {
+                                  const { deleteLargeItem } = await import('../utils/db');
+                                  await deleteLargeItem('noto_custom_wallpaper');
+                                  setLocalCustomWallpaper(null);
+                                  window.dispatchEvent(new Event('noto_wallpaper_changed'));
+                                  showNotificationToast(lang === 'id' ? 'Wallpaper dihapus!' : 'Wallpaper cleared!');
+                                }}
+                                className="py-2 px-3 bg-slate-800 hover:bg-slate-750 text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                              >
+                                {lang === 'id' ? 'Hapus' : 'Delete'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Box 2: Banner wallpaper */}
+                        <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-2xl space-y-3">
+                          <span className="text-[11px] font-extrabold text-slate-300 block">{lang === 'id' ? 'Latar Belakang Kotak Profil' : 'Profile Box Wallpaper'}</span>
+                          <div className="flex gap-2">
+                            <label className="flex-1 py-2 px-3 bg-indigo-500 hover:bg-indigo-400 text-slate-950 text-xs font-black uppercase text-center rounded-xl cursor-pointer transition-all">
+                              {lang === 'id' ? 'Unggah' : 'Upload'}
+                              <input type="file" accept="image/*" onChange={handleBannerWallpaperUpload} className="hidden" />
+                            </label>
+                            {localBannerWallpaper && (
+                              <button 
+                                onClick={async () => {
+                                  const { deleteLargeItem } = await import('../utils/db');
+                                  await deleteLargeItem('noto_banner_wallpaper');
+                                  setLocalBannerWallpaper(null);
+                                  window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
+                                  showNotificationToast(lang === 'id' ? 'Wallpaper dihapus!' : 'Wallpaper cleared!');
+                                }}
+                                className="py-2 px-3 bg-slate-800 hover:bg-slate-750 text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                              >
+                                {lang === 'id' ? 'Hapus' : 'Delete'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
+                      <p className="text-center text-xs text-slate-400">
+                        {lang === 'id' 
+                          ? '💡 Kustomisasi Wallpaper dinonaktifkan di Mode Lite. Aktifkan Mode Pro untuk mengganti latar belakang.' 
+                          : '💡 Wallpaper settings are disabled in Lite Mode. Switch to Pro Mode to customize background.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SECTION: SECURITY */}
+              {activeSection === 'security' && (
+                <div className="space-y-6">
+                  {/* Security PIN status */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                        <Lock size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-extrabold text-[15px] text-slate-100 block">{lang === 'id' ? 'Kunci Keamanan PIN' : 'Passcode PIN Security'}</span>
+                        <span className="text-xs text-slate-400 mt-1 block">
+                          {appPin 
+                            ? (lang === 'id' ? '✅ Proteksi PIN sedang AKTIF.' : '✅ PIN Protection is active.')
+                            : (lang === 'id' ? '❌ Proteksi PIN TIDAK aktif.' : '❌ PIN Protection is not active.')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      {!appPin ? (
+                        <button 
+                          onClick={() => {
+                            setPinInput('');
+                            setPinModalMode('create');
+                          }}
+                          className="flex-1 py-3 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl cursor-pointer text-center transition-all shadow-md shadow-indigo-500/10"
+                        >
+                          {lang === 'id' ? 'Aktifkan PIN Keamanan' : 'Enable Security PIN'}
+                        </button>
                       ) : (
-                        <User size={28} className="text-slate-400" />
+                        <>
+                          <button 
+                            onClick={() => {
+                              setPinInput('');
+                              setPinModalMode('verify');
+                            }}
+                            className="flex-1 py-3 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-extrabold text-xs uppercase tracking-wider rounded-2xl cursor-pointer text-center transition-all border border-indigo-500/20"
+                          >
+                            {lang === 'id' ? 'Ubah PIN' : 'Change PIN'}
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setPinInput('');
+                              setPinModalMode('remove');
+                            }}
+                            className="flex-1 py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-slate-950 font-extrabold text-xs uppercase tracking-wider rounded-2xl cursor-pointer text-center transition-all border border-rose-500/25"
+                          >
+                            {lang === 'id' ? 'Nonaktifkan PIN' : 'Disable PIN'}
+                          </button>
+                        </>
                       )}
                     </div>
-                    <label className="absolute bottom-0 right-0 w-7 h-7 bg-indigo-600 hover:bg-indigo-500 border-2 border-slate-900 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-md">
-                      <Upload size={12} className="text-white" />
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        className="hidden" 
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            const dataUrl = event.target?.result as string;
-                            updateUser({ ...user, avatarUrl: dataUrl });
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                      />
-                    </label>
                   </div>
 
-                  {/* Profile Name */}
-                  <div className="flex-1 w-full space-y-4">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                        {lang === 'id' ? 'Nama Panggilan' : 'Nickname'}
-                      </span>
-                      <input 
-                        type="text" 
-                        value={user.name}
-                        onChange={(e) => updateUser({ ...user, name: e.target.value })}
-                        placeholder={t('enterNicknamePlaceholder')}
-                        className="bg-slate-950/60 border border-slate-800/80 focus:border-indigo-500 rounded-2xl px-4 py-2.5 text-slate-200 font-extrabold text-sm outline-none w-full"
-                        maxLength={20}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {user.avatarUrl && user.avatarUrl !== 'indexeddb:user_avatar' && (
-                  <button 
-                    onClick={() => updateUser({ ...user, avatarUrl: '' })}
-                    className="py-2 px-4 bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 font-bold text-xs transition-all active:scale-[0.98] self-start cursor-pointer"
-                  >
-                    {lang === 'id' ? 'Hapus Foto' : 'Remove Photo'}
-                  </button>
-                )}
-
-                <div className="border-t border-slate-800/40 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[14px] text-slate-300">{lang === 'id' ? 'Bahasa Aplikasi' : 'App Language'}</span>
-                    <span className="text-xs text-slate-500 leading-normal mt-0.5">{lang === 'id' ? 'Atur bahasa tampilan utama.' : 'Set primary display language.'}</span>
-                  </div>
-                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
-                    <button
-                      onClick={() => setLang('id')}
-                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${lang === 'id' ? 'bg-indigo-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                      Indonesia
-                    </button>
-                    <button
-                      onClick={() => setLang('en')}
-                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${lang === 'en' ? 'bg-indigo-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                      English
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. MODE SELECTOR CARD */}
-              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl relative overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                      <Smartphone size={18} />
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-bold text-[15px] text-slate-200 truncate">{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
-                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur tambahan (Games, Wallpaper) agar lebih bersih & fokus.' : 'Hide extra features (Games, Wallpaper) for a cleaner & focused experience.'}</span>
-                    </div>
-                  </div>
-                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
-                    <button
-                      onClick={() => {
-                        setIsLiteMode(true);
-                        setToastMessage(lang === 'id' ? 'Mode Lite aktif! Tampilan sangat bersih & fokus.' : 'Lite Mode active! Super clean & focused interface.');
-                        setTimeout(() => setToastMessage(null), 3000);
-                      }}
-                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${isLiteMode ? 'bg-emerald-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                      Lite Mode ⚡
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsLiteMode(false);
-                        setToastMessage(lang === 'id' ? 'Mode Pro aktif! Semua kustomisasi visual & hiburan terbuka.' : 'Pro Mode active! All visual customizations & leisure enabled.');
-                        setTimeout(() => setToastMessage(null), 3000);
-                      }}
-                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${!isLiteMode ? 'bg-indigo-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'}`}
-                    >
-                      Pro Mode 👑
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. SECURITY & PIN LOCK CARD */}
-              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all shrink-0 ${appPin ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-slate-800/80 text-slate-400 border border-slate-750'}`}>
-                      <Lock size={18} />
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-bold text-[15px] text-slate-200 truncate">{t('pinLock')}</span>
-                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Lindungi dompet keuangan & catatan harian Anda.' : 'Secure wallet transactions & private daily logs.'}</span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      if (appPin) {
-                        setPinInput('');
-                        setPinError(false);
-                        setPinModalMode('remove');
-                      } else {
-                        setPinInput('');
-                        setPinError(false);
-                        setPinModalMode('create');
-                      }
-                    }}
-                    className={`w-12 h-7 rounded-full flex items-center p-1 transition-all duration-300 shadow-inner shrink-0 ml-3 ${appPin ? 'bg-rose-500' : 'bg-slate-700/50 border border-slate-600/20'}`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-300 shadow-md ${appPin ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
-                </div>
-
-                {appPin && (
-                  <>
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setPinInput('');
-                        setPinError(false);
-                        setPinModalMode('verify');
-                      }}
-                      className="flex items-center justify-between p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850/80 rounded-2xl transition-all duration-200 text-left active:scale-[0.995] cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
-                          <Key size={14} />
-                        </div>
-                        <span className="font-bold text-xs text-slate-200 truncate">{t('changePin')}</span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 ml-3" />
-                    </button>
-
-                    {/* PIN HISTORY EXPANDABLE ACCORDION */}
-                    <div className="border border-slate-800/80 rounded-2xl overflow-hidden bg-slate-950/30">
+                  {/* PIN Change logs */}
+                  {appPin && (
+                    <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-4">
                       <button 
-                        type="button"
-                        onClick={() => setShowPinHistoryDropdown(prev => !prev)}
-                        className="w-full flex items-center justify-between p-3.5 hover:bg-slate-950/60 transition-all text-left cursor-pointer"
+                        onClick={() => setShowPinHistoryDropdown(!showPinHistoryDropdown)}
+                        className="w-full flex items-center justify-between text-left cursor-pointer"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                            <History size={14} />
-                          </div>
-                          <div>
-                            <span className="font-bold text-xs text-slate-200 block">
-                              {lang === 'id' ? 'Riwayat PIN Keamanan' : 'Security PIN History'}
-                            </span>
-                            <span className="text-[9px] text-slate-500 font-medium leading-none block mt-1">
-                              {lang === 'id' ? 'Lacak masa aktif PIN untuk memulihkan cadangan lama' : 'Track active PIN periods to decrypt older backups'}
-                            </span>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <HistoryIcon size={16} className="text-indigo-400" />
+                          <span className="font-extrabold text-[13px] text-slate-300">{lang === 'id' ? 'Log Riwayat PIN' : 'PIN History Logs'}</span>
                         </div>
-                        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 shrink-0 ${showPinHistoryDropdown ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={16} className={`text-slate-500 transition-transform duration-200 ${showPinHistoryDropdown ? 'rotate-180' : ''}`} />
                       </button>
 
                       {showPinHistoryDropdown && (
-                        <div className="p-4 border-t border-slate-850 space-y-3 bg-slate-950/60 max-h-[220px] overflow-y-auto custom-scrollbar">
+                        <div className="pt-2 space-y-3 border-t border-slate-800/50 animate-in fade-in duration-200">
                           {pinHistory.length === 0 ? (
-                            <p className="text-[10px] text-slate-500 text-center py-2">
-                              {lang === 'id' ? 'Tidak ada riwayat perubahan PIN.' : 'No PIN change history recorded.'}
-                            </p>
+                            <p className="text-[11px] text-slate-500 italic text-center py-2">{lang === 'id' ? 'Belum ada riwayat penggantian PIN.' : 'No PIN replacement history yet.'}</p>
                           ) : (
-                            [...pinHistory].reverse().map((entry, index) => {
-                              const start = new Date(entry.startDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-                              const end = entry.endDate 
-                                ? new Date(entry.endDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-                                : (lang === 'id' ? 'Sekarang' : 'Present');
-                              
+                            pinHistory.map((entry: any, index: number) => {
                               const isCurrent = entry.endDate === null;
-
                               return (
-                                <div key={entry.id} className={`p-3 rounded-xl border flex flex-col gap-2 transition-all ${isCurrent ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-slate-900/40 border-slate-800/80'}`}>
+                                <div key={entry.id} className={`p-3 rounded-xl border flex flex-col gap-2 transition-all ${isCurrent ? 'bg-indigo-500/5 border-indigo-500/10' : 'bg-slate-950/30 border-slate-850/80'}`}>
                                   <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] font-black uppercase text-indigo-400">
-                                        {lang === 'id' ? `PIN #${pinHistory.length - index}` : `PIN #${pinHistory.length - index}`}
-                                      </span>
-                                      {isCurrent && (
-                                        <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black px-1.5 py-0.5 rounded-md uppercase">
-                                          {lang === 'id' ? 'Aktif' : 'Active'}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <span className="text-[9px] font-mono font-bold text-slate-400">
-                                      {start} - {end}
+                                    <span className="text-[9px] font-black uppercase text-indigo-400">PIN #{pinHistory.length - index}</span>
+                                    <span className="text-[9px] font-mono font-bold text-slate-500">
+                                      {new Date(entry.startDate).toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US')}
                                     </span>
                                   </div>
-
-                                  {/* PIN Test tool inside history */}
-                                  <div className="flex gap-2 items-center bg-slate-950/50 p-1.5 rounded-lg border border-slate-850">
+                                  
+                                  {/* Segmented input test tool inside audit logs */}
+                                  <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-lg border border-slate-900">
+                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 shrink-0">{lang === 'id' ? 'TES' : 'TEST'}:</span>
                                     <input 
                                       type="password" 
                                       maxLength={4}
@@ -1077,29 +1231,26 @@ export default function SettingsScreen({
                                           const h = await hashPin(val);
                                           if (h === entry.hashedPin) {
                                             e.target.style.borderColor = '#10b981';
-                                            e.target.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
-                                            e.target.value = lang === 'id' ? 'COCOK ✓' : 'MATCH ✓';
+                                            e.target.style.color = '#10b981';
+                                            e.target.value = lang === 'id' ? 'OK ✓' : 'OK ✓';
                                             setTimeout(() => {
                                               e.target.style.borderColor = '';
-                                              e.target.style.backgroundColor = '';
+                                              e.target.style.color = '';
                                               e.target.value = '';
                                             }, 2000);
                                           } else {
                                             e.target.style.borderColor = '#ef4444';
-                                            e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                                            e.target.style.color = '#ef4444';
                                             setTimeout(() => {
                                               e.target.style.borderColor = '';
-                                              e.target.style.backgroundColor = '';
+                                              e.target.style.color = '';
                                               e.target.value = '';
                                             }, 1500);
                                           }
                                         }
                                       }}
-                                      className="flex-1 min-w-0 bg-transparent text-center font-mono text-xs text-slate-200 placeholder-slate-600 border border-transparent focus:border-indigo-500/20 rounded outline-none p-1 transition-colors"
+                                      className="flex-1 min-w-0 bg-transparent text-center font-mono text-xs text-slate-300 placeholder-slate-700 outline-none transition-colors border border-transparent rounded px-1"
                                     />
-                                    <span className="text-[8px] font-black uppercase text-slate-500 pr-1 shrink-0">
-                                      {lang === 'id' ? 'Tes PIN ini' : 'Test this PIN'}
-                                    </span>
                                   </div>
                                 </div>
                               );
@@ -1108,825 +1259,167 @@ export default function SettingsScreen({
                         </div>
                       )}
                     </div>
-                  </>
-                )}
-              </div>
-
-              {/* 4. BACKUP & DATABASE CARD */}
-              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
-                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em] mb-1">
-                  {lang === 'id' ? 'Pencadangan & Database' : 'Database & Backup'}
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button 
-                    onClick={handleExportClick}
-                    className="flex items-center gap-3.5 p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850 rounded-2xl transition-all text-left cursor-pointer active:scale-95"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                      <Download size={14} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-xs text-slate-200 leading-none">{t('backupExport')}</p>
-                      <p className="text-[10px] text-slate-500 mt-1.5 leading-none">{lang === 'id' ? 'Unduh file data' : 'Download data file'}</p>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={handleImportClick}
-                    className="flex items-center gap-3.5 p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850 rounded-2xl transition-all text-left cursor-pointer active:scale-95"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shrink-0">
-                      <Upload size={14} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-xs text-slate-200 leading-none">{t('restoreImport')}</p>
-                      <p className="text-[10px] text-slate-500 mt-1.5 leading-none">{lang === 'id' ? 'Unggah file data' : 'Upload data file'}</p>
-                    </div>
-                  </button>
+                  )}
                 </div>
-
-                {renderAutoBackupSettings()}
-              </div>
-
-              {/* 5. DIAGNOSTICS & SYSTEM CARE */}
-              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[14px] text-slate-300">{lang === 'id' ? 'Perawatan Sistem' : 'System Care'}</span>
-                    <span className="text-xs text-slate-500 leading-normal mt-0.5">{lang === 'id' ? 'Segarkan aplikasi jika terjadi error.' : 'Refresh app caches if glitches occur.'}</span>
-                  </div>
-                  <button
-                    onClick={handleRefreshApp}
-                    className="w-full sm:w-auto px-4.5 py-2.5 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl active:scale-[0.97] transition-all cursor-pointer shadow-lg shadow-indigo-500/15 shrink-0"
-                  >
-                    {lang === 'id' ? 'Segarkan Noto' : 'Refresh Noto'}
-                  </button>
-                </div>
-
-                <div className="border-t border-slate-800/40 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[14px] text-rose-400">{lang === 'id' ? 'Hapus Semua Data' : 'Hard Reset All Data'}</span>
-                    <span className="text-xs text-slate-500 leading-normal mt-0.5">{lang === 'id' ? 'Menghapus seluruh database harian secara permanen.' : 'Permanently wipe out all records.'}</span>
-                  </div>
-                  <button
-                    onClick={() => setShowResetConfirm(true)}
-                    className="w-full sm:w-auto px-4.5 py-2.5 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-slate-950 border border-rose-500/20 rounded-2xl text-xs font-extrabold cursor-pointer transition-all active:scale-95 text-center shrink-0"
-                  >
-                    {lang === 'id' ? 'Reset Aplikasi' : 'Reset Database'}
-                  </button>
-                </div>
-              </div>
-
-              {/* 6. BRAND FOOTER */}
-              <div className="py-6 text-center opacity-60">
-                <p className="text-xs font-black tracking-[0.3em] text-slate-500 uppercase">NOTO LITE</p>
-                <p className="text-[10px] font-medium text-slate-600 mt-2">{t('madeWithSimplicity')}</p>
-              </div>
-            </div>
-          ) : activeSection === null ? (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              {/* USER WELCOME DASHBOARD */}
-              <div className="p-5 sm:p-6 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-indigo-950/10 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-5 shadow-lg shadow-slate-950/25">
-                <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row w-full sm:w-auto">
-                  <div className="w-16 h-16 rounded-full bg-slate-950 border-2 border-indigo-500/30 overflow-hidden flex items-center justify-center shrink-0">
-                    {user.avatarUrl === 'indexeddb:user_avatar' ? (
-                      <div className="w-full h-full bg-slate-800 animate-pulse" />
-                    ) : user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <User size={24} className="text-slate-400" />
-                    )}
-                  </div>
-                  <div>
-                    <h2 className="text-[17px] font-black text-slate-100 tracking-tight">
-                      {lang === 'id' ? `Halo, ${user.name || 'Pengguna'}!` : `Hello, ${user.name || 'User'}!`}
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {lang === 'id' ? 'Tampilan lengkap dengan kustomisasi visual & fitur ekstra.' : 'Complete interface with visual customization & extra features.'}
-                    </p>
-                  </div>
-                </div>
-                {streak > 0 && (
-                  <div className="px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-2 shrink-0 self-center sm:self-auto shadow-inner animate-pulse">
-                    <span className="text-base">🔥</span>
-                    <span className="text-xs font-black text-amber-400">{streak} {lang === 'id' ? 'Hari Beruntun' : 'Day Streak'}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* MODE SELECTOR (COMPLETE vs SIMPLE/LITE) */}
-              <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                      <Smartphone size={18} />
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-bold text-[15px] text-slate-200 truncate">{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
-                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur tambahan (Games, Wallpaper) agar lebih bersih & fokus.' : 'Hide extra features (Games, Wallpaper) for a cleaner & focused experience.'}</span>
-                    </div>
-                  </div>
-                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
-                    <button
-                      onClick={() => {
-                        setIsLiteMode(true);
-                        setToastMessage(lang === 'id' ? 'Mode Lite aktif! Tampilan sangat bersih & fokus.' : 'Lite Mode active! Super clean & focused interface.');
-                        setTimeout(() => setToastMessage(null), 3000);
-                      }}
-                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
-                        isLiteMode ? 'bg-emerald-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Lite Mode ⚡
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsLiteMode(false);
-                        setToastMessage(lang === 'id' ? 'Mode Pro aktif! Semua kustomisasi visual & hiburan terbuka.' : 'Pro Mode active! All visual customizations & leisure enabled.');
-                        setTimeout(() => setToastMessage(null), 3000);
-                      }}
-                      className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
-                        !isLiteMode ? 'bg-indigo-500 text-slate-950 shadow-md font-black' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Pro Mode 👑
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* QUICK REFRESH & DIAGNOSTIC CARD */}
-              <div className="p-5 sm:p-6 bg-slate-900/45 hover:bg-slate-900/70 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-5 shadow-lg shadow-slate-950/15 transition-all">
-                <div className="flex items-center gap-4 min-w-0 flex-1 text-center sm:text-left flex-col sm:flex-row">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.15)] shrink-0">
-                    <RefreshCw size={22} className="animate-spin duration-[8000ms]" />
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-extrabold text-[15px] text-slate-100 tracking-tight">
-                      {t('refreshApp')}
-                    </span>
-                    <span className="text-xs text-slate-400 leading-normal mt-1 max-w-md">
-                      {t('refreshAppDesc')}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={handleRefreshApp}
-                  className="w-full sm:w-auto px-5 py-3 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl active:scale-[0.97] transition-all cursor-pointer whitespace-nowrap shadow-lg shadow-indigo-500/15 shrink-0"
-                >
-                  {lang === 'id' ? 'Segarkan Noto' : 'Refresh Noto'}
-                </button>
-              </div>
-
-              {/* SETTINGS CATEGORIES GRID */}
-              <div className="space-y-3.5">
-                {[
-                  {
-                    id: 'appearance',
-                    title: lang === 'id' ? 'Profil & Tampilan' : 'Profile & Appearance',
-                    desc: lang === 'id' ? 'Atur foto profil, tema warna visual, wallpaper, dan bahasa.' : 'Manage profile photo, theme colors, wallpapers, and language.',
-                    icon: <Moon size={18} className="text-indigo-400 animate-pulse" />,
-                    accentColor: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
-                  },
-                  {
-                    id: 'notifications',
-                    title: lang === 'id' ? 'Pengingat & Notifikasi' : 'Reminders & Notifications',
-                    desc: lang === 'id' ? 'Aktifkan alarm pengingat harian dan kelola notifikasi sistem.' : 'Set up daily activity reminders and test system alert popups.',
-                    icon: <Bell size={18} className="text-orange-400" />,
-                    accentColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20'
-                  },
-                  {
-                    id: 'security',
-                    title: lang === 'id' ? 'Keamanan & Kunci PIN' : 'Security & PIN Lock',
-                    desc: lang === 'id' ? 'Lindungi catatan rahasia dan jurnal keuangan Anda dengan sandi PIN.' : 'Secure your private logs and financial transactions with a passcode.',
-                    icon: <Lock size={18} className="text-rose-400" />,
-                    accentColor: 'text-rose-400 bg-rose-500/10 border-rose-500/20'
-                  },
-                  {
-                    id: 'backup',
-                    title: lang === 'id' ? 'Pencadangan & Atur Ulang' : 'Backup & App Reset',
-                    desc: lang === 'id' ? 'Ekspor cadangan terenkripsi, impor data eksternal, atau hapus semua data.' : 'Export encrypted files, import data back, or hard reset database.',
-                    icon: <Download size={18} className="text-emerald-400" />,
-                    accentColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                  },
-                  {
-                    id: 'about',
-                    title: lang === 'id' ? 'Tentang Noto & Hiburan' : 'About Noto & Leisure',
-                    desc: lang === 'id' ? 'Mainkan mini games, pelajari catatan rilis, dan hubungi kami.' : 'Play embedded mini games, read the release notes, and get help.',
-                    icon: <Info size={18} className="text-sky-400" />,
-                    accentColor: 'text-sky-400 bg-sky-500/10 border-sky-500/20'
-                  }
-                ].map((category) => (
-                  <button
-                    key={category.id}
-                    onClick={() => setActiveSection(category.id as any)}
-                    className="group w-full p-4.5 bg-slate-900/40 hover:bg-slate-900/85 border border-slate-800/60 hover:border-indigo-500/30 rounded-3xl backdrop-blur-xl transition-all duration-350 text-left flex items-center justify-between gap-4 cursor-pointer hover:translate-x-1.5 active:scale-[0.99] shadow-md shadow-slate-950/10"
-                  >
-                    <div className="flex items-center gap-4 min-w-0 flex-1">
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${category.accentColor} shadow-sm`}>
-                        {category.icon}
-                      </div>
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">
-                          {category.title}
-                        </span>
-                        <span className="text-[11px] text-slate-400 mt-1 leading-normal">
-                          {category.desc}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-300 ml-1" />
-                  </button>
-                ))}
-              </div>
-
-              {/* BRAND FOOTER (only shown on simplified main screen) */}
-              <div className="pt-8 text-center opacity-60 hover:opacity-100 transition-opacity">
-                <p className="text-xs font-black tracking-[0.3em] text-slate-500 uppercase">NOTO</p>
-                <p className="text-[10px] font-medium text-slate-600 mt-2">{t('madeWithSimplicity')}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-              {/* BACK TO MAIN MENU BUTTON */}
-              <button
-                onClick={() => setActiveSection(null)}
-                className="group flex items-center gap-2.5 px-4.5 py-2.5 bg-slate-900 hover:bg-slate-850 text-indigo-400 border border-slate-800 rounded-2xl font-bold text-xs cursor-pointer transition-all active:scale-95 shadow-md shadow-slate-950/20"
-              >
-                <ChevronLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
-                <span>{lang === 'id' ? 'Kembali ke Menu Utama' : 'Back to Settings'}</span>
-              </button>
-
-              {/* AKUN & TAMPILAN */}
-              {activeSection === 'appearance' && (
-                <section>
-            <h3 className="text-[11px] font-bold text-slate-400/80 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2.5">
-              <Smartphone size={14} className="text-indigo-400" /> {t('appearance')}
-            </h3>
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-3xl shadow-lg shadow-slate-950/20 flex flex-col overflow-hidden divide-y divide-slate-800/30">
-              
-              {/* Premium Unified User Profile Block */}
-              <div className="p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-6 bg-slate-950/20">
-                <div className="relative group/avatar">
-                  <div className="w-24 h-24 rounded-full bg-slate-900/95 border-2 border-indigo-500/30 flex items-center justify-center shadow-lg overflow-hidden transition-all duration-300 group-hover/avatar:border-indigo-500/50">
-                    {user.avatarUrl === 'indexeddb:user_avatar' ? (
-                      <div className="w-full h-full bg-slate-800 animate-pulse"></div>
-                    ) : user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <User size={36} className="text-slate-400/80" />
-                    )}
-                  </div>
-                  <label className="absolute bottom-0 right-0 w-8 h-8 bg-indigo-600 hover:bg-indigo-500 border-2 border-slate-900 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-90 shadow-md">
-                    <Upload size={14} className="text-white" />
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          const dataUrl = event.target?.result as string;
-                          updateUser({ ...user, avatarUrl: dataUrl });
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                  </label>
-                </div>
-                <div className="flex-1 flex flex-col items-center sm:items-start text-center sm:text-left w-full min-w-0">
-                  <span className="text-[10px] font-black text-slate-400/90 uppercase tracking-widest mb-1.5">{t('nickname')}</span>
-                  <input 
-                    type="text" 
-                    value={user.name}
-                    onChange={(e) => updateUser({ ...user, name: e.target.value })}
-                    placeholder={t('enterNicknamePlaceholder')}
-                    className="bg-slate-950/50 border border-slate-800 rounded-2xl px-4 py-2.5 text-indigo-400 font-extrabold text-[15px] outline-none w-full sm:max-w-xs focus:border-indigo-500/50 focus:bg-slate-950/80 transition-all text-center sm:text-left placeholder-slate-600 shadow-inner"
-                    maxLength={20}
-                  />
-                </div>
-                {user.avatarUrl && user.avatarUrl !== 'indexeddb:user_avatar' && (
-                  <button 
-                    onClick={() => updateUser({ ...user, avatarUrl: '' })}
-                    className="py-2 px-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl font-bold text-xs transition-all active:scale-[0.98] self-center shrink-0 cursor-pointer"
-                  >
-                    {lang === 'id' ? 'Hapus Foto' : 'Remove Photo'}
-                  </button>
-                )}
-              </div>
-
-              {/* Theme Selector (Premium visual cards grid instead of ugly dropdown) */}
-              <div className="p-5 sm:p-6 flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)]">
-                    <Moon size={18} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[15px] text-slate-200">{t('appThemeLabel')}</span>
-                    <span className="text-xs text-slate-400 leading-normal">{lang === 'id' ? 'Ubah tampilan warna visual Noto' : 'Customize Noto\'s visual color mode'}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 mt-2">
-                  {[
-                    { id: 'dark', name: t('themeDark'), colorClass: 'bg-indigo-500' },
-                    { id: 'light', name: t('themeLight'), colorClass: 'bg-amber-400' },
-                    { id: 'pink', name: t('themePink'), colorClass: 'bg-pink-400' },
-                    { id: 'cool', name: t('themeCool'), colorClass: 'bg-cyan-400' },
-                    { id: 'cute', name: t('themeCute'), colorClass: 'bg-purple-400' },
-                    { id: 'wallpaper', name: t('themeWallpaper'), colorClass: 'bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500' },
-                  ].filter((theme) => !isLiteMode || ['dark', 'light'].includes(theme.id)).map((theme) => {
-                    const isActive = appTheme === theme.id;
-                    return (
-                      <button
-                        key={theme.id}
-                        onClick={() => setAppTheme(theme.id as any)}
-                        className={`group relative flex flex-col items-start p-3.5 rounded-2xl border transition-all duration-200 text-left cursor-pointer active:scale-95 ${
-                          isActive 
-                            ? 'border-indigo-500 bg-indigo-500/10 shadow-[0_0_15px_rgba(99,102,241,0.1)]' 
-                            : 'border-slate-800 bg-slate-950/20 hover:border-slate-700 hover:bg-slate-900/30'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full mb-3">
-                          <div className={`w-3.5 h-3.5 rounded-full ${theme.colorClass} shadow-sm border border-white/10 shrink-0`} />
-                          {isActive && (
-                            <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center text-slate-950 text-[10px] font-black shrink-0">
-                              ✓
-                            </div>
-                          )}
-                        </div>
-                        <span className={`font-bold text-xs ${isActive ? 'text-indigo-400' : 'text-slate-300 group-hover:text-slate-100'}`}>
-                          {theme.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {appTheme === 'wallpaper' && (
-                  <div className="mt-2 p-4 flex flex-col gap-3 bg-slate-950/30 border border-slate-800 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-200">
-                    <p className="text-xs text-slate-400 leading-normal">
-                      {t('uploadWallpaperDesc')}
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <label className="flex-1 py-2.5 px-4 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl font-bold text-xs text-center cursor-pointer transition-all active:scale-[0.98]">
-                        {t('uploadWallpaper')}
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={handleWallpaperUpload} 
-                          className="hidden" 
-                        />
-                      </label>
-                      {localCustomWallpaper && (
-                        <button 
-                          onClick={() => {
-                            deleteLargeItem('noto_custom_wallpaper')
-                              .then(() => {
-                                setLocalCustomWallpaper(null);
-                                window.dispatchEvent(new Event('noto_wallpaper_changed'));
-                                setToastMessage(lang === 'id' ? 'Wallpaper kustom dihapus.' : 'Custom wallpaper removed.');
-                                setTimeout(() => setToastMessage(null), 3000);
-                              });
-                          }}
-                          className="py-2.5 px-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl font-bold text-xs transition-all active:scale-[0.98] cursor-pointer"
-                        >
-                          {t('removeWallpaper')}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Banner Wallpaper */}
-              <div className="flex flex-col p-5 sm:p-6 bg-slate-950/10">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(14,165,233,0.06)] shrink-0">
-                      <ImageIcon size={18} />
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-bold text-[15px] text-slate-200 truncate">{t('bannerWallpaperLabel')}</span>
-                      <span className="text-xs text-slate-400 leading-normal mt-0.5 whitespace-normal break-words">
-                        {t('uploadBannerWallpaperDesc')}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2.5 sm:self-center shrink-0 w-full sm:w-auto">
-                    <label className="py-2.5 px-4 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 rounded-xl font-bold text-xs cursor-pointer transition-colors active:scale-95 text-center flex-1 sm:flex-none">
-                      {lang === 'id' ? 'Pilih Gambar' : 'Choose Image'}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        className="hidden" 
-                        onChange={handleBannerWallpaperUpload} 
-                      />
-                    </label>
-                    {localBannerWallpaper && (
-                      <button 
-                        onClick={() => {
-                          deleteLargeItem('noto_banner_wallpaper')
-                            .then(() => {
-                              setLocalBannerWallpaper(null);
-                              window.dispatchEvent(new Event('noto_banner_wallpaper_changed'));
-                              setToastMessage(lang === 'id' ? 'Wallpaper kotak utama dihapus.' : 'Main box wallpaper removed.');
-                              setTimeout(() => setToastMessage(null), 3000);
-                            });
-                        }}
-                        className="py-2.5 px-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl font-bold text-xs transition-colors active:scale-95 cursor-pointer flex-1 sm:flex-none"
-                      >
-                        {lang === 'id' ? 'Hapus' : 'Delete'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Language Selector (Premium Segmented pills instead of select dropdown) */}
-              <div className="p-5 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(14,165,233,0.06)] shrink-0">
-                      <Globe size={18} />
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-bold text-[15px] text-slate-200 truncate">{t('lang')}</span>
-                      <span className="text-xs text-slate-400 leading-normal mt-0.5 truncate">{lang === 'id' ? 'Bahasa tampilan aplikasi' : 'App display language'}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
-                    <button
-                      onClick={() => setLang('id')}
-                      className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer text-center ${
-                        lang === 'id'
-                          ? 'bg-indigo-500 text-slate-950 shadow-md font-black'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Indonesia
-                    </button>
-                    <button
-                      onClick={() => setLang('en')}
-                      className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer text-center ${
-                        lang === 'en'
-                          ? 'bg-indigo-500 text-slate-950 shadow-md font-black'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      English
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Display Mode Toggle */}
-              <div className="p-5 sm:p-6 border-t border-slate-800/80">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.06)] shrink-0">
-                      <Smartphone size={18} />
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="font-bold text-[15px] text-slate-200 truncate">{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
-                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur hiburan tambahan (Games, Tema Kustom, Wallpaper) agar lebih bersih & fokus.' : 'Hide extra entertainment features (Games, Custom Themes, Wallpaper) for a cleaner & focused experience.'}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex bg-slate-950/60 p-1 border border-slate-800 rounded-2xl shrink-0 w-full sm:w-auto">
-                    <button
-                      onClick={() => setIsLiteMode(true)}
-                      className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer text-center ${
-                        isLiteMode
-                          ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {lang === 'id' ? 'Simpel ⚡' : 'Simple ⚡'}
-                    </button>
-                    <button
-                      onClick={() => setIsLiteMode(false)}
-                      className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer text-center ${
-                        !isLiteMode
-                          ? 'bg-indigo-500 text-slate-950 shadow-md font-black'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {lang === 'id' ? 'Lengkap 🚀' : 'Complete 🚀'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </section>
-          )}
-
-          {/* NOTIFIKASI & HABIT */}
-          {activeSection === 'notifications' && (
-          <section>
-            <h3 className="text-[11px] font-bold text-slate-400/80 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2.5">
-              <Bell size={14} className="text-orange-400" /> {t('notifications')}
-            </h3>
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-3xl shadow-lg shadow-slate-950/20 flex flex-col overflow-hidden divide-y divide-slate-800/30">
-              
-              <div className="flex items-center justify-between p-5 sm:p-6">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-[0_0_12px_rgba(249,115,22,0.06)] transition-all shrink-0 ${reminderActive ? 'bg-orange-500/15 text-orange-400 border border-orange-500/30' : 'bg-slate-800/80 text-slate-400 border border-slate-750'}`}>
-                    <Bell size={18} />
-                  </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-bold text-[15px] text-slate-200 truncate">
-                      {t('appReminder')}
-                    </span>
-                    <span className="text-xs font-medium text-slate-400 mt-0.5 truncate">{reminderActive ? t('activeLabel') : t('inactiveLabel')}</span>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => {
-                    setReminderActive(!reminderActive);
-                    if (!reminderActive && typeof window !== 'undefined' && 'Notification' in window && window.Notification && window.Notification.permission !== 'granted' && window.Notification.permission !== 'denied') {
-                      if (typeof window.Notification.requestPermission === 'function') {
-                        window.Notification.requestPermission().catch(() => {});
-                      }
-                    }
-                  }} 
-                  className={`w-12 h-7 rounded-full flex items-center p-1 transition-all duration-300 shadow-inner shrink-0 ${reminderActive ? 'bg-orange-500' : 'bg-slate-700/50 border border-slate-600/20'}`}
-                >
-                  <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-300 shadow-md ${reminderActive ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
-              </div>
-
-              <div className={`flex items-center justify-between p-5 sm:p-6 transition-all duration-300 ${!reminderActive ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(217,119,6,0.06)] shrink-0">
-                    <Clock size={18} />
-                  </div>
-                  <span className="font-bold text-[15px] text-slate-200 truncate">{t('reminderTime')}</span>
-                </div>
-                <input 
-                  type="time" 
-                  value={reminderTime}
-                  onChange={(e) => setReminderTime(e.target.value)}
-                  disabled={!reminderActive}
-                  className="bg-slate-950/40 border border-slate-800 text-orange-400 font-bold px-4 py-2 rounded-xl text-[14px] outline-none hover:bg-slate-850 hover:border-slate-700/80 transition-all cursor-pointer shadow-inner shrink-0"
-                />
-              </div>
-
-              {/* Test Notification Row */}
-              <div className="p-5 sm:p-6 bg-slate-950/10 flex flex-col gap-2">
-                <button
-                  onClick={triggerTestNotif}
-                  className="w-full py-3 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 font-bold rounded-2xl text-xs border border-orange-500/20 hover:border-orange-500/30 transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
-                >
-                  <Bell size={14} className="animate-bounce" />
-                  {t('sendTestNotification')}
-                </button>
-                {testNotifMsg && (
-                  <p className="text-[11px] text-slate-400/80 leading-normal text-center px-3 py-2.5 mt-1 bg-slate-950/40 border border-slate-800/60 rounded-xl animate-in fade-in duration-200">
-                    {testNotifMsg}
-                  </p>
-                )}
-              </div>
-
-            </div>
-          </section>
-          )}
-
-          {/* DATA & CADANGAN */}
-          {activeSection === 'backup' && (
-          <section>
-            <h3 className="text-[11px] font-bold text-slate-400/80 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2.5">
-              <FileText size={14} className="text-emerald-400" /> {t('dataBackup')}
-            </h3>
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-3xl shadow-lg shadow-slate-950/20 flex flex-col overflow-hidden divide-y divide-slate-800/30">
-              
-              <button onClick={handleExportClick} className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 text-left active:scale-[0.995] cursor-pointer">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.06)] shrink-0">
-                    <Download size={18} />
-                  </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-bold text-[15px] text-slate-200 group-hover:text-indigo-400 transition-colors truncate">{t('backupExport')}</span>
-                    <span className="text-[11px] font-medium text-slate-400/85 mt-0.5 leading-normal whitespace-normal break-words">{t('backupExportDesc')}</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-200 ml-3" />
-              </button>
-
-              <button onClick={handleImportClick} className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 text-left active:scale-[0.995] cursor-pointer">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(14,165,233,0.06)] shrink-0">
-                    <Upload size={18} />
-                  </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-bold text-[15px] text-slate-200 group-hover:text-indigo-400 transition-colors truncate">{t('restoreImport')}</span>
-                    <span className="text-[11px] font-medium text-slate-400/85 mt-0.5 leading-normal whitespace-normal break-words">{t('restoreImportDesc')}</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-200 ml-3" />
-              </button>
-
-            </div>
-
-            {renderAutoBackupSettings()}
-          </section>
-          )}
-
-          {/* PRIVASI & KEAMANAN */}
-          {activeSection === 'security' && (
-          <section>
-            <h3 className="text-[11px] font-bold text-slate-400/80 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2.5">
-              <Lock size={14} className="text-rose-400" /> {t('securityAdvanced')}
-            </h3>
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-3xl shadow-lg shadow-slate-950/20 flex flex-col overflow-hidden divide-y divide-slate-800/30">
-              
-              <div className="flex items-center justify-between p-5 sm:p-6">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-[0_0_12px_rgba(244,63,94,0.06)] transition-all shrink-0 ${appPin ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : 'bg-slate-800/80 text-slate-400 border border-slate-750'}`}>
-                    <Lock size={18} />
-                  </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-bold text-[15px] text-slate-200 truncate">{t('pinLock')}</span>
-                    <span className="text-[11px] font-medium text-slate-400/85 mt-0.5 leading-normal whitespace-normal break-words">{t('pinLockDesc')}</span>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => {
-                    if (appPin) {
-                      setPinInput('');
-                      setPinError(false);
-                      setPinModalMode('remove');
-                    } else {
-                      setPinInput('');
-                      setPinError(false);
-                      setPinModalMode('create');
-                    }
-                  }}
-                  className={`w-12 h-7 rounded-full flex items-center p-1 transition-all duration-300 shadow-inner shrink-0 ml-3 ${appPin ? 'bg-rose-500' : 'bg-slate-700/50 border border-slate-600/20'}`}
-                >
-                  <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-300 shadow-md ${appPin ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
-              </div>
-
-              {appPin && (
-                <button 
-                  onClick={() => {
-                    setPinInput('');
-                    setPinError(false);
-                    setPinModalMode('verify');
-                  }}
-                  className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 text-left active:scale-[0.995] cursor-pointer"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(244,63,94,0.06)] shrink-0">
-                      <Key size={18} />
-                    </div>
-                    <span className="font-bold text-[15px] text-slate-200 group-hover:text-indigo-400 transition-colors truncate">{t('changePin')}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-200 ml-3" />
-                </button>
               )}
 
-              <button 
-                onClick={() => setShowResetConfirm(true)}
-                className="group flex items-center justify-between p-5 sm:p-6 hover:bg-red-500/5 transition-all duration-200 text-left active:scale-[0.995] cursor-pointer"
-              >
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20 group-hover:bg-red-500 group-hover:text-white transition-colors shadow-inner shrink-0">
-                    <Trash2 size={18} />
+              {/* SECTION: DATABASE & BACKUP */}
+              {activeSection === 'backup' && (
+                <div className="space-y-6">
+                  {/* Database Actions Cards */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                    <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{lang === 'id' ? 'Ekspor & Impor Database' : 'Database Export & Import'}</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button 
+                        onClick={handleExportClick}
+                        className="flex items-center gap-3.5 p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850 rounded-2xl transition-all text-left cursor-pointer active:scale-95 group"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                          <Download size={14} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-xs text-slate-200 leading-none group-hover:text-indigo-400 transition-colors">{t('backupExport')}</p>
+                          <p className="text-[10px] text-slate-500 mt-1.5 leading-none">{lang === 'id' ? 'Unduh file cadangan data' : 'Download data file'}</p>
+                        </div>
+                      </button>
+
+                      <button 
+                        onClick={handleImportClick}
+                        className="flex items-center gap-3.5 p-3.5 bg-slate-950/45 hover:bg-slate-950/85 border border-slate-850 rounded-2xl transition-all text-left cursor-pointer active:scale-95 group"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shrink-0">
+                          <Upload size={14} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-xs text-slate-200 leading-none group-hover:text-indigo-400 transition-colors">{t('restoreImport')}</p>
+                          <p className="text-[10px] text-slate-500 mt-1.5 leading-none">{lang === 'id' ? 'Unggah file data' : 'Upload data file'}</p>
+                        </div>
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-bold text-[15px] text-red-500 group-hover:text-red-400 transition-colors truncate">{t('reset')}</span>
-                    <span className="text-[11px] font-medium text-slate-400/85 mt-0.5 leading-normal whitespace-normal break-words">{t('resetConfirm')}</span>
+
+                  {/* Auto-backup trigger settings */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl">
+                    {renderAutoBackupSettings()}
+                  </div>
+
+                  {/* DANGER ZONE (Directly inside Backup, as requested!) */}
+                  <div className="p-5 sm:p-6 bg-rose-950/15 border border-rose-900/25 rounded-3xl space-y-4">
+                    <span className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                      <AlertTriangle size={12} /> {lang === 'id' ? 'Zona Bahaya' : 'Danger Zone'}
+                    </span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-rose-500/5 border border-rose-500/15 rounded-2xl">
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="font-bold text-[13px] text-rose-400">{lang === 'id' ? 'Hapus Semua Data' : 'Hard Reset All Data'}</span>
+                        <span className="text-[10px] text-slate-400 leading-normal mt-1">{lang === 'id' ? 'Menghapus seluruh database dan catatan harian secara permanen.' : 'Permanently wipe out all records.'}</span>
+                      </div>
+                      <button
+                        onClick={() => setShowResetConfirm(true)}
+                        className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-slate-950 rounded-xl text-[11px] font-black uppercase tracking-wider cursor-pointer transition-colors text-center shrink-0"
+                      >
+                        {lang === 'id' ? 'Reset' : 'Reset'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </button>
+              )}
 
+              {/* SECTION: ABOUT & DIAGNOSTICS */}
+              {activeSection === 'about' && (
+                <div className="space-y-6">
+                  {/* System Care */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-[14px] text-slate-200">{lang === 'id' ? 'Perawatan Sistem' : 'System Care'}</span>
+                      <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Segarkan cache aplikasi jika terjadi kesalahan layar.' : 'Refresh app storage cache if glitches occur.'}</span>
+                    </div>
+                    <button
+                      onClick={handleRefreshApp}
+                      className="px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-500/10 shrink-0"
+                    >
+                      {lang === 'id' ? 'Segarkan Noto' : 'Refresh Noto'}
+                    </button>
+                  </div>
+
+                  {/* Notification Test */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[14px] text-slate-200">{lang === 'id' ? 'Uji Coba Notifikasi' : 'Notification Test Tool'}</span>
+                        <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Menguji pengingat sistem untuk memastikan alarm bekerja.' : 'Verify system alerts permission is operational.'}</span>
+                      </div>
+                      <button
+                        onClick={triggerTestNotif}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-indigo-400 font-bold text-xs uppercase rounded-xl transition-all cursor-pointer shrink-0 border border-indigo-500/10"
+                      >
+                        {lang === 'id' ? 'Kirim Tes' : 'Trigger Test'}
+                      </button>
+                    </div>
+
+                    {testNotifMsg && (
+                      <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 animate-in fade-in duration-200">
+                        <p className="text-[10px] text-slate-300 font-semibold leading-relaxed">{testNotifMsg}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Document Links */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-3">
+                    <button 
+                      onClick={() => setShowPrivacyPolicy(true)}
+                      className="w-full flex items-center justify-between p-3 bg-slate-950/40 hover:bg-slate-950/80 rounded-2xl border border-slate-850 transition-all text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-500/5 text-indigo-400 border border-indigo-500/10 flex items-center justify-center">
+                          <HelpCircle size={14} />
+                        </div>
+                        <span className="font-bold text-xs text-slate-200">{lang === 'id' ? 'Kebijakan Privasi' : 'Privacy Policy'}</span>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-500" />
+                    </button>
+
+                    <button 
+                      onClick={() => setShowUpdateNotes(true)}
+                      className="w-full flex items-center justify-between p-3 bg-slate-950/40 hover:bg-slate-950/80 rounded-2xl border border-slate-850 transition-all text-left cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-500/5 text-indigo-400 border border-indigo-500/10 flex items-center justify-center">
+                          <Info size={14} />
+                        </div>
+                        <span className="font-bold text-xs text-slate-200">{lang === 'id' ? 'Tentang Aplikasi Noto' : 'About Noto Application'}</span>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-500" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          </section>
           )}
 
-          {/* HIBURAN */}
-          {activeSection === 'about' && !isLiteMode && (
-          <section>
-            <h3 className="text-[11px] font-bold text-slate-400/80 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2.5">
-              <Gamepad2 size={14} className="text-purple-400" /> {t('entertainment')}
+        </div>
+      </div>
+
+      {/* POPUP MODAL: SECURITY PIN ENTRY / VERIFY / CHANGE / REMOVE */}
+      {pinModalMode && (
+        <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className={`bg-slate-900 border border-slate-800/80 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl relative ${pinError ? 'animate-pulse border-red-500/50' : ''}`}>
+            <h3 className="text-xl font-bold text-slate-50 mb-1.5 text-center">
+              {pinModalMode === 'create' && t('createPin')}
+              {(pinModalMode === 'verify' || pinModalMode === 'remove') && t('verifyPin')}
+              {pinModalMode === 'change' && t('changePin')}
             </h3>
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-3xl shadow-lg shadow-slate-950/20 flex flex-col overflow-hidden divide-y divide-slate-800/30">
-              <button 
-                onClick={() => onNavigate && onNavigate('games-hub')}
-                className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 w-full text-left active:scale-[0.995] cursor-pointer"
-              >
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shadow-[0_0_12px_rgba(168,85,247,0.06)] shrink-0">
-                    <Gamepad2 size={18} />
-                  </div>
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-bold text-[15px] text-slate-200 group-hover:text-indigo-400 transition-colors truncate">Mini Games</span>
-                    <span className="text-[11px] font-medium text-slate-400/85 mt-0.5 leading-normal whitespace-normal break-words">{t('entertainmentDesc')}</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-200 ml-3" />
-              </button>
-            </div>
-          </section>
-          )}
-          
-          {/* TENTANG APLIKASI */}
-          {activeSection === 'about' && (
-          <section className="pb-4">
-            <h3 className="text-[11px] font-bold text-slate-400/80 uppercase tracking-[0.2em] mb-3 ml-2 flex items-center gap-2.5">
-              <Info size={14} className="text-sky-400" /> {t('aboutApp')}
-            </h3>
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/80 rounded-3xl shadow-lg shadow-slate-950/20 flex flex-col overflow-hidden divide-y divide-slate-800/30">
-              
-              <div className="flex items-center justify-between p-5 sm:p-6">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-900/60 text-slate-300 border border-slate-800 flex items-center justify-center shadow-inner shrink-0">
-                    <Smartphone size={18} />
-                  </div>
-                  <span className="font-bold text-[15px] text-slate-200 truncate">{t('appVersion')}</span>
-                </div>
-                <span className="font-black text-[11px] text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full text-center shrink-0 ml-3">v3.0</span>
-              </div>
+            <p className="text-xs text-slate-400 mb-5 text-center leading-normal">
+              {t('enter4Digits')}
+            </p>
 
-              <button onClick={() => setShowUpdateNotes(true)} className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 w-full text-left active:scale-[0.995] cursor-pointer">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-900/60 text-slate-300 border border-slate-800 flex items-center justify-center shadow-inner shrink-0">
-                    <FileText size={18} />
-                  </div>
-                  <span className="font-bold text-[15px] text-slate-200 group-hover:text-indigo-400 transition-colors truncate">{t('updateNotes')}</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-200 ml-3" />
-              </button>
-
-              <button onClick={() => setShowPrivacyPolicy(true)} className="group flex items-center justify-between p-5 sm:p-6 hover:bg-slate-800/20 transition-all duration-200 w-full text-left active:scale-[0.995] cursor-pointer">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-900/60 text-slate-300 border border-slate-800 flex items-center justify-center shadow-inner shrink-0">
-                    <Shield size={18} />
-                  </div>
-                  <span className="font-bold text-[15px] text-slate-200 group-hover:text-indigo-400 transition-colors truncate">{t('privacyPolicy')}</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all duration-200 ml-3" />
-              </button>
-
-              <div className="flex flex-col p-5 sm:p-6 bg-slate-950/15">
-                <p className="text-xs text-slate-400/80 font-medium leading-relaxed mb-4 text-center">
-                  {lang === 'id' 
-                    ? 'Saran dan kritik Anda sangat berarti bagi kami. Silakan hubungi Instagram Noto.' 
-                    : 'Your suggestions and feedback are very meaningful to us. Please contact Noto on Instagram.'}
-                </p>
-                <button 
-                  onClick={() => window.open('https://instagram.com/noto.grow', '_blank')} 
-                  className="flex items-center justify-center gap-2 p-3.5 bg-indigo-500/10 text-indigo-400 rounded-2xl hover:bg-indigo-500 hover:text-white transition-all w-full border border-indigo-500/20 font-bold text-[14px] shadow-sm active:scale-95 cursor-pointer"
-                >
-                  <MessageCircle size={16} />
-                  <span>@noto.grow</span>
-                </button>
-              </div>
-
-            </div>
-            
-            <div className="mt-8 mb-4 mx-2 p-5 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 backdrop-blur-sm hidden">
-              <p className="text-xs text-slate-400/80 font-medium text-center leading-relaxed">
-                {lang === 'id'
-                  ? 'Noto saat ini masih dalam tahap pengembangan dan belum ada versi Aplikasi.'
-                  : 'Noto is currently still in development and does not have an App version yet.'}
-              </p>
-            </div>
-
-            <div className="mt-12 text-center pb-8 opacity-60 hover:opacity-100 transition-opacity">
-              <p className="text-sm font-black tracking-[0.3em] uppercase text-slate-400">NOTO</p>
-              <p className="text-[11px] font-medium text-slate-600 mt-2">{t('madeWithSimplicity')}</p>
-            </div>
-          </section>
-          )}
-
-            </div>
-          )}
-
-        {pinModalMode && (
-          <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className={`bg-slate-900 border border-slate-800/80 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl relative ${pinError ? 'animate-pulse border-red-500/50' : ''}`}>
-              <h3 className="text-xl font-bold text-slate-50 mb-1.5 text-center">
-                {pinModalMode === 'create' && t('createPin')}
-                {(pinModalMode === 'verify' || pinModalMode === 'remove') && t('verifyPin')}
-                {pinModalMode === 'change' && t('changePin')}
-              </h3>
-              <p className="text-xs text-slate-400 mb-5 text-center leading-normal">
-                {t('enter4Digits')}
-              </p>
+            {/* PREMIUM SEGMENTED 4-BOX PIN INPUT (Eliminates the 2-digit bug!) */}
+            <div className="relative w-full max-w-[240px] mx-auto mb-5">
+              {/* Invisible real text field overlay */}
               <input
-                type="text"
+                type="password"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 autoComplete="off"
-                style={{ WebkitTextSecurity: 'disc' }}
                 maxLength={4}
                 autoFocus
                 value={pinInput}
@@ -1936,873 +1429,575 @@ export default function SettingsScreen({
                     handlePinSubmit();
                   }
                 }}
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3.5 text-slate-50 text-xl tracking-[1.2em] font-mono text-center mb-5 outline-none focus:border-indigo-500/60 focus:bg-slate-950/90 transition-all shadow-inner"
-                placeholder="••••"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
-              {(pinModalMode === 'create' || pinModalMode === 'change') && (
-                <div className="space-y-3 mb-6">
-                  <input
-                    type="text"
-                    value={pinQuestionInput}
-                    onChange={e => setPinQuestionInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handlePinSubmit();
-                      }
-                    }}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500/60 transition-all placeholder-slate-600"
-                    placeholder={t('securityQuestionPlaceholder')}
-                  />
-                  <input
-                    type="text"
-                    value={pinAnswerInput}
-                    onChange={e => setPinAnswerInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handlePinSubmit();
-                      }
-                    }}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500/60 transition-all placeholder-slate-600"
-                    placeholder={t('securityAnswerPlaceholder')}
-                  />
-                </div>
-              )}
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => {
-                    setPinModalMode(null);
-                    setPinInput('');
-                    setPinQuestionInput('');
-                    setPinAnswerInput('');
-                    setPinError(false);
-                  }}
-                  className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-200 bg-slate-950/40 border border-slate-800/60 hover:bg-slate-800/40 active:scale-[0.98] transition-all cursor-pointer"
-                >
-                  {t('cancel')}
-                </button>
-                <button 
-                  disabled={pinInput.length !== 4 || ((pinModalMode === 'create' || pinModalMode === 'change') && (!pinQuestionInput.trim() || !pinAnswerInput.trim()))}
-                  onClick={handlePinSubmit}
-                  className={`flex-1 py-3 rounded-2xl text-slate-950 text-sm font-extrabold transition-all active:scale-[0.98] cursor-pointer ${pinInput.length === 4 && (!['create', 'change'].includes(pinModalMode) || (pinQuestionInput.trim() && pinAnswerInput.trim())) ? 'bg-indigo-400 hover:bg-indigo-300 shadow-md shadow-indigo-500/20' : 'bg-slate-850 text-slate-500 cursor-not-allowed opacity-50'}`}
-                >
-                  {t('save')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showResetConfirm && (
-          <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-4 z-50">
-            <div className="bg-slate-900 border border-slate-800 p-4 md:p-4 rounded-3xl w-full max-w-sm">
-              <h3 className="text-xl font-bold text-red-400 mb-2">{t('reset')}</h3>
-              <p className="text-sm text-slate-400 mb-6">
-                {t('resetConfirmDescription')}
-              </p>
-              <div className="flex justify-end gap-3">
-                <button 
-                  onClick={() => setShowResetConfirm(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-50 bg-slate-800 transition-colors"
-                >
-                  {t('cancel')}
-                </button>
-                <button 
-                  onClick={async () => {
-                    setIsResetting(true);
-                    setShowResetConfirm(false);
-                    await clearAllData();
-                    setTimeout(() => {
-                      window.location.reload();
-                    }, 800);
-                  }}
-                  className="px-4 py-2 rounded-xl text-white text-sm font-bold bg-red-500 hover:bg-red-600 transition-colors"
-                >
-                  {t('yesReset')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {backupModalMode && (
-          <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-6 z-50 overflow-y-auto">
-            <div className={`bg-slate-900 border border-slate-800/80 p-5 md:p-6 rounded-[2rem] w-full max-w-lg shadow-2xl relative ${backupError ? 'animate-pulse border-red-500/50' : ''} max-h-[90vh] flex flex-col`}>
-              
-              <div className="flex-none mb-4">
-                <h3 className="text-xl font-extrabold text-slate-50 tracking-tight flex items-center gap-2">
-                  <Download className="w-5 h-5 text-indigo-400" />
-                  {backupModalMode === 'export' 
-                    ? (lang === 'id' ? 'Ekspor Cadangan Lengkap' : 'Export Full Backup')
-                    : (lang === 'id' ? 'Impor File Cadangan' : 'Import Backup File')}
-                </h3>
-                <p className="text-xs text-slate-400 mt-1.5 leading-normal">
-                  {backupModalMode === 'export'
-                    ? (lang === 'id' 
-                      ? 'Pilih data yang ingin Anda cadangkan. Opsi default akan mencadangkan seluruh aplikasi (kembali seperti awal pasca-impor).'
-                      : 'Choose data to backup. Default options will back up the entire application.')
-                    : (lang === 'id' 
-                      ? 'Masukkan kata sandi jika file cadangan ini dienkripsi sebelumnya.'
-                      : 'Enter password if this backup file was previously encrypted.')}
-                </p>
-              </div>
-
-              {backupModalMode === 'export' ? (
-                <div className="flex-1 overflow-y-auto pr-1 space-y-4 mb-5 no-scrollbar">
-                  
-                  {/* IMPORTANT DATA GROUP */}
-                  <div>
-                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 px-1">
-                      {lang === 'id' ? 'Data Sangat Penting (Rekomendasi)' : 'Highly Important Data (Recommended)'}
-                    </h4>
-                    <div className="space-y-2">
-                      {[
-                        { 
-                          key: 'notes', 
-                          title: lang === 'id' ? 'Catatan & Jurnal pribadi' : 'Notes & Journals',
-                          desc: lang === 'id' ? 'Semua teks, lampiran, dan jurnal harian Anda.' : 'All your text entries, attachments, and daily journals.',
-                          icon: '📝'
-                        },
-                        { 
-                          key: 'tasks', 
-                          title: lang === 'id' ? 'Daftar Tugas & Kebiasaan' : 'Tasks & Habits',
-                          desc: lang === 'id' ? 'Target harian, status tugas, dan streak disiplin.' : 'Daily targets, task completion states, and discipline streaks.',
-                          icon: '✅'
-                        },
-                        { 
-                          key: 'transactions', 
-                          title: lang === 'id' ? 'Keuangan & Target Tabungan' : 'Finances & Savings Target',
-                          desc: lang === 'id' ? 'Seluruh laporan transaksi pemasukan/pengeluaran dan tabungan.' : 'All cashflow logs, savings targets, and balance.',
-                          icon: '💰'
-                        }
-                      ].map((item) => (
-                        <label 
-                          key={item.key}
-                          className="flex items-start gap-3 p-3 bg-slate-950/40 hover:bg-slate-950/80 border border-slate-800/80 rounded-2xl cursor-pointer transition-all active:scale-[0.995]"
-                        >
-                          <input 
-                            type="checkbox"
-                            checked={(exportOptions as any)[item.key]}
-                            onChange={(e) => setExportOptions(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                            className="w-4 h-4 mt-0.5 rounded text-indigo-500 bg-slate-900 border-slate-800 focus:ring-indigo-500 focus:ring-offset-slate-900 focus:ring-2"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs">{item.icon}</span>
-                              <span className="text-xs font-black text-slate-100">{item.title}</span>
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">{item.desc}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* OPTIONAL DATA GROUP */}
-                  <div>
-                    <h4 className="text-[10px] font-bold text-amber-400/90 uppercase tracking-widest mb-2 px-1">
-                      {lang === 'id' ? 'Data Pendukung / Opsional (Kurang Penting)' : 'Supporting / Optional Data (Less Important)'}
-                    </h4>
-                    <div className="space-y-2">
-                      {[
-                        { 
-                          key: 'moods', 
-                          title: lang === 'id' ? 'Riwayat Suasana Hati / Mood' : 'Mood Log History',
-                          desc: lang === 'id' ? 'Catatan pelacakan emosi dan kondisi mental harian.' : 'Emotion tracking history and mental state logs.',
-                          icon: '🎭'
-                        },
-                        { 
-                          key: 'userProfile', 
-                          title: lang === 'id' ? 'Profil Pengguna & Streak' : 'User Profile & Streak info',
-                          desc: lang === 'id' ? 'Nama panggilan, streak login, dan pengaturan onboard.' : 'User nickname, login streak data, and onboarding info.',
-                          icon: '👤'
-                        },
-                        { 
-                          key: 'settings', 
-                          title: lang === 'id' ? 'Pengaturan & PIN Kunci Keamanan' : 'App Settings & PIN Lock',
-                          desc: lang === 'id' ? 'Bahasa, jam pengingat harian, dan PIN masuk aplikasi.' : 'Language, daily reminder alarm, and app entry PIN passcode.',
-                          icon: '⚙️'
-                        },
-                        { 
-                          key: 'wallpaper', 
-                          title: lang === 'id' ? 'Wallpaper & Tema Kustom' : 'Custom Wallpapers & Theme',
-                          desc: lang === 'id' ? 'Gambar latar belakang utama dan tema warna yang Anda atur.' : 'Home background pictures and custom color themes.',
-                          icon: '🖼️'
-                        }
-                      ].map((item) => (
-                        <label 
-                          key={item.key}
-                          className="flex items-start gap-3 p-3 bg-slate-950/20 hover:bg-slate-950/55 border border-slate-800/50 rounded-2xl cursor-pointer transition-all active:scale-[0.995]"
-                        >
-                          <input 
-                            type="checkbox"
-                            checked={(exportOptions as any)[item.key]}
-                            onChange={(e) => setExportOptions(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                            className="w-4 h-4 mt-0.5 rounded text-indigo-500 bg-slate-900 border-slate-800 focus:ring-indigo-500 focus:ring-offset-slate-900 focus:ring-2"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs">{item.icon}</span>
-                              <span className="text-xs font-bold text-slate-200">{item.title}</span>
-                              <span className="bg-slate-800 border border-slate-700/60 text-slate-400 px-1 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ml-auto scale-90 shrink-0">
-                                {lang === 'id' ? 'Opsional' : 'Optional'}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">{item.desc}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* SECURITY PASSWORD IN ACCORDION / BOX */}
-                  <div className="p-3.5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
-                    <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest block mb-1.5">
-                      {lang === 'id' ? 'Kata Sandi Cadangan (Opsional)' : 'Backup Password (Optional)'}
-                    </span>
-                    <p className="text-[10px] text-slate-400 mb-2.5 leading-normal">
-                      {lang === 'id' 
-                        ? 'Kosongkan jika tidak ingin mengenkripsi file cadangan Anda.' 
-                        : 'Leave blank if you do not want to encrypt your backup file.'}
-                    </p>
-                    <input
-                      type="password"
-                      value={backupPassword}
-                      onChange={e => setBackupPassword(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-slate-50 text-xs text-center outline-none focus:border-indigo-500 transition-colors"
-                      placeholder={lang === 'id' ? 'Masukkan Kata Sandi' : 'Enter Password'}
-                    />
-                  </div>
-
-                </div>
-              ) : (
-                <div className="flex-1 space-y-4 mb-5">
-                  <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
-                    <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest block mb-2">
-                      {lang === 'id' ? 'Kata Sandi File Terenkripsi' : 'Encrypted File Password'}
-                    </span>
-                    <p className="text-xs text-slate-400 mb-3 leading-normal">
-                      {lang === 'id'
-                        ? 'Jika file cadangan dilindungi kata sandi, masukkan di bawah ini agar data dapat didekripsi.'
-                        : 'If the backup file was password-protected, enter it below to decrypt your data.'}
-                    </p>
-                    <input
-                      type="password"
-                      value={backupPassword}
-                      onChange={e => setBackupPassword(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          processImport();
-                        }
-                      }}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 text-center outline-none focus:border-indigo-500 transition-colors"
-                      placeholder={lang === 'id' ? 'Sandi File (kosongkan jika tidak ada)' : 'File Password (leave blank if none)'}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex-none flex gap-3 pt-3 border-t border-slate-800/40">
-                <button 
-                  onClick={() => {
-                    setBackupModalMode(null);
-                    setBackupPassword('');
-                    setBackupFileContent(null);
-                    setBackupError(false);
-                  }}
-                  className="flex-1 py-3.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-slate-200 bg-slate-950/40 border border-slate-800/60 hover:bg-slate-800/40 active:scale-[0.98] transition-all cursor-pointer text-center"
-                >
-                  {t('cancel')}
-                </button>
-                <button 
-                  onClick={backupModalMode === 'export' ? processExport : processImport}
-                  className="flex-1 py-3.5 rounded-2xl text-slate-950 text-xs font-black transition-all active:scale-[0.98] cursor-pointer text-center bg-indigo-400 hover:bg-indigo-300 shadow-lg shadow-indigo-500/20"
-                >
-                  {backupModalMode === 'export' 
-                    ? (lang === 'id' ? 'Ekspor Sekarang' : 'Export Now') 
-                    : t('importLabel')}
-                </button>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {toastMessage && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 shadow-2xl px-6 py-3 rounded-full text-slate-50 text-sm font-medium z-[100] animate-in slide-in-from-bottom-5">
-            {toastMessage}
-          </div>
-        )}
-
-        {/* Privacy Policy Modal */}
-        {showPrivacyPolicy && (
-          <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 border border-slate-700 shadow-2xl p-4 md:p-4 rounded-3xl w-full max-w-md max-h-[85vh] flex flex-col relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
-              
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                  <Shield size={20} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-50">{t('privacyPolicy')}</h3>
-              </div>
-
-              <div className="overflow-y-auto pr-3 flex-1 space-y-5 mb-6 custom-scrollbar text-sm text-slate-300 leading-relaxed">
-                <div>
-                  <h4 className="font-bold text-slate-50 text-lg mb-1">{t('privacyPolicy1')}</h4>
-                  <p className="text-slate-400">{t('privacyPolicy2')}</p>
-                </div>
-                
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4">
-                  <div>
-                    <h5 className="font-semibold text-emerald-400 mb-1 flex items-start gap-2">
-                      <Shield className="w-4 h-4 mt-0.5 shrink-0" />
-                      <span>{t('privacyPolicy3')}</span>
-                    </h5>
-                    <p className="pl-6 opacity-90 text-xs">{t('privacyPolicy4')}</p>
-                  </div>
-                  <div className="bg-slate-800/80 h-[1px] w-full"></div>
-                  <div>
-                    <h5 className="font-semibold text-emerald-400 mb-1 flex items-start gap-2">
-                      <Shield className="w-4 h-4 mt-0.5 shrink-0" />
-                      <span>{t('privacyPolicy5')}</span>
-                    </h5>
-                    <p className="pl-6 opacity-90 text-xs">{t('privacyPolicy6')}</p>
-                  </div>
-                  <div className="bg-slate-800/80 h-[1px] w-full"></div>
-                  <div>
-                    <h5 className="font-semibold text-emerald-400 mb-1 flex items-start gap-2">
-                      <Shield className="w-4 h-4 mt-0.5 shrink-0" />
-                      <span>{t('privacyPolicy7')}</span>
-                    </h5>
-                    <p className="pl-6 opacity-90 text-xs">{t('privacyPolicy8')}</p>
-                  </div>
-                </div>
-
-                <div className="px-2 py-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-indigo-200">
-                  <p className="font-medium text-center text-xs">{t('privacyPolicy9')}</p>
-                </div>
-                
-                <div className="mt-6 border-t border-slate-800 pt-5">
-                  <h4 className="font-bold text-slate-50 text-lg mb-1">{t('auditorGuide')}</h4>
-                  <p className="text-slate-400 mb-4">{t('auditorGuideDesc')}</p>
-                  
-                  <div className="space-y-3">
-                    <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-3">
-                      <h5 className="font-semibold text-sky-400 text-sm mb-1">{t('auditorStep1')}</h5>
-                      <p className="text-slate-400 text-xs">{t('auditorStep1Desc')}</p>
-                    </div>
-                    <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-3">
-                      <h5 className="font-semibold text-sky-400 text-sm mb-1">{t('auditorStep2')}</h5>
-                      <p className="text-slate-400 text-xs">{t('auditorStep2Desc')}</p>
-                    </div>
-                    <div className="bg-slate-900 border border-slate-700/50 rounded-xl p-3">
-                      <h5 className="font-semibold text-sky-400 text-sm mb-1">{t('auditorStep3')}</h5>
-                      <p className="text-slate-400 text-xs">{t('auditorStep3Desc')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 border-t border-slate-800 pt-5">
-                  <h4 className="font-bold text-slate-50 text-lg mb-3 flex items-center gap-2">
-                    <Shield size={16} className="text-emerald-400" />
-                    {t('auditThreatModelTitle')}
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="bg-slate-900 border border-slate-700/50 border-l-4 border-l-indigo-500 rounded-xl p-3">
-                      <p className="text-slate-300 text-xs leading-relaxed">{t('auditThreatModel1')}</p>
-                    </div>
-                    <div className="bg-slate-900 border border-slate-700/50 border-l-4 border-l-emerald-500 rounded-xl p-3">
-                      <p className="text-slate-300 text-xs leading-relaxed">{t('auditThreatModel2')}</p>
-                    </div>
-                    <div className="bg-slate-900 border border-slate-700/50 border-l-4 border-l-sky-500 rounded-xl p-3">
-                      <p className="text-slate-300 text-xs leading-relaxed">{t('auditThreatModel3')}</p>
-                    </div>
-                    {t('auditThreatModel4') && (
-                      <div className="bg-slate-900 border border-slate-700/50 border-l-4 border-l-amber-500 rounded-xl p-3">
-                        <p className="text-slate-300 text-xs leading-relaxed">{t('auditThreatModel4')}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-6 border-t border-slate-800 pt-5">
-                  <h4 className="font-bold text-slate-50 text-lg mb-3">{t('auditChecklistTitle')}</h4>
-                  <ul className="space-y-3">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">✅</span>
-                      <span className="text-slate-300 text-xs">{t('auditChecklist1')}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">✅</span>
-                      <span className="text-slate-300 text-xs">{t('auditChecklist2')}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">✅</span>
-                      <span className="text-slate-300 text-xs">{t('auditChecklist3')}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">✅</span>
-                      <span className="text-slate-300 text-xs">{t('auditChecklist4')}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">✅</span>
-                      <span className="text-slate-300 text-xs">{t('auditChecklist5')}</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-400 font-bold">✅</span>
-                      <span className="text-slate-300 text-xs">{t('auditChecklist6')}</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="mt-6 border-t border-slate-800 pt-5">
-                  <h4 className="font-bold text-slate-50 text-lg mb-3">{t('auditRisksTitle')}</h4>
-                  <ul className="space-y-3 list-disc pl-5 text-amber-500 text-xs">
-                    <li><span className="text-slate-300 leading-relaxed">{t('auditRisks1')}</span></li>
-                    <li><span className="text-slate-300 leading-relaxed">{t('auditRisks2')}</span></li>
-                  </ul>
-                </div>
-
-                <div className="mt-6 border-t border-slate-800 pt-5 pb-2">
-                  <h4 className="font-bold text-slate-50 text-lg mb-2">{t('auditRationaleTitle')}</h4>
-                  <div className="px-4 py-3 bg-slate-800/30 rounded-xl border border-slate-800 border-dashed">
-                    <p className="text-slate-400 text-xs italic leading-relaxed text-center">"{t('auditRationaleDesc')}"</p>
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowPrivacyPolicy(false)}
-                className="w-full py-3.5 rounded-xl text-slate-900 text-sm font-bold bg-emerald-400 hover:bg-emerald-300 transition-colors shadow-lg shadow-emerald-500/20"
-              >
-                {t('close')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Update Notes / About App Modal */}
-        {showUpdateNotes && (
-          <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-4 z-50">
-            <div className="bg-slate-900 border border-slate-800 p-4 md:p-4 rounded-3xl w-full max-w-sm max-h-[80vh] flex flex-col">
-              <h3 className="text-xl font-bold text-slate-50 mb-4">{t('aboutAppTitle')}</h3>
-              <div className="overflow-y-auto pr-2 flex-1 space-y-4 mb-6 custom-scrollbar text-sm text-slate-300">
-                <p><strong>Noto v3.0</strong></p>
-                <p>{t('aboutAppDesc')}</p>
-                
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 text-amber-200">
-                  <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-400 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-amber-400 mb-1">{t('aboutAppStorageWarningTitle')}</h4>
-                    <p className="text-[11px] md:text-xs leading-relaxed text-slate-300 whitespace-pre-line">{t('aboutAppStorageWarningDesc')}</p>
-                  </div>
-                </div>
-
-                <p><strong>{t('aboutAppWhatsNew')}</strong></p>
-                <ul className="space-y-4">
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('appUpdateTitle')}</strong> <span className="text-emerald-200">{t('appUpdateBody')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat11')}</strong> <span>{t('aboutAppFeat11Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat1')}</strong> <span>{t('aboutAppFeat1Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat2')}</strong> <span>{t('aboutAppFeat2Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat3')}</strong> <span>{t('aboutAppFeat3Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat4')}</strong> <span>{t('aboutAppFeat4Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat5')}</strong> <span>{t('aboutAppFeat5Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat6')}</strong> <span>{t('aboutAppFeat6Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat7')}</strong> <span>{t('aboutAppFeat7Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat8')}</strong> <span>{t('aboutAppFeat8Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat9')}</strong> <span>{t('aboutAppFeat9Desc')}</span></li>
-                  <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat10')}</strong> <span>{t('aboutAppFeat10Desc')}</span></li>
-                </ul>
-                
-                <div className="mt-8 pt-4 border-t border-slate-800 text-xs text-slate-400 text-center leading-relaxed">
-                  <p>{t('copyrightText')}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowUpdateNotes(false)}
-                className="w-full py-3 rounded-xl text-white text-sm font-bold bg-indigo-500 hover:bg-indigo-600 transition-colors"
-              >
-                {t('close')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* AUTO BACKUP PIN ENABLE VERIFICATION MODAL */}
-        {showAutoBackupEnableVerify && (
-          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-              
-              <div className="text-center mb-5">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3 shrink-0">
-                  <Key size={20} />
-                </div>
-                <h3 className="text-base font-extrabold text-slate-100 font-sans tracking-tight">
-                  {lang === 'id' ? 'Konfirmasi PIN Cadangan Otomatis' : 'Verify Auto-Backup PIN'}
-                </h3>
-                <p className="text-[11px] text-slate-400 leading-normal mt-1.5">
-                  {lang === 'id' 
-                    ? 'Masukkan PIN Cadangan Otomatis 4 digit Anda untuk melanjutkan.' 
-                    : 'Enter your 4-digit Auto-Backup PIN to proceed.'}
-                </p>
-              </div>
-
-              {/* Invisible focusable input */}
-              <div className="relative mb-6">
-                <input
-                  type="password"
-                  pattern="[0-9]*"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={autoBackupEnableVerifyPin}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setAutoBackupEnableVerifyPin(val);
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  autoFocus
-                />
-
-                {/* PIN circles */}
-                <div className="flex justify-center gap-3 relative z-0">
-                  {[0, 1, 2, 3].map((idx) => (
+              {/* Premium boxes */}
+              <div className="flex justify-between gap-3.5 pointer-events-none">
+                {[0, 1, 2, 3].map((index) => {
+                  const isFilled = index < pinInput.length;
+                  const isCurrent = index === pinInput.length;
+                  return (
                     <div 
-                      key={idx} 
-                      className={`w-10 h-12 rounded-xl border flex items-center justify-center font-black text-lg transition-all ${
-                        autoBackupEnableVerifyError 
-                          ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
-                          : autoBackupEnableVerifyPin.length > idx 
-                            ? 'border-indigo-500 bg-indigo-500/5 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)]' 
-                            : 'border-slate-800 bg-slate-950 text-slate-600'
+                      key={index}
+                      className={`w-12 h-14 rounded-2xl border-2 flex items-center justify-center text-3xl font-extrabold transition-all duration-150 ${
+                        isFilled 
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                          : isCurrent
+                            ? 'border-indigo-500/50 bg-slate-950/50 text-indigo-300'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-600'
                       }`}
                     >
-                      {autoBackupEnableVerifyPin.length > idx ? '●' : ''}
+                      {isFilled ? '•' : ''}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <span className="text-[8px] text-slate-500 block text-center mb-6">
-                {lang === 'id' ? 'Ketuk kotak untuk memunculkan keyboard dan ketik PIN Anda' : 'Tap boxes to show keyboard and type your PIN'}
-              </span>
-
-              {autoBackupEnableVerifyError && (
-                <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">
-                  {lang === 'id' ? '❌ PIN salah! Silakan coba lagi.' : '❌ Incorrect PIN! Please try again.'}
-                </p>
-              )}
-
-              <div className="flex gap-3">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setShowAutoBackupEnableVerify(false);
-                    setAutoBackupEnableVerifyPin('');
-                    setPendingAutoBackupFreq(null);
-                  }}
-                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-2xl text-xs font-bold text-slate-400 transition-all active:scale-[0.98] cursor-pointer"
-                >
-                  {lang === 'id' ? 'Batal' : 'Cancel'}
-                </button>
-                <button 
-                  type="button"
-                  onClick={handleAutoBackupVerifySubmit}
-                  disabled={autoBackupEnableVerifyPin.length !== 4}
-                  className={`flex-1 py-3 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98] shadow-lg ${
-                    autoBackupEnableVerifyPin.length === 4
-                      ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10 cursor-pointer'
-                      : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800/80 shadow-none'
-                  }`}
-                >
-                  {lang === 'id' ? 'Verifikasi' : 'Verify'}
-                </button>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* SETUP AUTO BACKUP PIN MODAL */}
-        {showAutoBackupPinSetup && (
-          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-              
-              <div className="text-center mb-5">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3 shrink-0">
-                  <Key size={20} />
-                </div>
-                <h3 className="text-base font-extrabold text-slate-100 font-sans tracking-tight">
-                  {autoBackupPinSetupStep === 1 
-                    ? (lang === 'id' ? 'Buat PIN Cadangan Otomatis' : 'Create Auto-Backup PIN')
-                    : (lang === 'id' ? 'Konfirmasi PIN Cadangan' : 'Confirm Auto-Backup PIN')}
-                </h3>
-                <p className="text-[11px] text-slate-400 leading-normal mt-1.5">
-                  {autoBackupPinSetupStep === 1 
-                    ? (lang === 'id' 
-                        ? 'Buat PIN 4 digit terpisah khusus untuk mengenkripsi file cadangan otomatis Anda.' 
-                        : 'Create a separate 4-digit PIN used specifically to encrypt your automatic backup files.')
-                    : (lang === 'id' 
-                        ? 'Masukkan kembali PIN yang baru saja Anda buat untuk konfirmasi.' 
-                        : 'Re-enter the PIN you just created to confirm.')}
-                </p>
-              </div>
-
-              {/* Invisible focusable input */}
-              <div className="relative mb-6">
+            {(pinModalMode === 'create' || pinModalMode === 'change') && (
+              <div className="space-y-3 mb-6">
                 <input
-                  type="password"
-                  pattern="[0-9]*"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    if (autoBackupPinSetupStep === 1) {
-                      setAutoBackupPinSetupPin(val);
-                    } else {
-                      setAutoBackupPinSetupConfirm(val);
-                    }
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  autoFocus
+                  type="text"
+                  value={pinQuestionInput}
+                  onChange={e => setPinQuestionInput(e.target.value)}
+                  className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500/60 transition-all placeholder-slate-600"
+                  placeholder={t('securityQuestionPlaceholder')}
                 />
-
-                {/* PIN circles */}
-                <div className="flex justify-center gap-3 relative z-0">
-                  {[0, 1, 2, 3].map((idx) => {
-                    const val = autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm;
-                    return (
-                      <div 
-                        key={idx} 
-                        className={`w-10 h-12 rounded-xl border flex items-center justify-center font-black text-lg transition-all ${
-                          autoBackupPinSetupError 
-                            ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
-                            : val.length > idx 
-                              ? 'border-indigo-500 bg-indigo-500/5 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)]' 
-                              : 'border-slate-800 bg-slate-950 text-slate-600'
-                        }`}
-                      >
-                        {val.length > idx ? '●' : ''}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <span className="text-[8px] text-slate-500 block text-center mb-6">
-                {lang === 'id' ? 'Ketuk kotak untuk memunculkan keyboard dan ketik PIN Anda' : 'Tap boxes to show keyboard and type your PIN'}
-              </span>
-
-              {autoBackupPinSetupError && (
-                <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">
-                  {lang === 'id' ? '❌ PIN konfirmasi tidak cocok! Silakan coba lagi.' : '❌ Confirmation PIN does not match! Please try again.'}
-                </p>
-              )}
-
-              <div className="flex gap-3">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    if (autoBackupPinSetupStep === 2) {
-                      setAutoBackupPinSetupStep(1);
-                      setAutoBackupPinSetupConfirm('');
-                    } else {
-                      setShowAutoBackupPinSetup(false);
-                      setAutoBackupPinSetupPin('');
-                      setAutoBackupPinSetupConfirm('');
-                      setPendingAutoBackupFreq(null);
-                    }
-                  }}
-                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-2xl text-xs font-bold text-slate-400 transition-all active:scale-[0.98] cursor-pointer"
-                >
-                  {autoBackupPinSetupStep === 2 
-                    ? (lang === 'id' ? 'Kembali' : 'Back')
-                    : (lang === 'id' ? 'Batal' : 'Cancel')}
-                </button>
-                <button 
-                  type="button"
-                  onClick={handleAutoBackupPinSetupSubmit}
-                  disabled={autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin.length !== 4 : autoBackupPinSetupConfirm.length !== 4}
-                  className={`flex-1 py-3 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98] shadow-lg ${
-                    (autoBackupPinSetupStep === 1 && autoBackupPinSetupPin.length === 4) || (autoBackupPinSetupStep === 2 && autoBackupPinSetupConfirm.length === 4)
-                      ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10 cursor-pointer'
-                      : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800/80 shadow-none'
-                  }`}
-                >
-                  {autoBackupPinSetupStep === 1 
-                    ? (lang === 'id' ? 'Lanjut' : 'Next')
-                    : (lang === 'id' ? 'Simpan' : 'Save')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CHANGE AUTO BACKUP PIN MODAL */}
-        {showAutoBackupPinChange && (
-          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-              
-              <div className="text-center mb-5">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3 shrink-0">
-                  <Key size={20} />
-                </div>
-                <h3 className="text-base font-extrabold text-slate-100 font-sans tracking-tight">
-                  {autoBackupPinChangeStep === 1 
-                    ? (lang === 'id' ? 'Verifikasi PIN Cadangan Lama' : 'Verify Old Backup PIN')
-                    : autoBackupPinChangeStep === 2
-                      ? (lang === 'id' ? 'Masukkan PIN Cadangan Baru' : 'Enter New Backup PIN')
-                      : (lang === 'id' ? 'Konfirmasi PIN Baru' : 'Confirm New Backup PIN')}
-                </h3>
-                <p className="text-[11px] text-slate-400 leading-normal mt-1.5">
-                  {autoBackupPinChangeStep === 1 
-                    ? (lang === 'id' 
-                        ? 'Demi keamanan, masukkan PIN Cadangan Otomatis Anda yang aktif saat ini.' 
-                        : 'For security, please enter your currently active Auto-Backup PIN.')
-                    : autoBackupPinChangeStep === 2
-                      ? (lang === 'id' 
-                          ? 'Masukkan PIN 4 digit baru khusus untuk cadangan berikutnya.' 
-                          : 'Enter a new 4-digit PIN for encrypting future automatic backups.')
-                      : (lang === 'id' 
-                          ? 'Masukkan kembali PIN cadangan baru untuk konfirmasi.' 
-                          : 'Re-enter your new backup PIN to confirm.')}
-                </p>
-              </div>
-
-              {/* Invisible focusable input */}
-              <div className="relative mb-6">
                 <input
-                  type="password"
-                  pattern="[0-9]*"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={
-                    autoBackupPinChangeStep === 1 
-                      ? autoBackupPinChangeCurrent 
-                      : autoBackupPinChangeStep === 2 
-                        ? autoBackupPinChangeNew 
-                        : autoBackupPinChangeConfirm
-                  }
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    if (autoBackupPinChangeStep === 1) {
-                      setAutoBackupPinChangeCurrent(val);
-                    } else if (autoBackupPinChangeStep === 2) {
-                      setAutoBackupPinChangeNew(val);
-                    } else {
-                      setAutoBackupPinChangeConfirm(val);
-                    }
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  autoFocus
+                  type="text"
+                  value={pinAnswerInput}
+                  onChange={e => setPinAnswerInput(e.target.value)}
+                  className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500/60 transition-all placeholder-slate-600"
+                  placeholder={t('securityAnswerPlaceholder')}
                 />
-
-                {/* PIN circles */}
-                <div className="flex justify-center gap-3 relative z-0">
-                  {[0, 1, 2, 3].map((idx) => {
-                    const val = autoBackupPinChangeStep === 1 
-                      ? autoBackupPinChangeCurrent 
-                      : autoBackupPinChangeStep === 2 
-                        ? autoBackupPinChangeNew 
-                        : autoBackupPinChangeConfirm;
-                    return (
-                      <div 
-                        key={idx} 
-                        className={`w-10 h-12 rounded-xl border flex items-center justify-center font-black text-lg transition-all ${
-                          autoBackupPinChangeError 
-                            ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
-                            : val.length > idx 
-                              ? 'border-indigo-500 bg-indigo-500/5 text-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.2)]' 
-                              : 'border-slate-800 bg-slate-950 text-slate-600'
-                        }`}
-                      >
-                        {val.length > idx ? '●' : ''}
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
-
-              <span className="text-[8px] text-slate-500 block text-center mb-6">
-                {lang === 'id' ? 'Ketuk kotak untuk memunculkan keyboard dan ketik PIN Anda' : 'Tap boxes to show keyboard and type your PIN'}
-              </span>
-
-              {autoBackupPinChangeError && (
-                <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">
-                  {autoBackupPinChangeErrorType === 'wrong_current' 
-                    ? (lang === 'id' ? '❌ PIN Cadangan Lama salah!' : '❌ Incorrect Old Backup PIN!')
-                    : (lang === 'id' ? '❌ PIN Baru konfirmasi tidak cocok!' : '❌ Confirmation PIN does not match!')}
-                </p>
-              )}
-
-              <div className="flex gap-3">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    if (autoBackupPinChangeStep === 3) {
-                      setAutoBackupPinChangeStep(2);
-                      setAutoBackupPinChangeConfirm('');
-                    } else if (autoBackupPinChangeStep === 2) {
-                      setAutoBackupPinChangeStep(1);
-                      setAutoBackupPinChangeNew('');
-                    } else {
-                      setShowAutoBackupPinChange(false);
-                      setAutoBackupPinChangeCurrent('');
-                      setAutoBackupPinChangeNew('');
-                      setAutoBackupPinChangeConfirm('');
-                    }
-                  }}
-                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-2xl text-xs font-bold text-slate-400 transition-all active:scale-[0.98] cursor-pointer"
-                >
-                  {autoBackupPinChangeStep > 1 
-                    ? (lang === 'id' ? 'Kembali' : 'Back')
-                    : (lang === 'id' ? 'Batal' : 'Cancel')}
-                </button>
-                <button 
-                  type="button"
-                  onClick={handleAutoBackupPinChangeSubmit}
-                  disabled={
-                    autoBackupPinChangeStep === 1 
-                      ? autoBackupPinChangeCurrent.length !== 4 
-                      : autoBackupPinChangeStep === 2 
-                        ? autoBackupPinChangeNew.length !== 4 
-                        : autoBackupPinChangeConfirm.length !== 4
-                  }
-                  className={`flex-1 py-3 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98] shadow-lg ${
-                    (autoBackupPinChangeStep === 1 && autoBackupPinChangeCurrent.length === 4) || 
-                    (autoBackupPinChangeStep === 2 && autoBackupPinChangeNew.length === 4) || 
-                    (autoBackupPinChangeStep === 3 && autoBackupPinChangeConfirm.length === 4)
-                      ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10 cursor-pointer'
-                      : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-800/80 shadow-none'
-                  }`}
-                >
-                  {autoBackupPinChangeStep < 3 
-                    ? (lang === 'id' ? 'Lanjut' : 'Next')
-                    : (lang === 'id' ? 'Simpan' : 'Save')}
-                </button>
-              </div>
+            )}
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setPinModalMode(null);
+                  setPinInput('');
+                  setPinQuestionInput('');
+                  setPinAnswerInput('');
+                  setPinError(false);
+                }}
+                className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-200 bg-slate-950/40 border border-slate-800/60 hover:bg-slate-800/40 transition-all cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                disabled={pinInput.length !== 4 || ((pinModalMode === 'create' || pinModalMode === 'change') && (!pinQuestionInput.trim() || !pinAnswerInput.trim()))}
+                onClick={handlePinSubmit}
+                className={`flex-1 py-3 rounded-2xl text-slate-950 text-sm font-extrabold transition-all cursor-pointer ${pinInput.length === 4 && (!['create', 'change'].includes(pinModalMode) || (pinQuestionInput.trim() && pinAnswerInput.trim())) ? 'bg-indigo-400 hover:bg-indigo-300 shadow-md shadow-indigo-500/20' : 'bg-slate-850 text-slate-500 cursor-not-allowed opacity-50'}`}
+              >
+                {t('save')}
+              </button>
             </div>
           </div>
-        )}
-
         </div>
-      </div>
+      )}
+
+      {/* POPUP MODAL: HARD RESET CONFIRMATION */}
+      {showResetConfirm && (
+        <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl w-full max-w-sm shadow-2xl">
+            <h3 className="text-xl font-bold text-red-400 mb-2">{t('reset')}</h3>
+            <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+              {t('resetConfirmDescription')}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-50 bg-slate-800 transition-colors cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={async () => {
+                  setIsResetting(true);
+                  setShowResetConfirm(false);
+                  await clearAllData();
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 800);
+                }}
+                className="px-4 py-2 rounded-xl text-white text-sm font-bold bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
+              >
+                {t('yesReset')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL: MANUAL EXPORT / IMPORT CONFIRMATION */}
+      {backupModalMode && (
+        <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className={`bg-slate-900 border border-slate-800/80 p-5 rounded-[2rem] w-full max-w-lg shadow-2xl relative ${backupError ? 'animate-pulse border-red-500/50' : ''} max-h-[90vh] flex flex-col`}>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+            
+            <div className="flex justify-between items-center pb-4 border-b border-slate-800/50">
+              <h3 className="text-base font-extrabold text-slate-100 flex items-center gap-2">
+                <Database size={18} className="text-indigo-400" />
+                {backupModalMode === 'export' ? (lang === 'id' ? 'Opsi Ekspor Cadangan' : 'Export Options') : (lang === 'id' ? 'Konfirmasi Impor Data' : 'Restore Backup')}
+              </h3>
+              <button 
+                onClick={() => setBackupModalMode(null)}
+                className="w-7 h-7 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-slate-200 rounded-full flex items-center justify-center transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar py-4 space-y-4">
+              {backupModalMode === 'export' ? (
+                <>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    {lang === 'id' 
+                      ? 'Pilih komponen data yang ingin dimasukkan ke file cadangan:' 
+                      : 'Choose which data components to include in the backup file:'}
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {[
+                      { key: 'notes', label: lang === 'id' ? 'Catatan & Buku' : 'Notes & Journals' },
+                      { key: 'tasks', label: lang === 'id' ? 'Tugas & Agenda' : 'Tasks & Alarms' },
+                      { key: 'transactions', label: lang === 'id' ? 'Keuangan' : 'Finance Logs' },
+                      { key: 'moods', label: lang === 'id' ? 'Mood harian' : 'Daily Moods' },
+                      { key: 'userProfile', label: lang === 'id' ? 'Profil & Streak' : 'UserProfile' },
+                      { key: 'settings', label: lang === 'id' ? 'Pengaturan PIN/App' : 'App Settings' }
+                    ].map(opt => (
+                      <label key={opt.key} className="flex items-center gap-2.5 p-3 bg-slate-950/40 hover:bg-slate-950/85 border border-slate-850 rounded-xl cursor-pointer transition-all">
+                        <input 
+                          type="checkbox" 
+                          checked={(exportOptions as any)[opt.key]}
+                          onChange={(e) => setExportOptions(prev => ({ ...prev, [opt.key]: e.target.checked }))}
+                          className="rounded border-slate-800 bg-slate-900 text-indigo-500 focus:ring-0 focus:ring-offset-0"
+                        />
+                        <span className="text-xs font-bold text-slate-300 truncate">{opt.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="bg-slate-950/60 border border-slate-850 rounded-2xl p-4 space-y-3">
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">{lang === 'id' ? 'Proteksi Enkripsi Sandi (Opsional)' : 'Encryption Password (Optional)'}</span>
+                    <p className="text-[10px] text-slate-500 leading-normal">{lang === 'id' ? 'Masukkan sandi untuk mengamankan file cadangan. Jika dikosongkan, file tidak terenkripsi.' : 'Enter a password to encrypt backup file. If empty, the file remains in raw text.'}</p>
+                    <input 
+                      type="password"
+                      value={backupPassword}
+                      onChange={e => setBackupPassword(e.target.value)}
+                      className="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs outline-none focus:border-indigo-500/40 placeholder-slate-600 font-mono"
+                      placeholder={lang === 'id' ? 'Kata sandi cadangan...' : 'Backup password...'}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-4 bg-amber-500/5 border border-amber-500/20 text-amber-400 rounded-2xl flex items-start gap-3">
+                    <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-xs font-extrabold block">{lang === 'id' ? 'Perhatian Pemulihan!' : 'Restore Warning!'}</span>
+                      <span className="text-[11px] leading-relaxed block mt-1">
+                        {lang === 'id' 
+                          ? 'Pemulihan data cadangan ini akan menimpa dan mengganti seluruh database Anda saat ini.' 
+                          : 'Restoring backup data will overwrite and replace your current application records completely.'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/60 border border-slate-850 rounded-2xl p-4 space-y-3">
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">{lang === 'id' ? 'Masukkan Sandi Dekripsi' : 'Decrypt Password Required'}</span>
+                    <p className="text-[10px] text-slate-500 leading-normal">{lang === 'id' ? 'Jika file cadangan Anda menggunakan kata sandi enkripsi, silakan masukkan untuk membuka.' : 'If your backup file was encrypted with a password, enter it below to restore.'}</p>
+                    <input 
+                      type="password"
+                      value={backupPassword}
+                      onChange={e => setBackupPassword(e.target.value)}
+                      className="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs outline-none focus:border-indigo-500/40 placeholder-slate-600 font-mono"
+                      placeholder={lang === 'id' ? 'Kata sandi cadangan...' : 'Decrypt password...'}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-3 border-t border-slate-800/50">
+              <button 
+                onClick={() => setBackupModalMode(null)}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs rounded-2xl transition-all cursor-pointer text-center"
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                onClick={backupModalMode === 'export' ? processExport : processImport}
+                className="flex-1 py-3 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl transition-all cursor-pointer text-center shadow-lg"
+              >
+                {backupModalMode === 'export' ? (lang === 'id' ? 'Unduh Cadangan' : 'Export File') : (lang === 'id' ? 'Pulihkan Data' : 'Import File')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL: VERIFY AUTO BACKUP PIN */}
+      {showAutoBackupEnableVerify && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+                <Lock size={20} />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-100 font-sans">{lang === 'id' ? 'Verifikasi PIN Cadangan' : 'Verify Backup PIN'}</h3>
+              <p className="text-[11px] text-slate-400 leading-normal mt-1.5">{lang === 'id' ? 'Masukkan PIN Cadangan Otomatis Anda untuk menyimpan perubahan frekuensi.' : 'Please enter your Auto-Backup PIN to confirm frequency alteration.'}</p>
+            </div>
+
+            {/* Segmented PIN input */}
+            <div className="relative w-full max-w-[240px] mx-auto mb-5">
+              <input
+                ref={enableVerifyInputRef}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                autoFocus
+                value={autoBackupEnableVerifyPin}
+                onChange={e => setAutoBackupEnableVerifyPin(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && autoBackupEnableVerifyPin.length === 4) {
+                    handleAutoBackupVerifySubmit();
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="flex justify-between gap-3 pointer-events-none">
+                {[0, 1, 2, 3].map((index) => {
+                  const isFilled = index < autoBackupEnableVerifyPin.length;
+                  const isCurrent = index === autoBackupEnableVerifyPin.length;
+                  return (
+                    <div 
+                      key={index}
+                      className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all duration-150 ${
+                        isFilled 
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                          : isCurrent
+                            ? 'border-indigo-500/50 bg-slate-950/50 text-indigo-300'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-600'
+                      }`}
+                    >
+                      {isFilled ? '•' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {autoBackupEnableVerifyError && (
+              <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">{lang === 'id' ? '❌ PIN Cadangan salah!' : '❌ Incorrect Backup PIN!'}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setShowAutoBackupEnableVerify(false);
+                  setAutoBackupEnableVerifyPin('');
+                  setPendingAutoBackupFreq(null);
+                }}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 rounded-xl text-xs font-bold text-slate-400 transition-all cursor-pointer border border-slate-800/85"
+              >
+                {t('cancel')}
+              </button>
+              <button 
+                type="button" 
+                onClick={handleAutoBackupVerifySubmit}
+                disabled={autoBackupEnableVerifyPin.length !== 4}
+                className={`flex-1 py-2.5 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-lg ${
+                  autoBackupEnableVerifyPin.length === 4
+                    ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10'
+                    : 'bg-slate-800 text-slate-500 opacity-50 cursor-not-allowed shadow-none border border-slate-850'
+                }`}
+              >
+                {lang === 'id' ? 'Verifikasi' : 'Verify'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL: SETUP AUTO BACKUP PIN */}
+      {showAutoBackupPinSetup && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+                <Key size={20} />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-100 font-sans">
+                {autoBackupPinSetupStep === 1 
+                  ? (lang === 'id' ? 'Buat PIN Cadangan Otomatis' : 'Create Auto-Backup PIN')
+                  : (lang === 'id' ? 'Konfirmasi PIN Cadangan' : 'Confirm Auto-Backup PIN')}
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-normal mt-1.5">
+                {autoBackupPinSetupStep === 1 
+                  ? (lang === 'id' 
+                      ? 'Buat PIN 4 digit terpisah khusus untuk mengenkripsi file cadangan otomatis Anda.' 
+                      : 'Create a separate 4-digit PIN used specifically to encrypt your automatic backup files.')
+                  : (lang === 'id' 
+                      ? 'Masukkan kembali PIN yang baru saja Anda buat untuk konfirmasi.' 
+                      : 'Re-enter the PIN you just created to confirm.')}
+              </p>
+            </div>
+
+            {/* Segmented PIN input */}
+            <div className="relative w-full max-w-[240px] mx-auto mb-5">
+              <input
+                ref={pinSetupInputRef}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                autoFocus
+                value={autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm}
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (autoBackupPinSetupStep === 1) setAutoBackupPinSetupPin(val);
+                  else setAutoBackupPinSetupConfirm(val);
+                }}
+                onKeyDown={e => {
+                  const currentVal = autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm;
+                  if (e.key === 'Enter' && currentVal.length === 4) {
+                    handleAutoBackupPinSetupSubmit();
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="flex justify-between gap-3 pointer-events-none">
+                {[0, 1, 2, 3].map((index) => {
+                  const currentVal = autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm;
+                  const isFilled = index < currentVal.length;
+                  const isCurrent = index === currentVal.length;
+                  return (
+                    <div 
+                      key={index}
+                      className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all duration-150 ${
+                        isFilled 
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                          : isCurrent
+                            ? 'border-indigo-500/50 bg-slate-950/50 text-indigo-300'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-600'
+                      }`}
+                    >
+                      {isFilled ? '•' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {autoBackupPinSetupError && (
+              <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">{lang === 'id' ? '❌ PIN konfirmasi tidak cocok!' : '❌ Confirmation PIN mismatch!'}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={() => {
+                  if (autoBackupPinSetupStep === 2) {
+                    setAutoBackupPinSetupStep(1);
+                    setAutoBackupPinSetupConfirm('');
+                  } else {
+                    setShowAutoBackupPinSetup(false);
+                    setAutoBackupPinSetupPin('');
+                    setAutoBackupPinSetupConfirm('');
+                    setPendingAutoBackupFreq(null);
+                  }
+                }}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 rounded-xl text-xs font-bold text-slate-400 transition-all cursor-pointer border border-slate-800/85"
+              >
+                {autoBackupPinSetupStep === 2 ? (lang === 'id' ? 'Kembali' : 'Back') : t('cancel')}
+              </button>
+              <button 
+                type="button" 
+                onClick={handleAutoBackupPinSetupSubmit}
+                disabled={(autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin.length : autoBackupPinSetupConfirm.length) !== 4}
+                className={`flex-1 py-2.5 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-lg ${
+                  (autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin.length : autoBackupPinSetupConfirm.length) === 4
+                    ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10'
+                    : 'bg-slate-800 text-slate-500 opacity-50 cursor-not-allowed shadow-none border border-slate-850'
+                }`}
+              >
+                {autoBackupPinSetupStep === 1 ? (lang === 'id' ? 'Lanjut' : 'Next') : (lang === 'id' ? 'Simpan' : 'Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL: CHANGE AUTO BACKUP PIN */}
+      {showAutoBackupPinChange && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full flex flex-col relative overflow-hidden shadow-2xl text-left">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+                <Key size={20} />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-100 font-sans">
+                {autoBackupPinChangeStep === 1 
+                  ? (lang === 'id' ? 'Verifikasi PIN Lama' : 'Verify Old PIN')
+                  : autoBackupPinChangeStep === 2
+                    ? (lang === 'id' ? 'Masukkan PIN Baru' : 'Enter New PIN')
+                    : (lang === 'id' ? 'Konfirmasi PIN Baru' : 'Confirm New PIN')}
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-normal mt-1.5">
+                {autoBackupPinChangeStep === 1 
+                  ? (lang === 'id' ? 'Masukkan PIN Cadangan Otomatis aktif saat ini.' : 'Enter your active Auto-Backup PIN.')
+                  : autoBackupPinChangeStep === 2
+                    ? (lang === 'id' ? 'Masukkan PIN 4 digit baru khusus cadangan berikutnya.' : 'Enter a new 4-digit PIN.')
+                    : (lang === 'id' ? 'Masukkan kembali PIN baru untuk konfirmasi.' : 'Re-enter your new PIN to confirm.')}
+              </p>
+            </div>
+
+            {/* Segmented PIN input */}
+            <div className="relative w-full max-w-[240px] mx-auto mb-5">
+              <input
+                ref={pinChangeInputRef}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                autoFocus
+                value={
+                  autoBackupPinChangeStep === 1 
+                    ? autoBackupPinChangeCurrent 
+                    : autoBackupPinChangeStep === 2 
+                      ? autoBackupPinChangeNew 
+                      : autoBackupPinChangeConfirm
+                }
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (autoBackupPinChangeStep === 1) setAutoBackupPinChangeCurrent(val);
+                  else if (autoBackupPinChangeStep === 2) setAutoBackupPinChangeNew(val);
+                  else setAutoBackupPinChangeConfirm(val);
+                }}
+                onKeyDown={e => {
+                  const currentVal = autoBackupPinChangeStep === 1 
+                    ? autoBackupPinChangeCurrent 
+                    : autoBackupPinChangeStep === 2 
+                      ? autoBackupPinChangeNew 
+                      : autoBackupPinChangeConfirm;
+                  if (e.key === 'Enter' && currentVal.length === 4) {
+                    handleAutoBackupPinChangeSubmit();
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="flex justify-between gap-3 pointer-events-none">
+                {[0, 1, 2, 3].map((index) => {
+                  const currentVal = autoBackupPinChangeStep === 1 
+                    ? autoBackupPinChangeCurrent 
+                    : autoBackupPinChangeStep === 2 
+                      ? autoBackupPinChangeNew 
+                      : autoBackupPinChangeConfirm;
+                  const isFilled = index < currentVal.length;
+                  const isCurrent = index === currentVal.length;
+                  return (
+                    <div 
+                      key={index}
+                      className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all duration-150 ${
+                        isFilled 
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                          : isCurrent
+                            ? 'border-indigo-500/50 bg-slate-950/50 text-indigo-300'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-600'
+                      }`}
+                    >
+                      {isFilled ? '•' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {autoBackupPinChangeError && (
+              <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">
+                {autoBackupPinChangeErrorType === 'wrong_current' 
+                  ? (lang === 'id' ? '❌ PIN Cadangan Lama salah!' : '❌ Incorrect Old PIN!')
+                  : (lang === 'id' ? '❌ PIN Baru konfirmasi tidak cocok!' : '❌ Confirmation PIN mismatch!')}
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={() => {
+                  if (autoBackupPinChangeStep === 3) {
+                    setAutoBackupPinChangeStep(2);
+                    setAutoBackupPinChangeConfirm('');
+                  } else if (autoBackupPinChangeStep === 2) {
+                    setAutoBackupPinChangeStep(1);
+                    setAutoBackupPinChangeNew('');
+                  } else {
+                    setShowAutoBackupPinChange(false);
+                    setAutoBackupPinChangeCurrent('');
+                  }
+                }}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 rounded-xl text-xs font-bold text-slate-400 transition-all cursor-pointer border border-slate-800/85"
+              >
+                {autoBackupPinChangeStep > 1 ? (lang === 'id' ? 'Kembali' : 'Back') : t('cancel')}
+              </button>
+              <button 
+                type="button" 
+                onClick={handleAutoBackupPinChangeSubmit}
+                disabled={
+                  (autoBackupPinChangeStep === 1 
+                    ? autoBackupPinChangeCurrent.length 
+                    : autoBackupPinChangeStep === 2 
+                      ? autoBackupPinChangeNew.length 
+                      : autoBackupPinChangeConfirm.length) !== 4
+                }
+                className={`flex-1 py-2.5 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-lg ${
+                  (autoBackupPinChangeStep === 1 
+                    ? autoBackupPinChangeCurrent.length 
+                    : autoBackupPinChangeStep === 2 
+                      ? autoBackupPinChangeNew.length 
+                      : autoBackupPinChangeConfirm.length) === 4
+                    ? 'bg-indigo-500 hover:bg-indigo-400 text-slate-950 shadow-indigo-500/10'
+                    : 'bg-slate-800 text-slate-500 opacity-50 cursor-not-allowed shadow-none border border-slate-850'
+                }`}
+              >
+                {autoBackupPinChangeStep === 1 
+                  ? (lang === 'id' ? 'Verifikasi' : 'Verify')
+                  : autoBackupPinChangeStep === 2
+                    ? (lang === 'id' ? 'Lanjut' : 'Next')
+                    : (lang === 'id' ? 'Simpan' : 'Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PRIVACY POLICY */}
+      {showPrivacyPolicy && (
+        <PrivacyPolicyModal isOpen={showPrivacyPolicy} onClose={() => setShowPrivacyPolicy(false)} lang={lang} t={t} />
+      )}
+
+      {/* MODAL: UPDATE NOTES / ABOUT APP */}
+      {showUpdateNotes && (
+        <UpdateNotesModal isOpen={showUpdateNotes} onClose={() => setShowUpdateNotes(false)} lang={lang} t={t} />
+      )}
+
+      {/* Toast Notification popup */}
+      {toastMessage && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900 border border-slate-850 px-4.5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          <p className="text-xs font-extrabold text-slate-200">
+            {toastMessage}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
-
-function ToggleItem({ label, active, onChange, border }: { label: string, active: boolean, onChange: () => void, border?: boolean }) {
-  return (
-    <div className={`flex items-center justify-between p-4 px-5 ${border ? 'border-b border-slate-800' : ''}`}>
-      <span className="font-medium text-sm text-slate-300">{label}</span>
-      <button 
-        onClick={onChange}
-        className={`w-12 h-7 rounded-full flex items-center p-1 transition-colors ${active ? 'bg-indigo-500' : 'bg-slate-700'}`}
-      >
-        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${active ? 'translate-x-5' : 'translate-x-0'}`} />
-      </button>
-    </div>
-  );
-}
-

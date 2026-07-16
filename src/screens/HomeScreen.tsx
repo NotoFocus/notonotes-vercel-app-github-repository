@@ -290,10 +290,10 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar pb-32 w-full max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
           
           {/* Left Column: Profile, Challenge, Mood, Discipline */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="md:col-span-7 space-y-6">
             {isLiteMode ? (
           <div className="relative w-full rounded-[2rem] bg-slate-900/40 border border-slate-800/80 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-[0_4px_20px_rgba(0,0,0,0.15)] overflow-hidden">
             {/* Subtle light effect */}
@@ -516,7 +516,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           </div>
 
           {/* Right Column: Prioritas Utama */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="md:col-span-5 space-y-6">
             {/* Prioritas Utama */}
             <section className="mb-5 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-sm">
           <div className="flex justify-between items-center mb-4">
