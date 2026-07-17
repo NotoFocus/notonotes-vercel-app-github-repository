@@ -245,13 +245,6 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
   };
 
   const executeChatCall = async (fullPrompt: string, userFacingPrompt?: string) => {
-    if (!geminiApiKey) {
-      setErrorMsg(lang === 'id'
-        ? "API Key Gemini belum diatur. Harap buka Pengaturan -> Pengaturan Noto AI terlebih dahulu."
-        : "Gemini API Key is not set. Please go to Settings -> Noto AI Settings to configure it first.");
-      return;
-    }
-
     setIsLoading(true);
     setErrorMsg(null);
 
@@ -267,46 +260,38 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
     setInputText('');
 
     try {
-      // Map historical messages to standard Gemini content payload
-      // Only the latest turn has the injected context fullPrompt to avoid duplicate bloat.
-      const contentsPayload = updatedHistory.slice(-8).map((m, idx, arr) => {
+      // Map historical messages to standard Noto backend payload
+      const messagesPayload = updatedHistory.slice(-8).map((m, idx, arr) => {
         const isLatestUser = idx === arr.length - 1;
         return {
           role: m.role === 'model' ? 'model' : 'user',
-          parts: [{ text: isLatestUser ? fullPrompt : m.content }]
+          content: isLatestUser ? fullPrompt : m.content
         };
       });
 
-      const systemPrompt = lang === 'id'
-        ? "Anda adalah Noto AI, asisten pribadi dan pendamping hidup yang hangat, sangat berempati, bijaksana, dan ramah. Noto didasain sebagai aplikasi produktivitas yang menjaga privasi dan offline-first. Berbicaralah dengan bahasa yang santai, bersahabat, tulus, dan penuh empati. Bantu pengguna dengan saran kehidupan, motivasi, refleksi produktivitas, keuangan, atau suasana hati jika mereka mengizinkan datanya dikirim. Jangan pernah memata-matai atau berlagak tahu data yang tidak dikirim pengguna. Jawablah dalam bahasa Indonesia secara santun dan tulus."
-        : "You are Noto AI, a warm, deeply empathetic, wise, and friendly personal life coach and companion. Noto is a privacy-first, offline-first productivity application. Speak in a comforting, sincere, friendly, and encouraging tone. Help the user with life advice, motivation, or analysis of productivity, finance, and moods when they explicitly share their data. Never assume or make up user information not provided. Answer in English with warmth and sincerity.";
-
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemPrompt }]
-            },
-            contents: contentsPayload,
-            generationConfig: {
-              maxOutputTokens: 1024,
-              temperature: 0.7
-            }
-          })
-        }
-      );
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: messagesPayload,
+          lang,
+          customApiKey: geminiApiKey || undefined
+        })
+      });
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        let errMsg = errorData?.error?.message || `Google API Error (${res.status})`;
+        let errMsg = errorData?.error || `API Error (${res.status})`;
+        if (errMsg === 'missing_api_key') {
+          errMsg = lang === 'id'
+            ? "API Key Gemini belum dikonfigurasi di server ataupun aplikasi."
+            : "Gemini API Key is not configured on the server or app.";
+        }
         throw new Error(errMsg);
       }
 
       const data = await res.json();
-      const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response received";
+      const replyText = data?.reply || "No response received";
 
       const modelMsg: ChatMessage = {
         id: generateId(),
@@ -325,8 +310,8 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
     } catch (err: any) {
       console.error(err);
       setErrorMsg(lang === 'id'
-        ? `Gagal menghubungi Gemini API: ${err.message || 'Kesalahan koneksi'}`
-        : `Failed to connect to Gemini API: ${err.message || 'Connection error'}`);
+        ? `Gagal terhubung dengan Noto AI: ${err.message || 'Kesalahan koneksi'}`
+        : `Failed to connect with Noto AI: ${err.message || 'Connection error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -653,68 +638,44 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
             </div>
           )}
 
-          {/* Bottom Chat Input Form / API Key Warning block */}
-          {!geminiApiKey ? (
-            <div className="flex-none p-5 md:p-6 bg-indigo-950/10 border-t border-indigo-900/20 text-center space-y-3 pb-[calc(env(safe-area-inset-bottom)+16px)]">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto">
-                <Lock size={18} />
-              </div>
-              <div className="max-w-md mx-auto space-y-1.5">
-                <h4 className="font-extrabold text-sm text-slate-200">
-                  {lang === 'id' ? 'API Key Gemini Diperlukan' : 'Gemini API Key Required'}
-                </h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {lang === 'id' 
-                    ? 'Sesuai prinsip Offline & Privacy-First Noto, Anda harus memasukkan API Key Gemini milik Anda sendiri di Pengaturan untuk mengaktifkan asisten AI.'
-                    : 'Adhering to Noto\'s Offline & Privacy-First principles, you must enter your own Gemini API Key in Settings to activate the AI assistant.'}
-                </p>
-              </div>
-              <button
-                onClick={onBack}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-600/10"
-              >
-                <span>{lang === 'id' ? 'Buka Pengaturan Noto AI' : 'Open Noto AI Settings'}</span>
-              </button>
-            </div>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
-              }}
-              className="flex-none p-4 md:p-6 bg-slate-900/40 border-t border-slate-800/80 flex gap-2.5 items-center pb-[calc(env(safe-area-inset-bottom)+12px)]"
+          {/* Bottom Chat Input Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend();
+            }}
+            className="flex-none p-4 md:p-6 bg-slate-900/40 border-t border-slate-800/80 flex gap-2.5 items-center pb-[calc(env(safe-area-inset-bottom)+12px)]"
+          >
+            {/* Attachment / Choose Note Button */}
+            <button
+              type="button"
+              onClick={() => setShowNoteAttachModal(true)}
+              className={`p-3 rounded-2xl border transition-all cursor-pointer shrink-0 ${
+                tempNoteContext 
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30'
+              }`}
+              title={lang === 'id' ? 'Lampirkan Catatan Berizin' : 'Attach Authorized Note'}
             >
-              {/* Attachment / Choose Note Button */}
-              <button
-                type="button"
-                onClick={() => setShowNoteAttachModal(true)}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer shrink-0 ${
-                  tempNoteContext 
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30'
-                }`}
-                title={lang === 'id' ? 'Lampirkan Catatan Berizin' : 'Attach Authorized Note'}
-              >
-                <FileText size={18} />
-              </button>
+              <FileText size={18} />
+            </button>
 
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={lang === 'id' ? "Kirim pesan aman ke Noto AI..." : "Send a secure message to Noto AI..."}
-                disabled={isLoading}
-                className="flex-1 bg-slate-900 border border-slate-800 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm placeholder-slate-500 outline-none transition-all disabled:opacity-50 min-w-0"
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !inputText.trim()}
-                className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl transition-all disabled:opacity-40 disabled:hover:bg-indigo-600 cursor-pointer shadow-lg shadow-indigo-600/15 shrink-0"
-              >
-                <Send size={18} />
-              </button>
-            </form>
-          )}
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={lang === 'id' ? "Kirim pesan aman ke Noto AI..." : "Send a secure message to Noto AI..."}
+              disabled={isLoading}
+              className="flex-1 bg-slate-900 border border-slate-800 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm placeholder-slate-500 outline-none transition-all disabled:opacity-50 min-w-0"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !inputText.trim()}
+              className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl transition-all disabled:opacity-40 disabled:hover:bg-indigo-600 cursor-pointer shadow-lg shadow-indigo-600/15 shrink-0"
+            >
+              <Send size={18} />
+            </button>
+          </form>
 
         </div>
       </div>

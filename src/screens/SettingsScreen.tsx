@@ -1538,17 +1538,14 @@ export default function SettingsScreen({
 
                           try {
                             const response = await fetch(
-                              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${testApiKey.trim()}`,
+                              `/api/ai/test-key`,
                               {
                                 method: 'POST',
                                 headers: {
                                   'Content-Type': 'application/json',
                                 },
                                 body: JSON.stringify({
-                                  contents: [{ parts: [{ text: 'Hello' }] }],
-                                  generationConfig: {
-                                    maxOutputTokens: 5
-                                  }
+                                  apiKey: testApiKey.trim()
                                 })
                               }
                             );
@@ -1558,7 +1555,7 @@ export default function SettingsScreen({
                               showNotificationToast(lang === 'id' ? 'Koneksi Berhasil! API Key Anda valid.' : 'Connection Successful! Your API Key is valid.');
                             } else {
                               const errorData = await response.json().catch(() => ({}));
-                              let errMsg = errorData?.error?.message || (lang === 'id' ? 'API Key tidak valid' : 'Invalid API Key');
+                              let errMsg = errorData?.error || (lang === 'id' ? 'API Key tidak valid' : 'Invalid API Key');
                               setConnectionStatus('error');
                               setConnectionError(errMsg);
                             }

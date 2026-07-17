@@ -72,8 +72,8 @@ async function startServer() {
   app.get("/dev-sw.js", uninstallSW);
 
   // Helper to lazy-initialize GoogleGenAI
-  function getGeminiClient() {
-    const key = process.env.GEMINI_API_KEY;
+  function getGeminiClient(customKey?: string) {
+    const key = customKey || process.env.GEMINI_API_KEY;
     if (!key) {
       throw new Error("GEMINI_API_KEY_MISSING");
     }
@@ -119,11 +119,31 @@ async function startServer() {
     throw lastError || new Error("All models failed");
   }
 
+  // Noto AI Key Testing Endpoint
+  app.post("/api/ai/test-key", async (req, res) => {
+    try {
+      const { apiKey } = req.body;
+      const testKey = apiKey || process.env.GEMINI_API_KEY;
+      if (!testKey) {
+        return res.status(400).json({ error: "missing_api_key" });
+      }
+      const ai = getGeminiClient(testKey);
+      await generateContentWithFallback(ai, {
+        contents: [{ role: "user", parts: [{ text: "Hello" }] }],
+        config: { maxOutputTokens: 5 }
+      });
+      res.json({ status: "ok" });
+    } catch (error: any) {
+      console.error("Test Key Error:", error.message || error);
+      res.status(400).json({ error: error.message || "Failed to validate key" });
+    }
+  });
+
   // Noto AI Chat Endpoint
   app.post("/api/ai/chat", async (req, res) => {
     try {
-      const { messages, lang } = req.body;
-      const ai = getGeminiClient();
+      const { messages, lang, customApiKey } = req.body;
+      const ai = getGeminiClient(customApiKey);
       
       const systemInstruction = lang === 'id' 
         ? "Anda adalah Noto AI, asisten pribadi dan sahabat kehidupan yang berempati, bijaksana, dan ramah. Anda mematuhi prinsip privasi Noto secara mutlak: Anda tidak pernah memiliki akses langsung ke database pengguna, catatan, atau keuangan mereka. Anda hanya menerima dan memproses data minimal yang secara sadar diizinkan dan dikirimkan oleh pengguna sebagai teks ringkasan di dalam pesan chat ini. Jangan pernah mengklaim memiliki akses otomatis atau langsung ke data lokal mereka. Jawablah dengan hangat, tawarkan saran praktis, berikan dukungan moral, dan motivasi yang tulus. Selalu gunakan Bahasa Indonesia yang natural, santun, dan menyemangati."
