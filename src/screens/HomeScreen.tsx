@@ -11,7 +11,7 @@ interface HomeProps {
   appTheme: string;
   setAppTheme: (theme: any) => void;
   onOpenNote: (note: Note) => void;
-  onNavigate: (screen: 'home' | 'tasks' | 'search' | 'calendar' | 'settings' | 'finance') => void;
+  onNavigate: (screen: any) => void;
 }
 
 const getMoodIcon = (id: string, className = "w-6 h-6") => {
@@ -87,10 +87,6 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
     }
   }, [showStreakSplash]);
   
-  const [showTimer, setShowTimer] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(25 * 60);
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [hideChallenge, setHideChallenge] = useState(() => {
     try {
       const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -107,38 +103,6 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
       const today = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
       localStorage.setItem('noto_hide_challenge_date', today);
     } catch (e) {}
-  };
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isTimerRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      setIsTimerRunning(false);
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, timeLeft]);
-
-  const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
-  const resetTimer = () => {
-    setIsTimerRunning(false);
-    setTimeLeft(timerDuration);
-  };
-  
-  const handleSetDuration = (mins: number) => {
-    if (!isTimerRunning) {
-      const newDuration = mins * 60;
-      setTimerDuration(newDuration);
-      setTimeLeft(newDuration);
-    }
-  };
-  
-  const formatTime = (seconds: number) => {
-    const min = Math.floor(seconds / 60);
-    const sec = seconds % 60;
-    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
   const { pinnedNotes, pinnedTasks, disciplineTask, todayTasks, activeTasksCount, totalTodayCount, progressPercent } = useMemo(() => {
@@ -279,8 +243,8 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           <button className="p-3 text-slate-400 hover:text-emerald-400 transition-colors relative" onClick={() => onNavigate('finance')} title={t('financeMenu') as string}>
             <Wallet className="w-5 h-5" />
           </button>
-          <button className="p-3 text-slate-400 hover:text-indigo-400 transition-colors" onClick={() => setShowTimer(true)}>
-            <Clock className="w-5 h-5" />
+          <button className="p-3 text-slate-400 hover:text-indigo-400 transition-colors relative" onClick={() => onNavigate('ai-companion')} title="Noto AI">
+            <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
           </button>
           <button className="p-3 -mr-2 text-slate-400 hover:text-slate-50 transition-colors relative" onClick={() => setShowNotificationModal(true)}>
             <Bell className="w-5 h-5" />
@@ -633,87 +597,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
         <Plus className="w-7 h-7 stroke-[2.5]" />
       </button>
 
-      {/* Timer Modal */}
-      <AnimatePresence>
-        {showTimer && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4"
-          >
-             <motion.div 
-               initial={{ scale: 0.95, y: 10, opacity: 0 }}
-               animate={{ scale: 1, y: 0, opacity: 1 }}
-               exit={{ scale: 0.95, opacity: 0, y: 10 }}
-               className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl relative overflow-hidden"
-             >
-                {/* Subtle gradient bg */}
-                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-500/10 to-transparent pointer-events-none" />
 
-                <button 
-                  onClick={() => setShowTimer(false)}
-                  className="absolute top-5 right-5 text-slate-400 hover:text-slate-200 transition-colors bg-slate-800 hover:bg-slate-700 rounded-full p-1.5 z-10"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                
-                <div className="flex flex-col items-center mb-8 relative z-10">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center bg-indigo-500/10 text-indigo-400 rounded-3xl mb-4 border border-indigo-500/20 shadow-sm">
-                    <Clock className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-xl font-black text-slate-50">{t('focusTimer')}</h3>
-                </div>
-
-                <div className="text-6xl font-mono font-black text-center text-slate-100 tracking-tighter mb-8 relative z-10">
-                  {formatTime(timeLeft)}
-                </div>
-                
-                <div className="flex flex-col gap-4 relative z-10">
-                  {!isTimerRunning ? (
-                    <div className="flex justify-center gap-2 w-full">
-                      {[15, 25, 45, 60].map(mins => (
-                        <button
-                          key={mins}
-                          onClick={() => handleSetDuration(mins)}
-                          className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all ${
-                            timerDuration === mins * 60 
-                              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
-                              : 'bg-slate-950/60 text-slate-400 border border-slate-800 hover:bg-slate-800/60 hover:text-slate-200'
-                          }`}
-                        >
-                          {mins}m
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="h-10 w-full"></div>
-                  )}
-
-                  <div className="flex gap-2 w-full mt-2">
-                    <button 
-                      onClick={toggleTimer} 
-                      className={`flex-1 py-4 rounded-2xl text-[15px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                        isTimerRunning 
-                          ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700/50' 
-                          : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-600/30'
-                      }`}
-                    >
-                      {isTimerRunning ? <><Pause className="w-5 h-5" /> {t('pause')}</> : <><Play className="w-5 h-5 ml-1" /> {t('start')}</>}
-                    </button>
-                    <button 
-                      onClick={resetTimer} 
-                      className="w-14 py-4 rounded-2xl bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700 border border-slate-700/50 font-bold transition-colors flex items-center justify-center active:scale-95"
-                      title="Reset"
-                    >
-                      <RotateCcw className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Notification Modal */}
       <AnimatePresence>
