@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, CheckSquare, Bell, Clock, Play, Pause, RotateCcw, X, Pin, FileText, Trash2, Flame, Sparkles, ChevronRight, Repeat, Wallet, Target, RefreshCw } from 'lucide-react';
+import { Plus, CheckSquare, Bell, Clock, Play, Pause, RotateCcw, X, Pin, FileText, Trash2, Flame, Sparkles, ChevronRight, Repeat, Wallet, Target, RefreshCw, Bot } from 'lucide-react';
 import { Note, Task } from '../types';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -596,9 +596,20 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                               }} className="px-2 py-1 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-colors text-[9px] font-bold rounded uppercase tracking-wider cursor-pointer truncate max-w-full">{tag.replace('#', '')}</span>
                             ))}
                           </div>
-                          <span className="text-[10px] text-slate-400 font-mono flex-shrink-0 ml-2">{note.date}</span>
+                          <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                             {note.sharedWithAI && (
+                               <span className="px-1.5 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-bold rounded flex items-center gap-1 animate-pulse" title={lang === 'id' ? 'Telah masuk Noto AI' : 'Shared with Noto AI'}>
+                                 <Bot size={10} />
+                                 <span>AI</span>
+                               </span>
+                             )}
+                             <span className="text-[10px] text-slate-400 font-mono">{note.date}</span>
+                           </div>
                        </div>
-                       <h4 className="font-bold text-slate-50 leading-tight mb-1 truncate w-full">{note.title || 'Untitled Note'}</h4>
+                       <h4 className="font-bold text-slate-50 leading-tight mb-1 truncate w-full flex items-center gap-1.5">
+                           {note.sharedWithAI && <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0 animate-pulse" />}
+                           <span>{note.title || 'Untitled Note'}</span>
+                        </h4>
                        <p className="text-xs text-slate-400 line-clamp-2 break-words">{note.content ? note.content.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/&nbsp;?/gi, ' ').replace(/&bnsp;?/gi, ' ').replace(/\s+/g, ' ').trim() : '...'}</p>
                        {note.reminder && (
                          <div className="flex items-center gap-1.5 mt-2.5 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/10 rounded-md w-fit text-indigo-400 text-[10px] font-bold">

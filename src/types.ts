@@ -23,6 +23,7 @@ export interface Note {
   pinned?: boolean;
   isArchived?: boolean;
   reminder?: string; // ISO datetime string: YYYY-MM-DDTHH:mm
+  sharedWithAI?: boolean;
 }
 
 export interface DisciplineData {

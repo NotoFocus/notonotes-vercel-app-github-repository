@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search as SearchIcon, X, FileText, Pin, Trash2, Bell, Folder, CheckSquare, Plus, Tag as TagIcon, Archive } from 'lucide-react';
+import { Search as SearchIcon, X, FileText, Pin, Trash2, Bell, Folder, CheckSquare, Plus, Tag as TagIcon, Archive, Sparkles, Bot } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { Note, Task } from '../types';
@@ -74,7 +74,10 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
       )}
       
       <div className="flex-1 overflow-hidden pr-6 min-w-0 flex flex-col">
-         <h4 className="font-bold text-slate-50 leading-tight mb-1.5 truncate w-full">{note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note')}</h4>
+         <h4 className="font-bold text-slate-50 leading-tight mb-1.5 truncate w-full flex items-center gap-1.5">
+           {note.sharedWithAI && <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse shrink-0" />}
+           <span>{note.title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note')}</span>
+         </h4>
          <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed break-words">{note.content ? note.content.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>?/gm, '').replace(/&nbsp;?/gi, ' ').replace(/&bnsp;?/gi, ' ').replace(/\s+/g, ' ').trim() : '...'}</p>
          {note.reminder && (
            <div className="flex items-center gap-1.5 mt-2.5 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/10 rounded-md w-fit text-indigo-400 text-[10px] font-bold">
@@ -98,6 +101,12 @@ export default function SearchScreen({ onOpenNote }: { onOpenNote: (note: Note) 
             ))
           ) : (
             <span className="text-[10px] text-slate-500 font-mono truncate">{note.date}</span>
+          )}
+          {note.sharedWithAI && (
+            <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md flex items-center gap-1 animate-pulse flex-shrink-0" title={lang === 'id' ? 'Telah masuk Noto AI' : 'Shared with Noto AI'}>
+              <Bot size={10} />
+              <span>AI</span>
+            </span>
           )}
         </div>
         

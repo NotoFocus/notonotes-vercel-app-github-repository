@@ -3,7 +3,7 @@ import {
   Download, Upload, Lock, Smartphone, ChevronRight, ChevronLeft, User, 
   Globe, Key, Trash2, Info, AlertTriangle, Image as ImageIcon, RefreshCw, 
   Database, ChevronDown, Check, UserCheck, ShieldCheck, HelpCircle, Palette,
-  History as HistoryIcon
+  History as HistoryIcon, Bot, Eye, EyeOff, ExternalLink
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -24,8 +24,8 @@ export default function SettingsScreen({
   appTheme: string, 
   setAppTheme: (t: any) => void, 
   onNavigate?: (s: ScreenItem) => void,
-  activeSection?: 'appearance' | 'security' | 'backup' | 'about' | null,
-  setActiveSection?: (s: 'appearance' | 'security' | 'backup' | 'about' | null) => void,
+  activeSection?: 'appearance' | 'security' | 'backup' | 'about' | 'ai' | null,
+  setActiveSection?: (s: 'appearance' | 'security' | 'backup' | 'about' | 'ai' | null) => void,
   onBack?: () => void
 }) {
   const { 
@@ -38,15 +38,15 @@ export default function SettingsScreen({
     autoBackupFrequency, setAutoBackupFrequency, autoBackupFilenamePrefix, setAutoBackupFilenamePrefix, 
     lastAutoBackupTimestamp, setLastAutoBackupTimestamp,
     autoBackupPin: storeAutoBackupPin, setAutoBackupPin, autoBackupPinHistory, setAutoBackupPinHistory, 
-    recordAutoBackupPinChange
+    recordAutoBackupPinChange, geminiApiKey, setGeminiApiKey
   } = useAppStore();
   
   const t = useTranslation(lang);
 
   // Categorized active section (prop controlled or fallback local state)
-  const [localActiveSection, setLocalActiveSection] = useState<'appearance' | 'security' | 'backup' | 'about' | null>(null);
+  const [localActiveSection, setLocalActiveSection] = useState<'appearance' | 'security' | 'backup' | 'about' | 'ai' | null>(null);
   const currentActiveSection = activeSectionProp !== undefined ? activeSectionProp : localActiveSection;
-  const updateActiveSection = (section: 'appearance' | 'security' | 'backup' | 'about' | null) => {
+  const updateActiveSection = (section: 'appearance' | 'security' | 'backup' | 'about' | 'ai' | null) => {
     if (setActiveSectionProp) {
       setActiveSectionProp(section);
     } else {
@@ -74,7 +74,7 @@ export default function SettingsScreen({
 
   // Re-map for existing code to work seamlessly
   const activeSection = currentActiveSection;
-  const setActiveSection = (section: 'appearance' | 'security' | 'backup' | 'about' | null) => {
+  const setActiveSection = (section: 'appearance' | 'security' | 'backup' | 'about' | 'ai' | null) => {
     if (section === null) {
       handleBackSection();
     } else {
@@ -135,6 +135,18 @@ export default function SettingsScreen({
   const [showPinHistoryDropdown, setShowPinHistoryDropdown] = useState(false);
   const [showAutoBackupPinHistoryDropdown, setShowAutoBackupPinHistoryDropdown] = useState(false);
   const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null);
+
+  // BYOK Gemini API Key settings state
+  const [testApiKey, setTestApiKey] = useState(geminiApiKey || '');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>(geminiApiKey ? 'connected' : 'idle');
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
+
+  useEffect(() => {
+    setTestApiKey(geminiApiKey || '');
+    setConnectionStatus(geminiApiKey ? 'connected' : 'idle');
+  }, [geminiApiKey]);
 
   // Refs for focusing inputs
   const enableVerifyInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -918,6 +930,22 @@ export default function SettingsScreen({
                     <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Informasi legalitas, uji notifikasi, dan perawatan sistem.' : 'Legal info, test notifications, and system diagnostic care.'}</p>
                   </div>
                 </button>
+                {/* 5. AI Assistant Section Card */}
+                <button 
+                  onClick={() => setActiveSection('ai')}
+                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px] sm:col-span-2"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Bot size={18} />
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Pengaturan Noto AI' : 'Noto AI Settings'}</span>
+                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Konfigurasi provider, masukkan API Key mandiri Anda untuk mengaktifkan asisten AI.' : 'Configure provider, enter your own API Key to activate the AI assistant.'}</p>
+                  </div>
+                </button>
               </div>
 
               {/* Minimal Brand Tag */}
@@ -945,6 +973,7 @@ export default function SettingsScreen({
                   {activeSection === 'security' && (lang === 'id' ? 'Keamanan PIN' : 'Security PIN')}
                   {activeSection === 'backup' && (lang === 'id' ? 'Cadangan & Database' : 'Backup & Database')}
                   {activeSection === 'about' && (lang === 'id' ? 'Tentang Noto' : 'About Noto')}
+                  {activeSection === 'ai' && 'Noto AI (BYOK)'}
                 </span>
               </div>
 
@@ -1390,6 +1419,289 @@ export default function SettingsScreen({
                       </div>
                       <ChevronRight size={14} className="text-slate-500" />
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION: NOTO AI SETTINGS */}
+              {activeSection === 'ai' && (
+                <div className="space-y-6">
+                  {/* Privacy Disclaimer Card */}
+                  <div className="p-5 sm:p-6 bg-indigo-950/15 border border-indigo-900/30 rounded-3xl space-y-3">
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                      <ShieldCheck size={12} /> Privacy Promise & BYOK Philosophy
+                    </span>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {lang === 'id' 
+                        ? 'Noto didesain sebagai aplikasi Offline-First & Privacy-First. Kami percaya data dan kontrol AI harus sepenuhnya berada di tangan Anda.'
+                        : 'Noto is built to be Offline-First & Privacy-First. We believe your data and AI control should belong completely to you.'}
+                    </p>
+                    <ul className="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
+                      <li>{lang === 'id' ? 'API Key disimpan secara lokal di perangkat Anda (IndexedDB).' : 'Your API Key is saved locally in this device (IndexedDB).'}</li>
+                      <li>{lang === 'id' ? 'Kunci Anda TIDAK PERNAH dikirim atau disimpan ke server Noto.' : 'Your key is NEVER sent to or stored on Noto servers.'}</li>
+                      <li>{lang === 'id' ? 'Semua permintaan obrolan AI dikirim langsung dari browser Anda ke Google Gemini.' : 'All AI chat requests are sent directly from your browser to Google Gemini.'}</li>
+                    </ul>
+                  </div>
+
+                  {/* AI Provider & Form Section */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-5">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">
+                        {lang === 'id' ? 'AI Provider' : 'AI Provider'}
+                      </label>
+                      <div className="p-4 bg-slate-950/45 border border-indigo-500/25 rounded-2xl flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center">
+                            <Bot size={16} />
+                          </div>
+                          <div>
+                            <span className="font-extrabold text-[13px] text-slate-100 block">Google Gemini</span>
+                            <span className="text-[10px] text-slate-400 leading-none">gemini-1.5-flash / gemini-1.5-pro</span>
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[9px] font-black uppercase tracking-wider rounded-lg">
+                          {lang === 'id' ? 'Aktif' : 'Active'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* API Key Input */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">
+                          {lang === 'id' ? 'Google Gemini API Key' : 'Google Gemini API Key'}
+                        </label>
+                        {geminiApiKey && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            {lang === 'id' ? 'Tersimpan Lokal' : 'Locally Saved'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showApiKey ? 'text' : 'password'}
+                          value={testApiKey}
+                          onChange={(e) => {
+                            setTestApiKey(e.target.value);
+                            setConnectionStatus('idle');
+                            setConnectionError(null);
+                          }}
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-4 pr-11 py-3 text-slate-100 text-sm outline-none focus:border-indigo-500/40 transition-all placeholder-slate-700"
+                          placeholder={lang === 'id' ? 'Masukkan AIzaSy...' : 'Enter AIzaSy...'}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1 rounded-lg"
+                        >
+                          {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Connection Status Indicator */}
+                    {connectionStatus !== 'idle' && (
+                      <div className={`p-4 rounded-2xl border text-xs leading-relaxed transition-all ${
+                        connectionStatus === 'testing' ? 'bg-indigo-500/5 border-indigo-500/20 text-indigo-300' :
+                        connectionStatus === 'connected' ? 'bg-emerald-500/5 border-emerald-500/25 text-emerald-300' :
+                        'bg-rose-500/5 border-rose-500/25 text-rose-300'
+                      }`}>
+                        <div className="flex items-center gap-2 font-bold mb-1">
+                          {connectionStatus === 'testing' && <RefreshCw size={14} className="animate-spin text-indigo-400" />}
+                          {connectionStatus === 'connected' && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
+                          {connectionStatus === 'error' && <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />}
+                          <span>
+                            {connectionStatus === 'testing' && (lang === 'id' ? 'Menguji Koneksi...' : 'Testing Connection...')}
+                            {connectionStatus === 'connected' && (lang === 'id' ? 'Terhubung (API Key Valid)' : 'Connected (Valid API Key)')}
+                            {connectionStatus === 'error' && (lang === 'id' ? 'Koneksi Gagal' : 'Connection Failed')}
+                          </span>
+                        </div>
+                        {connectionStatus === 'error' && connectionError && (
+                          <p className="text-[11px] text-slate-400 font-semibold mt-1 bg-slate-950/40 p-2 rounded-lg border border-slate-800/60">{connectionError}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={async () => {
+                          if (!testApiKey.trim()) {
+                            setConnectionStatus('error');
+                            setConnectionError(lang === 'id' ? 'Masukkan API Key terlebih dahulu!' : 'Please enter an API Key first!');
+                            return;
+                          }
+
+                          setConnectionStatus('testing');
+                          setConnectionError(null);
+
+                          try {
+                            const response = await fetch(
+                              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${testApiKey.trim()}`,
+                              {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  contents: [{ parts: [{ text: 'Hello' }] }],
+                                  generationConfig: {
+                                    maxOutputTokens: 5
+                                  }
+                                })
+                              }
+                            );
+
+                            if (response.ok) {
+                              setConnectionStatus('connected');
+                              showNotificationToast(lang === 'id' ? 'Koneksi Berhasil! API Key Anda valid.' : 'Connection Successful! Your API Key is valid.');
+                            } else {
+                              const errorData = await response.json().catch(() => ({}));
+                              let errMsg = errorData?.error?.message || (lang === 'id' ? 'API Key tidak valid' : 'Invalid API Key');
+                              setConnectionStatus('error');
+                              setConnectionError(errMsg);
+                            }
+                          } catch (err: any) {
+                            console.error(err);
+                            setConnectionStatus('error');
+                            setConnectionError(err.message || (lang === 'id' ? 'Gagal menghubungi Google Gemini API' : 'Failed to reach Google Gemini API'));
+                          }
+                        }}
+                        disabled={connectionStatus === 'testing'}
+                        className="flex-1 min-w-[120px] px-4 py-3 bg-slate-800 hover:bg-slate-750 text-indigo-400 border border-indigo-500/10 font-bold text-xs uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        {connectionStatus === 'testing' ? (
+                          <>
+                            <RefreshCw size={12} className="animate-spin" />
+                            {lang === 'id' ? 'Menguji...' : 'Testing...'}
+                          </>
+                        ) : (
+                          lang === 'id' ? 'Uji Koneksi' : 'Test Connection'
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (!testApiKey.trim()) {
+                            showNotificationToast(lang === 'id' ? 'Harap masukkan API Key terlebih dahulu!' : 'Please enter an API Key first!');
+                            return;
+                          }
+                          setGeminiApiKey(testApiKey.trim());
+                          setConnectionStatus('connected');
+                          showNotificationToast(lang === 'id' ? 'API Key berhasil disimpan secara lokal!' : 'API Key successfully saved locally!');
+                        }}
+                        disabled={!testApiKey.trim() || connectionStatus === 'testing'}
+                        className="flex-1 min-w-[120px] px-4 py-3 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-500/10 disabled:opacity-50"
+                      >
+                        {lang === 'id' ? 'Simpan' : 'Save'}
+                      </button>
+
+                      {geminiApiKey && (
+                        <button
+                          onClick={() => {
+                            setGeminiApiKey(null);
+                            setTestApiKey('');
+                            setConnectionStatus('idle');
+                            setConnectionError(null);
+                            showNotificationToast(lang === 'id' ? 'API Key berhasil dihapus!' : 'API Key successfully removed!');
+                          }}
+                          className="w-full sm:w-auto px-4 py-3 bg-rose-950/30 hover:bg-rose-900/30 text-rose-400 border border-rose-500/15 font-bold text-xs uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Trash2 size={12} />
+                          {lang === 'id' ? 'Hapus API Key' : 'Delete API Key'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Accordion/Collapsible Guide Section */}
+                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-4">
+                    <button
+                      onClick={() => setShowGuide(!showGuide)}
+                      className="w-full flex items-center justify-between text-left cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-slate-950 text-slate-400 flex items-center justify-center border border-slate-850 group-hover:text-indigo-400 transition-colors">
+                          <HelpCircle size={14} />
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-[13px] text-slate-200 block group-hover:text-indigo-400 transition-colors">
+                            {lang === 'id' ? 'Cara Mendapatkan API Key Gratis' : 'How to Get a Free API Key'}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {lang === 'id' ? 'Panduan langkah demi langkah 1 menit' : '1-minute step-by-step tutorial'}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronDown size={16} className={`text-slate-500 transition-transform duration-200 ${showGuide ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showGuide && (
+                      <div className="pt-3 border-t border-slate-800/30 space-y-4 animate-in fade-in duration-200">
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          {lang === 'id' 
+                            ? 'Google menyediakan akses API Key gratis untuk model Gemini 1.5 Flash melalui Google AI Studio. Ikuti panduan sederhana ini:'
+                            : 'Google provides free API Key access for Gemini 1.5 Flash models through Google AI Studio. Follow these simple steps:'}
+                        </p>
+                        
+                        <div className="space-y-3">
+                          {[
+                            {
+                              step: '1',
+                              text_id: 'Buka Google AI Studio dengan menekan tautan di bawah ini.',
+                              text_en: 'Open Google AI Studio by clicking the link button below.',
+                              action: (
+                                <a
+                                  href="https://aistudio.google.com/"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl text-[10px] font-bold mt-1.5 hover:bg-indigo-500/20 transition-all cursor-pointer"
+                                >
+                                  <span>Google AI Studio</span>
+                                  <ExternalLink size={10} />
+                                </a>
+                              )
+                            },
+                            {
+                              step: '2',
+                              text_id: 'Masuk (Sign in) menggunakan Akun Google Anda.',
+                              text_en: 'Sign in using your standard Google Account.'
+                            },
+                            {
+                              step: '3',
+                              text_id: 'Klik tombol biru "Get API Key" (Dapatkan API Key) di kiri atas halaman.',
+                              text_en: 'Click the blue "Get API Key" button in the upper left corner.'
+                            },
+                            {
+                              step: '4',
+                              text_id: 'Klik tombol "Create API Key" (Buat API Key). Pilih "Create API Key in new project" (Buat API Key di proyek baru).',
+                              text_en: 'Click "Create API Key". Choose "Create API Key in new project".'
+                            },
+                            {
+                              step: '5',
+                              text_id: 'Salin API Key Anda (berawalan AIzaSy...).',
+                              text_en: 'Copy your API Key (starts with AIzaSy...).'
+                            },
+                            {
+                              step: '6',
+                              text_id: 'Tempelkan API Key tersebut ke kolom input di atas, lakukan "Uji Koneksi" dan klik "Simpan".',
+                              text_en: 'Paste it in the field above, click "Test Connection" and then click "Save".'
+                            }
+                          ].map((item, idx) => (
+                            <div key={idx} className="flex gap-3 items-start bg-slate-950/30 p-3 rounded-2xl border border-slate-850/60">
+                              <span className="w-5 h-5 rounded-lg bg-indigo-500/10 text-indigo-400 font-extrabold text-[10px] flex items-center justify-center shrink-0 border border-indigo-500/25 mt-0.5">
+                                {item.step}
+                              </span>
+                              <div className="text-[11px] text-slate-300 leading-relaxed">
+                                <p>{lang === 'id' ? item.text_id : item.text_en}</p>
+                                {item.action}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

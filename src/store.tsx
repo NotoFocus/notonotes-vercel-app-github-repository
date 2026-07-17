@@ -74,6 +74,10 @@ interface AppContextType {
   autoBackupPinHistory: PinHistoryEntry[];
   setAutoBackupPinHistory: React.Dispatch<React.SetStateAction<PinHistoryEntry[]>>;
   recordAutoBackupPinChange: (newHashedPin: string | null) => Promise<void>;
+  tempNoteContext: { title: string; content: string } | null;
+  setTempNoteContext: (context: { title: string; content: string } | null) => void;
+  geminiApiKey: string | null;
+  setGeminiApiKey: (key: string | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -87,6 +91,26 @@ const safeSetItem = (key: string, value: string) => {
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [tempNoteContext, setTempNoteContext] = useState<{ title: string; content: string } | null>(null);
+  const [geminiApiKey, setGeminiApiKeyState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('noto_gemini_api_key');
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const setGeminiApiKey = (key: string | null) => {
+    setGeminiApiKeyState(key);
+    try {
+      if (key === null) {
+        localStorage.removeItem('noto_gemini_api_key');
+      } else {
+        localStorage.setItem('noto_gemini_api_key', key);
+      }
+    } catch (e) {}
+  };
+
   const [user, setUser] = useState<any>(() => {
     try {
       const dbStr = getLargeItemSync('noto_user');
@@ -1069,14 +1093,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     lastAutoBackupTimestamp, setLastAutoBackupTimestamp,
     autoBackupPin, setAutoBackupPin,
     autoBackupPinHistory, setAutoBackupPinHistory,
-    recordAutoBackupPinChange
+    recordAutoBackupPinChange,
+    tempNoteContext, setTempNoteContext,
+    geminiApiKey, setGeminiApiKey
   }), [
     notes, tasks, transactions, moods, user, searchQuery, appPin, pinHistory, pinRecoveryQuestion, pinRecoveryAnswer, lang,
     hasCompletedOnboarding, isUnlocked, streak,
     reminderActive, reminderTime, savingsTarget, savingsTargetTitle, savingsBalance,
     archivedTags, isRefreshing, refreshStep, isLiteMode,
     autoBackupFrequency, autoBackupFilenamePrefix, lastAutoBackupTimestamp,
-    autoBackupPin, autoBackupPinHistory
+    autoBackupPin, autoBackupPinHistory, tempNoteContext, geminiApiKey
   ]);
 
   return (

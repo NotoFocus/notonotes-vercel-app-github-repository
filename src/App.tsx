@@ -661,7 +661,6 @@ export default function App() {
             <NavItem icon={<CheckCircle2 />} label={t('tasksMenu')} active={currentScreen === 'tasks'} onClick={() => setCurrentScreen('tasks')} />
             <NavItem icon={<FileText />} label={t('searchMenu')} active={currentScreen === 'search'} onClick={() => setCurrentScreen('search')} />
             <NavItem icon={<CalendarIcon />} label={t('calendar')} active={currentScreen === 'calendar'} onClick={() => setCurrentScreen('calendar')} />
-            <NavItem icon={<Bot />} label={lang === 'id' ? 'Asisten AI' : 'AI Companion'} active={currentScreen === 'ai-companion'} onClick={() => setCurrentScreen('ai-companion')} />
             <NavItem icon={<Settings />} label={t('settingsMenu')} active={currentScreen === 'settings'} onClick={() => setCurrentScreen('settings')} />
           </div>
         </nav>
@@ -672,8 +671,7 @@ export default function App() {
         {currentScreen === 'tasks' && <TasksScreen onNavigate={(screen) => setCurrentScreen(screen)} />}
         {currentScreen === 'calendar' && <CalendarScreen />}
         {currentScreen === 'finance' && <FinanceScreen appTheme={activeTheme} onBack={() => setCurrentScreen('home')} />}
-        {currentScreen === 'ai-companion' && <AICompanionScreen onBack={() => setCurrentScreen('home')} />}
-        {currentScreen === 'note-editor' && activeNote && <NoteEditorScreen note={activeNote} onBack={closeNote} />}
+        {currentScreen === 'note-editor' && activeNote && <NoteEditorScreen note={activeNote} onBack={closeNote} onNavigate={(screen) => setCurrentScreen(screen)} />}
         {currentScreen === 'search' && <SearchScreen onOpenNote={openNote} />}
         {currentScreen === 'settings' && (
           <SettingsScreen 
@@ -699,6 +697,7 @@ export default function App() {
         {currentScreen === 'tetris' && <TetrisScreen onBack={() => setCurrentScreen('games-hub')} />}
         {currentScreen === 'memory' && <MemoryGameScreen onBack={() => setCurrentScreen('games-hub')} />}
         {currentScreen === 'space-invaders' && <SpaceInvadersScreen onBack={() => setCurrentScreen('games-hub')} />}
+        {currentScreen === 'ai-companion' && <AICompanionScreen onBack={() => setCurrentScreen('home')} />}
       </div>
 
       {/* AUTO BACKUP PROMPT DIALOG */}
