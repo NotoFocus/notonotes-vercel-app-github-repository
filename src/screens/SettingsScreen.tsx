@@ -1545,7 +1545,8 @@ export default function SettingsScreen({
                                   'Content-Type': 'application/json',
                                 },
                                 body: JSON.stringify({
-                                  apiKey: testApiKey.trim()
+                                  apiKey: testApiKey.trim(),
+                                  lang
                                 })
                               }
                             );

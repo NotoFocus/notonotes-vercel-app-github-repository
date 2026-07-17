@@ -93,7 +93,14 @@ async function startServer() {
     config?: any;
     models?: string[];
   }) {
-    const modelsToTry = options.models || ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
+    const modelsToTry = options.models || [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-3.5-flash",
+      "gemini-flash-latest",
+      "gemini-3.1-flash-lite"
+    ];
     let lastError: any = null;
 
     for (const model of modelsToTry) {
@@ -119,8 +126,50 @@ async function startServer() {
     throw lastError || new Error("All models failed");
   }
 
+  function parseGeminiError(error: any, lang: string): string {
+    let msg = error.message || String(error);
+    
+    // If the error is a JSON string (typical for @google/genai SDK)
+    if (typeof msg === 'string' && msg.startsWith("{") && msg.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed?.error?.message) {
+          msg = parsed.error.message;
+        }
+      } catch (_) {}
+    }
+    
+    // Translate common errors into helpful Indonesian / English messages
+    if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID")) {
+      return lang === 'id' 
+        ? "API Key tidak valid. Harap periksa kembali kunci yang Anda masukkan dari Google AI Studio."
+        : "Invalid API Key. Please double check the key you copied from Google AI Studio.";
+    }
+    
+    if (msg.includes("Quota exceeded") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("limit") || msg.includes("quota")) {
+      return lang === 'id'
+        ? "Batas kuota API Key terlampaui. Harap coba lagi beberapa saat lagi atau gunakan kunci lain."
+        : "API Key quota exceeded. Please try again in a few moments or use a different key.";
+    }
+    
+    if (msg.includes("experiencing high demand") || msg.includes("UNAVAILABLE") || msg.includes("503")) {
+      return lang === 'id'
+        ? "Layanan Gemini sedang sibuk (Error 503). Harap coba sesaat lagi, sistem otomatis beralih ke model cadangan."
+        : "Gemini is currently experiencing high demand (Error 503). Please try again shortly.";
+    }
+
+    if (msg.includes("User location is not supported")) {
+      return lang === 'id'
+        ? "Lokasi Anda saat ini tidak didukung oleh layanan API Google Gemini."
+        : "Your current location is not supported by Google Gemini API.";
+    }
+    
+    return msg;
+  }
+
   // Noto AI Key Testing Endpoint
   app.post("/api/ai/test-key", async (req, res) => {
+    const lang = req.body.lang || 'id';
     try {
       const { apiKey } = req.body;
       const testKey = apiKey || process.env.GEMINI_API_KEY;
@@ -135,14 +184,15 @@ async function startServer() {
       res.json({ status: "ok" });
     } catch (error: any) {
       console.error("Test Key Error:", error.message || error);
-      res.status(400).json({ error: error.message || "Failed to validate key" });
+      const parsedMsg = parseGeminiError(error, lang);
+      res.status(400).json({ error: parsedMsg });
     }
   });
 
   // Noto AI Chat Endpoint
   app.post("/api/ai/chat", async (req, res) => {
+    const { messages, lang, customApiKey } = req.body;
     try {
-      const { messages, lang, customApiKey } = req.body;
       const ai = getGeminiClient(customApiKey);
       
       const systemInstruction = lang === 'id' 
@@ -168,7 +218,8 @@ async function startServer() {
       if (error.message === "GEMINI_API_KEY_MISSING") {
         return res.status(400).json({ error: "missing_api_key" });
       }
-      res.status(500).json({ error: error.message || "An error occurred during AI processing" });
+      const parsedMsg = parseGeminiError(error, lang || 'id');
+      res.status(500).json({ error: parsedMsg });
     }
   });
 
