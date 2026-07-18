@@ -3,7 +3,7 @@ import {
   Download, Upload, Lock, Smartphone, ChevronRight, ChevronLeft, User, 
   Globe, Key, Trash2, Info, AlertTriangle, Image as ImageIcon, RefreshCw, 
   Database, ChevronDown, Check, UserCheck, ShieldCheck, HelpCircle, Palette,
-  History as HistoryIcon, Bot, Eye, EyeOff, ExternalLink
+  History as HistoryIcon, Bot, Eye, EyeOff, ExternalLink, Gamepad2
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
@@ -933,7 +933,7 @@ export default function SettingsScreen({
                 {/* 5. AI Assistant Section Card */}
                 <button 
                   onClick={() => setActiveSection('ai')}
-                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px] sm:col-span-2"
+                  className={`p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px] ${isLiteMode ? 'sm:col-span-2' : ''}`}
                 >
                   <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
                     <Bot size={18} />
@@ -946,6 +946,29 @@ export default function SettingsScreen({
                     <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Konfigurasi provider, masukkan API Key mandiri Anda untuk mengaktifkan asisten AI.' : 'Configure provider, enter your own API Key to activate the AI assistant.'}</p>
                   </div>
                 </button>
+
+                {/* 6. Mini Games Section Card (Pro Mode only) */}
+                {!isLiteMode && (
+                  <button 
+                    onClick={() => onNavigate && onNavigate('games-hub')}
+                    className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  >
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <Gamepad2 size={18} />
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">
+                          {lang === 'id' ? 'Mini Games' : 'Mini Games'}
+                        </span>
+                        <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1.5 leading-normal">
+                        {lang === 'id' ? 'Istirahat sejenak dengan pilihan game kasual yang seru.' : 'Take a short break with a selection of fun casual games.'}
+                      </p>
+                    </div>
+                  </button>
+                )}
               </div>
 
               {/* Minimal Brand Tag */}
@@ -1436,11 +1459,27 @@ export default function SettingsScreen({
                         ? 'Noto didesain sebagai aplikasi Offline-First & Privacy-First. Kami percaya data dan kontrol AI harus sepenuhnya berada di tangan Anda.'
                         : 'Noto is built to be Offline-First & Privacy-First. We believe your data and AI control should belong completely to you.'}
                     </p>
-                    <ul className="text-[11px] text-slate-400 space-y-1 list-disc list-inside">
+                    <ul className="text-[11px] text-slate-400 space-y-1.5 list-disc list-inside">
                       <li>{lang === 'id' ? 'API Key disimpan secara lokal di perangkat Anda (IndexedDB).' : 'Your API Key is saved locally in this device (IndexedDB).'}</li>
-                      <li>{lang === 'id' ? 'Kunci Anda TIDAK PERNAH dikirim atau disimpan ke server Noto.' : 'Your key is NEVER sent to or stored on Noto servers.'}</li>
-                      <li>{lang === 'id' ? 'Semua permintaan obrolan AI dikirim langsung dari browser Anda ke Google Gemini.' : 'All AI chat requests are sent directly from your browser to Google Gemini.'}</li>
+                      <li>{lang === 'id' ? 'Kunci Anda disimpan dengan aman dan diproses langsung lewat server lokal Anda.' : 'Your key is stored securely and processed directly via your backend server.'}</li>
+                      <li>{lang === 'id' ? 'Fitur AI di workspace Preview berjalan otomatis menggunakan kunci developer bawaan AI Studio. Di website publik (Shared/Deployed), Anda wajib mengonfigurasi kunci API Anda sendiri.' : 'AI features in the workspace Preview work automatically using AI Studio\'s built-in developer key. On the public website (Shared/Deployed), you must configure your own API key.'}</li>
                     </ul>
+                    
+                    <div className="mt-3.5 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-[11px] text-amber-300/90 leading-relaxed space-y-1">
+                      <span className="font-bold flex items-center gap-1">
+                        <Info size={12} /> {lang === 'id' ? 'Kenapa di Preview bisa tapi di Website gagal?' : 'Why does it work in Preview but fail on Website?'}
+                      </span>
+                      <p>
+                        {lang === 'id' 
+                          ? 'Di dalam iframe Preview AI Studio, kunci pengembang otomatis aktif untuk mempermudah uji coba. Di website yang disebar/dideploy, kunci tersebut sengaja ditiadakan demi keamanan kuota pengembang.'
+                          : 'Within the AI Studio Preview iframe, the developer key is auto-active for easier testing. On shared/deployed websites, this key is excluded to protect developer quotas.'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                        {lang === 'id'
+                          ? '💡 Solusi Terbaik: Anda juga bisa memasukkan GEMINI_API_KEY Anda ke bagian Secrets/Environment Variables di pengaturan deploy Google AI Studio Anda, agar semua pengunjung web langsung terhubung secara gratis dan otomatis!'
+                          : '💡 Best Solution: You can also add your GEMINI_API_KEY to the Secrets/Environment Variables section in your Google AI Studio deployment settings, so all web visitors are automatically connected for free!'}
+                      </p>
+                    </div>
                   </div>
 
                   {/* AI Provider & Form Section */}
@@ -1537,8 +1576,14 @@ export default function SettingsScreen({
                           setConnectionError(null);
 
                           try {
+                            const requestUrl = `${window.location.origin}/api/ai/test-key`;
+                            console.log("[AI Key Test Request]:", {
+                              url: requestUrl,
+                              apiKeyLength: testApiKey.trim().length,
+                            });
+
                             const response = await fetch(
-                              `/api/ai/test-key`,
+                              requestUrl,
                               {
                                 method: 'POST',
                                 headers: {
@@ -1551,17 +1596,34 @@ export default function SettingsScreen({
                               }
                             );
 
+                            console.log("[AI Key Test Response]:", {
+                              status: response.status,
+                              statusText: response.statusText,
+                            });
+
                             if (response.ok) {
                               setConnectionStatus('connected');
                               showNotificationToast(lang === 'id' ? 'Koneksi Berhasil! API Key Anda valid.' : 'Connection Successful! Your API Key is valid.');
                             } else {
-                              const errorData = await response.json().catch(() => ({}));
-                              let errMsg = errorData?.error || (lang === 'id' ? 'API Key tidak valid' : 'Invalid API Key');
+                              const responseBodyText = await response.text().catch(() => "");
+                              console.error("[AI Key Test Response Error Body]:", responseBodyText);
+                              
+                              let errorData: any = {};
+                              try {
+                                errorData = JSON.parse(responseBodyText);
+                              } catch (_) {}
+
+                              let errMsg = errorData?.error || `API Error (${response.status})`;
+                              if (response.status === 404) {
+                                errMsg = lang === 'id'
+                                  ? `Error 404: Endpoint API atau Model tidak ditemukan. Harap pastikan model yang digunakan valid atau server web berjalan dengan benar.`
+                                  : `Error 404: API Endpoint or Model not found. Please ensure the model is valid or the web server is running correctly.`;
+                              }
                               setConnectionStatus('error');
                               setConnectionError(errMsg);
                             }
                           } catch (err: any) {
-                            console.error(err);
+                            console.error("[AI Key Test Connection Exception]:", err);
                             setConnectionStatus('error');
                             setConnectionError(err.message || (lang === 'id' ? 'Gagal menghubungi Google Gemini API' : 'Failed to reach Google Gemini API'));
                           }

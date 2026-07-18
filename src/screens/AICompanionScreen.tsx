@@ -269,20 +269,43 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
         };
       });
 
-      const res = await fetch('/api/ai/chat', {
+      const requestUrl = `${window.location.origin}/api/ai/chat`;
+      console.log("[AI Chat Request]:", {
+        url: requestUrl,
+        payloadSize: JSON.stringify(messagesPayload).length,
+      });
+
+      const res = await fetch(requestUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: messagesPayload,
           lang,
-          customApiKey: geminiApiKey || undefined
+          customApiKey: geminiApiKey ? geminiApiKey.trim() : undefined
         })
       });
 
+      console.log("[AI Chat Response]:", {
+        status: res.status,
+        statusText: res.statusText,
+      });
+
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
+        const responseBodyText = await res.text().catch(() => "");
+        console.error("[AI Chat Response Error Body]:", responseBodyText);
+        
+        let errorData: any = {};
+        try {
+          errorData = JSON.parse(responseBodyText);
+        } catch (_) {}
+
         let errMsg = errorData?.error || `API Error (${res.status})`;
-        if (errMsg === 'missing_api_key') {
+        
+        if (res.status === 404) {
+          errMsg = lang === 'id'
+            ? `Error 404: Endpoint API atau Model tidak ditemukan. Harap pastikan model yang digunakan valid atau server web berjalan dengan benar.`
+            : `Error 404: API Endpoint or Model not found. Please ensure the model is valid or the web server is running correctly.`;
+        } else if (errMsg === 'missing_api_key') {
           errMsg = lang === 'id'
             ? "API Key Gemini belum dikonfigurasi di server ataupun aplikasi."
             : "Gemini API Key is not configured on the server or app.";

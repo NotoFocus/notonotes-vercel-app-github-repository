@@ -28,7 +28,7 @@ interface NoteEditorProps {
 }
 
 export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEditorProps) {
-  const { notes, addNote, updateNote, deleteNote, lang, setTempNoteContext } = useAppStore();
+  const { notes, addNote, updateNote, deleteNote, lang, setTempNoteContext, geminiApiKey } = useAppStore();
   const t = useTranslation(lang);
   const [title, setTitle] = useState(note.title);
   const [initialHtml] = useState(() => {
@@ -150,14 +150,43 @@ export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEdito
         { role: 'user', content: instruction + rawContent }
       ];
 
-      const res = await fetch('/api/ai/chat', {
+      const requestUrl = `${window.location.origin}/api/ai/chat`;
+      console.log("[AI Note Helper Request]:", {
+        url: requestUrl,
+        payloadSize: JSON.stringify(messagesPayload).length,
+      });
+
+      const res = await fetch(requestUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: messagesPayload, lang })
+        body: JSON.stringify({
+          messages: messagesPayload,
+          lang,
+          customApiKey: geminiApiKey ? geminiApiKey.trim() : undefined
+        })
+      });
+
+      console.log("[AI Note Helper Response]:", {
+        status: res.status,
+        statusText: res.statusText,
       });
 
       if (!res.ok) {
-        throw new Error('API call failed');
+        const responseBodyText = await res.text().catch(() => "");
+        console.error("[AI Note Helper Response Error Body]:", responseBodyText);
+        
+        let errorData: any = {};
+        try {
+          errorData = JSON.parse(responseBodyText);
+        } catch (_) {}
+
+        let errMsg = errorData?.error || `API Error (${res.status})`;
+        if (res.status === 404) {
+          errMsg = lang === 'id'
+            ? `Error 404: Endpoint API atau Model tidak ditemukan. Harap pastikan model yang digunakan valid atau server web berjalan dengan benar.`
+            : `Error 404: API Endpoint or Model not found. Please ensure the model is valid or the web server is running correctly.`;
+        }
+        throw new Error(errMsg);
       }
 
       const data = await res.json();

@@ -77,8 +77,9 @@ async function startServer() {
     if (!key) {
       throw new Error("GEMINI_API_KEY_MISSING");
     }
+    const cleanKey = String(key).trim();
     return new GoogleGenAI({
-      apiKey: key,
+      apiKey: cleanKey,
       httpOptions: {
         headers: {
           "User-Agent": "aistudio-build",
@@ -105,15 +106,34 @@ async function startServer() {
 
     for (const model of modelsToTry) {
       try {
-        console.log(`Attempting generateContent with model: ${model}`);
+        const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        console.log(`[Google Gemini API Request]:`, {
+          url: targetUrl,
+          model: model,
+          contentsLength: options.contents?.length,
+          hasConfig: !!options.config,
+        });
+
         const response = await ai.models.generateContent({
           model,
           contents: options.contents,
           config: options.config,
         });
+
+        console.log(`[Google Gemini API Response Success]:`, {
+          model,
+          status: 200,
+          responseLength: response.text ? response.text.length : 0,
+        });
+
         return response;
       } catch (err: any) {
-        console.warn(`Model ${model} failed:`, err.message || err);
+        console.error(`[Google Gemini API Response Error]: Model ${model} failed:`, {
+          status: err.status || err.statusCode || "UNKNOWN",
+          message: err.message || String(err),
+          rawError: err,
+        });
+        
         lastError = err;
         
         // If it's a configuration or authentication error, do not retry other models
@@ -137,6 +157,19 @@ async function startServer() {
           msg = parsed.error.message;
         }
       } catch (_) {}
+    }
+
+    const errStatus = error.status || error.statusCode;
+    const isNotFoundError = 
+      errStatus === 404 || 
+      msg.includes("404") || 
+      msg.toLowerCase().includes("not found") || 
+      msg.toLowerCase().includes("not_found");
+
+    if (isNotFoundError) {
+      return lang === 'id'
+        ? `Model atau Endpoint API tidak ditemukan (Error 404): ${msg}. Harap gunakan model atau endpoint yang didukung.`
+        : `API Model or Endpoint not found (Error 404): ${msg}. Please use a supported model or endpoint.`;
     }
     
     // Translate common errors into helpful Indonesian / English messages
@@ -170,10 +203,12 @@ async function startServer() {
   // Noto AI Key Testing Endpoint
   app.post("/api/ai/test-key", async (req, res) => {
     const lang = req.body.lang || 'id';
+    console.log(`[API /api/ai/test-key Request] Received test request.`);
     try {
       const { apiKey } = req.body;
       const testKey = apiKey || process.env.GEMINI_API_KEY;
       if (!testKey) {
+        console.error(`[API /api/ai/test-key Error] Missing API Key.`);
         return res.status(400).json({ error: "missing_api_key" });
       }
       const ai = getGeminiClient(testKey);
@@ -183,15 +218,17 @@ async function startServer() {
       });
       res.json({ status: "ok" });
     } catch (error: any) {
-      console.error("Test Key Error:", error.message || error);
+      console.error("[API /api/ai/test-key Exception]:", error);
       const parsedMsg = parseGeminiError(error, lang);
-      res.status(400).json({ error: parsedMsg });
+      const errStatus = error.status || error.statusCode || 400;
+      res.status(errStatus).json({ error: parsedMsg });
     }
   });
 
   // Noto AI Chat Endpoint
   app.post("/api/ai/chat", async (req, res) => {
     const { messages, lang, customApiKey } = req.body;
+    console.log(`[API /api/ai/chat Request] Messages Count: ${messages?.length || 0}`);
     try {
       const ai = getGeminiClient(customApiKey);
       
@@ -214,12 +251,13 @@ async function startServer() {
 
       res.json({ reply: response.text });
     } catch (error: any) {
-      console.error("AI Chat Error:", error);
+      console.error("[API /api/ai/chat Exception]:", error);
       if (error.message === "GEMINI_API_KEY_MISSING") {
         return res.status(400).json({ error: "missing_api_key" });
       }
       const parsedMsg = parseGeminiError(error, lang || 'id');
-      res.status(500).json({ error: parsedMsg });
+      const errStatus = error.status || error.statusCode || 500;
+      res.status(errStatus).json({ error: parsedMsg });
     }
   });
 
