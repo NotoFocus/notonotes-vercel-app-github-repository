@@ -192,7 +192,7 @@ app.use(
         method: "POST",
         headers: {
           "Authorization": `Bearer ${cleanKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json", "HTTP-Referer": "https://noto.app", "X-Title": "Noto AI"
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
@@ -207,7 +207,7 @@ app.use(
           const parsed = JSON.parse(errText);
           if (parsed?.error?.message) errMsg = parsed.error.message;
         } catch (_) {}
-        throw new Error(errMsg);
+        const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
     } else if (provider === 'anthropic') {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -215,7 +215,7 @@ app.use(
         headers: {
           "x-api-key": cleanKey,
           "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json"
+          "Content-Type": "application/json", "HTTP-Referer": "https://noto.app", "X-Title": "Noto AI"
         },
         body: JSON.stringify({
           model: "claude-3-5-haiku-latest",
@@ -230,14 +230,14 @@ app.use(
           const parsed = JSON.parse(errText);
           if (parsed?.error?.message) errMsg = parsed.error.message;
         } catch (_) {}
-        throw new Error(errMsg);
+        const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
     } else if (provider === 'groq') {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${cleanKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json", "HTTP-Referer": "https://noto.app", "X-Title": "Noto AI"
         },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
@@ -252,14 +252,14 @@ app.use(
           const parsed = JSON.parse(errText);
           if (parsed?.error?.message) errMsg = parsed.error.message;
         } catch (_) {}
-        throw new Error(errMsg);
+        const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
     } else if (provider === 'openrouter') {
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${cleanKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json", "HTTP-Referer": "https://noto.app", "X-Title": "Noto AI"
         },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
@@ -274,7 +274,7 @@ app.use(
           const parsed = JSON.parse(errText);
           if (parsed?.error?.message) errMsg = parsed.error.message;
         } catch (_) {}
-        throw new Error(errMsg);
+        const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
     }
   }
@@ -313,7 +313,7 @@ app.use(
         method: "POST",
         headers: {
           "Authorization": `Bearer ${cleanKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json", "HTTP-Referer": "https://noto.app", "X-Title": "Noto AI"
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
@@ -328,7 +328,7 @@ app.use(
           const parsed = JSON.parse(errText);
           if (parsed?.error?.message) errMsg = parsed.error.message;
         } catch (_) {}
-        throw new Error(errMsg);
+        const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
       const data = await res.json();
       return data?.choices?.[0]?.message?.content || "";
@@ -342,7 +342,7 @@ app.use(
         headers: {
           "x-api-key": cleanKey,
           "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json"
+          "Content-Type": "application/json", "HTTP-Referer": "https://noto.app", "X-Title": "Noto AI"
         },
         body: JSON.stringify({
           model: "claude-3-5-sonnet-latest",
@@ -359,7 +359,7 @@ app.use(
           const parsed = JSON.parse(errText);
           if (parsed?.error?.message) errMsg = parsed.error.message;
         } catch (_) {}
-        throw new Error(errMsg);
+        const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
       const data = await res.json();
       return data?.content?.[0]?.text || "";
@@ -375,7 +375,7 @@ app.use(
         method: "POST",
         headers: {
           "Authorization": `Bearer ${cleanKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json", "HTTP-Referer": "https://noto.app", "X-Title": "Noto AI"
         },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
@@ -390,7 +390,7 @@ app.use(
           const parsed = JSON.parse(errText);
           if (parsed?.error?.message) errMsg = parsed.error.message;
         } catch (_) {}
-        throw new Error(errMsg);
+        const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
       const data = await res.json();
       return data?.choices?.[0]?.message?.content || "";
@@ -406,7 +406,7 @@ app.use(
         method: "POST",
         headers: {
           "Authorization": `Bearer ${cleanKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json", "HTTP-Referer": "https://noto.app", "X-Title": "Noto AI"
         },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
@@ -421,7 +421,7 @@ app.use(
           const parsed = JSON.parse(errText);
           if (parsed?.error?.message) errMsg = parsed.error.message;
         } catch (_) {}
-        throw new Error(errMsg);
+        const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
       const data = await res.json();
       return data?.choices?.[0]?.message?.content || "";
@@ -451,10 +451,7 @@ app.use(
 
     const errStatus = error.status || error.statusCode || 500;
     const isNotFoundError = 
-      errStatus === 404 || 
-      msg.includes("404") || 
-      msg.toLowerCase().includes("not found") || 
-      msg.toLowerCase().includes("not_found");
+      errStatus === 404; 
 
     if (isNotFoundError) {
       return lang === 'id'
@@ -463,7 +460,7 @@ app.use(
     }
     
     // Translate common errors into helpful Indonesian / English messages
-    if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("API key") || msg.includes("GEMINI_API_KEY_MISSING")) {
+    if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("API key") || msg.includes("GEMINI_API_KEY_MISSING") || errStatus === 401) {
       return lang === 'id' 
         ? `API Key tidak valid atau belum diatur. Harap periksa kembali kunci yang Anda masukkan di Pengaturan.`
         : `Invalid or missing API Key. Please configure your API key in Settings.`;
