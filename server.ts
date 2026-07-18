@@ -95,11 +95,9 @@ async function startServer() {
     models?: string[];
   }) {
     const modelsToTry = options.models || [
-      "gemini-1.5-flash",
-      "gemini-2.0-flash",
-      "gemini-1.5-pro",
       "gemini-2.5-flash",
-      "gemini-flash-latest"
+      "gemini-3.5-flash",
+      "gemini-3.1-flash-lite"
     ];
     let lastError: any = null;
 
@@ -135,8 +133,22 @@ async function startServer() {
         
         lastError = err;
         
-        // If it's a configuration or authentication error, do not retry other models
-        if (err.message && (err.message.includes("API key") || err.message.includes("GEMINI_API_KEY_MISSING") || err.status === 403 || err.status === 401)) {
+        const errMsg = err.message || String(err);
+        const errStatus = err.status || err.statusCode;
+        
+        // If it's a configuration, location, or authentication error, do not retry other models
+        if (
+          errStatus === 400 ||
+          errStatus === 401 ||
+          errStatus === 403 ||
+          errMsg.includes("API key") ||
+          errMsg.includes("API_KEY_INVALID") ||
+          errMsg.includes("invalid") ||
+          errMsg.includes("not valid") ||
+          errMsg.includes("location") ||
+          errMsg.includes("not supported") ||
+          errMsg.includes("GEMINI_API_KEY_MISSING")
+        ) {
           throw err;
         }
       }
@@ -418,14 +430,21 @@ async function startServer() {
   function parseGeminiError(error: any, lang: string): string {
     let msg = error.message || String(error);
     
-    // If the error is a JSON string (typical for @google/genai SDK)
-    if (typeof msg === 'string' && msg.startsWith("{") && msg.endsWith("}")) {
-      try {
-        const parsed = JSON.parse(msg);
-        if (parsed?.error?.message) {
-          msg = parsed.error.message;
-        }
-      } catch (_) {}
+    // If the error contains a JSON object (typical for @google/genai SDK)
+    if (typeof msg === 'string') {
+      const firstBrace = msg.indexOf("{");
+      const lastBrace = msg.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        try {
+          const jsonStr = msg.substring(firstBrace, lastBrace + 1);
+          const parsed = JSON.parse(jsonStr);
+          if (parsed?.error?.message) {
+            msg = parsed.error.message;
+          } else if (parsed?.message) {
+            msg = parsed.message;
+          }
+        } catch (_) {}
+      }
     }
 
     const errStatus = error.status || error.statusCode;
