@@ -540,6 +540,12 @@ app.use(
   });
 
   // Export app for serverless platforms like Vercel
+  // Global error handler
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error("[Express Global Error]:", err);
+    res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
+  });
+
   export default app;
 
   async function startServer() {

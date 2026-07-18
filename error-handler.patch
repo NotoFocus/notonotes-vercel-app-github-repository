@@ -1,0 +1,14 @@
+--- server.ts
++++ server.ts
+@@ -485,6 +485,12 @@
+     }
+   });
+ 
++  // Global error handler to prevent HTML 500 responses
++  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
++    console.error("[Express Global Error]:", err);
++    res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
++  });
++
+   // Export app for serverless platforms like Vercel
+   export default app;
