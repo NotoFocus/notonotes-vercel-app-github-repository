@@ -5,29 +5,28 @@ import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  // Body parsers
-  app.use(express.json({ limit: "5mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+// Body parsers
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
-  // Compression
-  app.use(compression());
+// Compression
+app.use(compression());
 
-  // Security Headers via Helmet
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      crossOriginEmbedderPolicy: false,
-      crossOriginOpenerPolicy: false,
-      crossOriginResourcePolicy: false,
-      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
-      xssFilter: true, // Explicit XSS Protection
-      hsts: {
-        maxAge: 31536000,
-        includeSubDomains: true,
+// Security Headers via Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    xssFilter: true, // Explicit XSS Protection
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
         preload: true,
       },
       dnsPrefetchControl: { allow: false },
@@ -544,36 +543,44 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development (check process.env.NODE_ENV or process.env.VITE_DEV)
-  const isDev = process.env.NODE_ENV !== "production" || process.env.VITE_DEV === "true";
+  // Export app for serverless platforms like Vercel
+  export default app;
 
-  if (isDev) {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    // Production static serving
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath, {
-      setHeaders: (res, path, stat) => {
-        // Cache control for static assets
-        if (path.endsWith(".html")) {
-          res.setHeader("Cache-Control", "no-store, max-age=0");
-        } else {
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  async function startServer() {
+    // Vite middleware for development (check process.env.NODE_ENV or process.env.VITE_DEV)
+    const isDev = process.env.NODE_ENV !== "production" || process.env.VITE_DEV === "true";
+
+    if (isDev) {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      // Production static serving
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath, {
+        setHeaders: (res, path, stat) => {
+          // Cache control for static assets
+          if (path.endsWith(".html")) {
+            res.setHeader("Cache-Control", "no-store, max-age=0");
+          } else {
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          }
         }
-      }
-    }));
-    app.get("*all", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      }));
+
+      app.get("*all", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running securely on port ${PORT}`);
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running securely on port ${PORT}`);
-  });
-}
-
-startServer();
+  // Only start the server if it's run directly (not imported as a module in Vercel)
+  if (process.env.NODE_ENV !== "production" || process.argv[1]?.endsWith('server.cjs') || process.env.START_SERVER === 'true') {
+    startServer();
+  }
