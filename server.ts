@@ -95,11 +95,14 @@ async function startServer() {
     models?: string[];
   }) {
     const modelsToTry = options.models || [
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
       "gemini-2.5-flash",
       "gemini-3.5-flash",
       "gemini-3.1-flash-lite"
     ];
     let lastError: any = null;
+    let quotaError: any = null;
 
     for (const model of modelsToTry) {
       try {
@@ -136,25 +139,32 @@ async function startServer() {
         const errMsg = err.message || String(err);
         const errStatus = err.status || err.statusCode;
         
-        // If it's a configuration, location, or authentication error, do not retry other models
+        lastError = err;
+        lastError.model = model;
+        
+        // If it's explicitly an API key authentication error, throw immediately so we don't spam the API
         if (
-          errStatus === 400 ||
           errStatus === 401 ||
-          errStatus === 403 ||
-          errMsg.includes("API key") ||
           errMsg.includes("API_KEY_INVALID") ||
-          errMsg.includes("invalid") ||
-          errMsg.includes("not valid") ||
-          errMsg.includes("location") ||
-          errMsg.includes("not supported") ||
+          errMsg.includes("API key not valid") ||
           errMsg.includes("GEMINI_API_KEY_MISSING")
         ) {
           throw err;
         }
+
+        // If it's a quota error, save it so we can throw it instead of a 404 if all models fail
+        if (errStatus === 429 || errMsg.includes("quota") || errMsg.includes("RESOURCE_EXHAUSTED")) {
+           quotaError = err;
+        }
       }
     }
     
-    throw lastError || new Error("All models failed");
+    if (quotaError) throw quotaError;
+    if (lastError) {
+      lastError.message = `[${lastError.model}] ${lastError.message}`;
+      throw lastError;
+    }
+    throw new Error("All models failed");
   }
 
   function detectProvider(apiKey: string): 'gemini' | 'openai' | 'anthropic' | 'groq' | 'openrouter' {
@@ -447,7 +457,7 @@ async function startServer() {
       }
     }
 
-    const errStatus = error.status || error.statusCode;
+    const errStatus = error.status || error.statusCode || 500;
     const isNotFoundError = 
       errStatus === 404 || 
       msg.includes("404") || 
@@ -456,36 +466,36 @@ async function startServer() {
 
     if (isNotFoundError) {
       return lang === 'id'
-        ? `Model atau Endpoint API tidak ditemukan (Error 404): ${msg}. Harap gunakan model atau endpoint yang didukung.`
-        : `API Model or Endpoint not found (Error 404): ${msg}. Please use a supported model or endpoint.`;
+        ? `Model atau Endpoint API tidak ditemukan (Error 404): ${msg}. Harap pastikan API Key mendukung model ini.`
+        : `API Model or Endpoint not found (Error 404): ${msg}. Please ensure your API Key supports this model.`;
     }
     
     // Translate common errors into helpful Indonesian / English messages
-    if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID")) {
+    if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("API key")) {
       return lang === 'id' 
-        ? "API Key tidak valid. Harap periksa kembali kunci yang Anda masukkan."
-        : "Invalid API Key. Please double check the key you copied.";
+        ? `API Key tidak valid (Error ${errStatus}). Harap periksa kembali kunci yang Anda masukkan.`
+        : `Invalid API Key (Error ${errStatus}). Please double check the key you copied.`;
     }
     
-    if (msg.includes("Quota exceeded") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("limit") || msg.includes("quota")) {
+    if (msg.includes("Quota exceeded") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("limit") || msg.includes("quota") || errStatus === 429) {
       return lang === 'id'
-        ? "Batas kuota API Key terlampaui. Harap coba lagi beberapa saat lagi atau gunakan kunci lain."
-        : "API Key quota exceeded. Please try again in a few moments or use a different key.";
+        ? `Batas kuota API Key terlampaui (Error 429). Harap coba lagi beberapa saat lagi atau gunakan kunci lain.`
+        : `API Key quota exceeded (Error 429). Please try again in a few moments or use a different key.`;
     }
     
-    if (msg.includes("experiencing high demand") || msg.includes("UNAVAILABLE") || msg.includes("503")) {
+    if (msg.includes("experiencing high demand") || msg.includes("UNAVAILABLE") || errStatus === 503) {
       return lang === 'id'
-        ? "Layanan AI sedang sibuk (Error 503). Harap coba sesaat lagi."
-        : "The AI service is currently experiencing high demand (Error 503). Please try again shortly.";
+        ? `Layanan AI sedang sibuk (Error 503). Harap coba sesaat lagi.`
+        : `The AI service is currently experiencing high demand (Error 503). Please try again shortly.`;
     }
 
     if (msg.includes("User location is not supported")) {
       return lang === 'id'
-        ? "Lokasi Anda saat ini tidak didukung oleh layanan API Google Gemini."
-        : "Your current location is not supported by Google Gemini API.";
+        ? `Lokasi Anda saat ini tidak didukung oleh layanan API Google Gemini.`
+        : `Your current location is not supported by Google Gemini API.`;
     }
     
-    return msg;
+    return lang === 'id' ? `Gagal terhubung (Error ${errStatus}): ${msg}` : `Connection failed (Error ${errStatus}): ${msg}`;
   }
 
   // Noto AI Key Testing Endpoint
