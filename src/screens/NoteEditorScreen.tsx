@@ -181,7 +181,7 @@ export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEdito
         } catch (_) {}
 
         let errMsg = errorData?.error || `API Error (${res.status})`;
-        if (res.status === 404) {
+        if (res.status === 404 && !errorData?.error) {
           errMsg = lang === 'id'
             ? `Error 404: Endpoint API atau Model tidak ditemukan. Harap pastikan model yang digunakan valid atau server web berjalan dengan benar.`
             : `Error 404: API Endpoint or Model not found. Please ensure the model is valid or the web server is running correctly.`;

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "NODE_ENV=development VITE_DEV=true tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "node dist/server.cjs",
+    "start": "NODE_ENV=production node dist/server.cjs",
     "preview": "npm run build && npm run start",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

@@ -128,16 +128,10 @@ async function startServer() {
 
         return response;
       } catch (err: any) {
-        console.error(`[Google Gemini API Response Error]: Model ${model} failed:`, {
-          status: err.status || err.statusCode || "UNKNOWN",
-          message: err.message || String(err),
-          rawError: err,
-        });
-        
-        lastError = err;
-        
         const errMsg = err.message || String(err);
-        const errStatus = err.status || err.statusCode;
+        const errStatus = err.status || err.statusCode || "UNKNOWN";
+        
+        console.error(`[Google Gemini API Response Error]: Model ${model} failed with status ${errStatus}: ${errMsg.substring(0, 150)}...`);
         
         lastError = err;
         lastError.model = model;
@@ -516,7 +510,7 @@ async function startServer() {
       await testApiKeyWithProvider(testKey, provider, lang);
       res.json({ status: "ok" });
     } catch (error: any) {
-      console.error("[API /api/ai/test-key Exception]:", error);
+      console.error(`[API /api/ai/test-key Exception]: ${error.message || String(error).substring(0, 100)}`);
       const parsedMsg = parseGeminiError(error, lang);
       const errStatus = error.status || error.statusCode || 400;
       res.status(errStatus).json({ error: parsedMsg });
@@ -543,7 +537,7 @@ async function startServer() {
       const reply = await handleChatWithProvider(activeKey, provider, messages, systemInstruction, lang);
       res.json({ reply });
     } catch (error: any) {
-      console.error("[API /api/ai/chat Exception]:", error);
+      console.error(`[API /api/ai/chat Exception]: ${error.message || String(error).substring(0, 100)}`);
       const parsedMsg = parseGeminiError(error, lang || 'id');
       const errStatus = error.status || error.statusCode || 500;
       res.status(errStatus).json({ error: parsedMsg });
