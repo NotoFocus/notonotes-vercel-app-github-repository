@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import helmet from "helmet";
 import compression from "compression";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();
@@ -464,10 +463,10 @@ app.use(
     }
     
     // Translate common errors into helpful Indonesian / English messages
-    if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("API key")) {
+    if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("API key") || msg.includes("GEMINI_API_KEY_MISSING")) {
       return lang === 'id' 
-        ? `API Key tidak valid (Error ${errStatus}). Harap periksa kembali kunci yang Anda masukkan.`
-        : `Invalid API Key (Error ${errStatus}). Please double check the key you copied.`;
+        ? `API Key tidak valid atau belum diatur. Harap periksa kembali kunci yang Anda masukkan di Pengaturan.`
+        : `Invalid or missing API Key. Please configure your API key in Settings.`;
     }
     
     if (msg.includes("Quota exceeded") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("limit") || msg.includes("quota") || errStatus === 429) {
@@ -551,7 +550,8 @@ app.use(
     const isDev = process.env.NODE_ENV !== "production" || process.env.VITE_DEV === "true";
 
     if (isDev) {
-      const vite = await createViteServer({
+      const viteModule = await import("vite");
+      const vite = await viteModule.createServer({
         server: { middlewareMode: true },
         appType: "spa",
       });
