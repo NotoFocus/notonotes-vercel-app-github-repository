@@ -5,7 +5,7 @@ import compression from "compression";
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // Body parsers
 app.use(express.json({ limit: "5mb" }));
@@ -93,7 +93,7 @@ app.use(
     models?: string[];
   }) {
     const modelsToTry = options.models || [
-      "gemini-2.0-flash",
+      "gemini-2.5-flash",
       "gemini-1.5-flash",
       "gemini-2.5-flash",
       "gemini-3.5-flash",
@@ -449,7 +449,7 @@ app.use(
       }
     }
 
-    const errStatus = error.status || error.statusCode || 500;
+    const raw = error.status || error.statusCode || 500; const errStatus = (typeof raw === "number" && !isNaN(raw)) ? raw : 500;
     const isNotFoundError = 
       errStatus === 404; 
 
@@ -462,20 +462,20 @@ app.use(
     // Translate common errors into helpful Indonesian / English messages
     if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("API key") || msg.includes("GEMINI_API_KEY_MISSING") || errStatus === 401) {
       return lang === 'id' 
-        ? `API Key tidak valid atau belum diatur. Harap periksa kembali kunci yang Anda masukkan di Pengaturan.`
-        : `Invalid or missing API Key. Please configure your API key in Settings.`;
+        ? `Error 401: API Key tidak valid atau ditolak oleh penyedia layanan. Detail: ${msg}`
+        : `Error 401: Invalid API Key or rejected by provider. Detail: ${msg}`;
     }
     
     if (msg.includes("Quota exceeded") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("limit") || msg.includes("quota") || errStatus === 429) {
       return lang === 'id'
-        ? `Batas kuota API Key terlampaui (Error 429). Harap coba lagi beberapa saat lagi atau gunakan kunci lain.`
-        : `API Key quota exceeded (Error 429). Please try again in a few moments or use a different key.`;
+        ? `Error 429: Batas kuota API Key terlampaui atau Anda terkena rate limit. Detail: ${msg}`
+        : `Error 429: API Key quota exceeded or rate limited. Detail: ${msg}`;
     }
     
     if (msg.includes("experiencing high demand") || msg.includes("UNAVAILABLE") || errStatus === 503) {
       return lang === 'id'
-        ? `Layanan AI sedang sibuk (Error 503). Harap coba sesaat lagi.`
-        : `The AI service is currently experiencing high demand (Error 503). Please try again shortly.`;
+        ? `Error 503: Layanan AI sedang sibuk. Detail: ${msg}`
+        : `Error 503: The AI service is currently experiencing high demand. Detail: ${msg}`;
     }
 
     if (msg.includes("User location is not supported")) {
@@ -507,7 +507,7 @@ app.use(
     } catch (error: any) {
       console.error(`[API /api/ai/test-key Exception]: ${error.message || String(error).substring(0, 100)}`);
       const parsedMsg = parseGeminiError(error, lang);
-      const errStatus = error.status || error.statusCode || 400;
+      const raw = error.status || error.statusCode || 400; const errStatus = (typeof raw === "number" && !isNaN(raw)) ? raw : 400;
       res.status(errStatus).json({ error: parsedMsg });
     }
   });
@@ -534,7 +534,7 @@ app.use(
     } catch (error: any) {
       console.error(`[API /api/ai/chat Exception]: ${error.message || String(error).substring(0, 100)}`);
       const parsedMsg = parseGeminiError(error, lang || 'id');
-      const errStatus = error.status || error.statusCode || 500;
+      const raw = error.status || error.statusCode || 500; const errStatus = (typeof raw === "number" && !isNaN(raw)) ? raw : 500;
       res.status(errStatus).json({ error: parsedMsg });
     }
   });

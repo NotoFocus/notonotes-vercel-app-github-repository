@@ -3,6 +3,8 @@ import { useCallback } from 'react';
 export const translations = {
   id: {
     hello: 'Halo,',
+    dailyMood: 'Suasana Hati Hari Ini',
+    no_results: 'Tidak ada hasil ditemukan',
     yourNotes: 'Catatanmu',
     yourTasks: 'Tugasmu',
     streak: 'Hari berturut-turut',
@@ -377,6 +379,8 @@ export const translations = {
   },
   en: {
     hello: 'Hello,',
+    dailyMood: 'Daily Mood',
+    no_results: 'No results found',
     yourNotes: 'Your Notes',
     yourTasks: 'Your Tasks',
     streak: 'Day Streak',

@@ -4,6 +4,9 @@ import { useAppStore } from '../store';
 import { useTranslation } from '../translations';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateId } from '../utils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 
 interface AICompanionProps {
   onBack: () => void;
@@ -18,7 +21,7 @@ interface ChatMessage {
 }
 
 export default function AICompanionScreen({ onBack }: AICompanionProps) {
-  const { notes, moods, transactions, tasks, streak, savingsBalance, savingsTarget, lang, tempNoteContext, setTempNoteContext, geminiApiKey } = useAppStore();
+  const { notes, moods, transactions, tasks, streak, savingsBalance, savingsTarget, lang, tempNoteContext, setTempNoteContext, autoSendNoteToAI, setAutoSendNoteToAI, geminiApiKey } = useAppStore();
   const t = useTranslation(lang);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -244,6 +247,17 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
     await executeChatCall(noticeText, rejectedPrompt);
   };
 
+  // Auto send note context when navigated from note editor with 'Tanya AI'
+  useEffect(() => {
+    if (tempNoteContext && autoSendNoteToAI) {
+      setAutoSendNoteToAI(false);
+      const defaultPrompt = lang === 'id' 
+        ? "Tolong berikan ringkasan atau tanggapan untuk catatan ini." 
+        : "Please provide a summary or response for this note.";
+      handleSend(defaultPrompt);
+    }
+  }, [tempNoteContext, autoSendNoteToAI, lang]);
+
   const executeChatCall = async (fullPrompt: string, userFacingPrompt?: string) => {
     setIsLoading(true);
     setErrorMsg(null);
@@ -255,13 +269,15 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
       timestamp: Date.now()
     };
 
-    const updatedHistory = [...messages, userMsg];
-    setMessages(updatedHistory);
+    // Calculate synchronously so we can use it immediately in the payload
+    const newHistory = [...messages, userMsg];
+    setMessages(newHistory);
+    saveChatHistory(newHistory);
     setInputText('');
 
     try {
-      // Map historical messages to standard Noto backend payload
-      const messagesPayload = updatedHistory.slice(-8).map((m, idx, arr) => {
+      // Map historical messages from the new history
+      const messagesPayload = newHistory.slice(-8).map((m, idx, arr) => {
         const isLatestUser = idx === arr.length - 1;
         return {
           role: m.role === 'model' ? 'model' : 'user',
@@ -269,12 +285,7 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
         };
       });
 
-      const requestUrl = `${window.location.origin}/api/ai/chat`;
-      console.log("[AI Chat Request]:", {
-        url: requestUrl,
-        payloadSize: JSON.stringify(messagesPayload).length,
-      });
-
+      const requestUrl = `/api/ai/chat`;
       const res = await fetch(requestUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -285,15 +296,8 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
         })
       });
 
-      console.log("[AI Chat Response]:", {
-        status: res.status,
-        statusText: res.statusText,
-      });
-
       if (!res.ok) {
         const responseBodyText = await res.text().catch(() => "");
-        console.error("[AI Chat Response Error Body]:", responseBodyText);
-        
         let errorData: any = {};
         try {
           errorData = JSON.parse(responseBodyText);
@@ -303,8 +307,8 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
         
         if (res.status === 404 && !errorData?.error) {
           errMsg = lang === 'id'
-            ? `Error 404: Endpoint API atau Model tidak ditemukan. Harap pastikan model yang digunakan valid atau server web berjalan dengan benar.`
-            : `Error 404: API Endpoint or Model not found. Please ensure the model is valid or the web server is running correctly.`;
+            ? `Error 404: Endpoint API atau Model tidak ditemukan.`
+            : `Error 404: API Endpoint or Model not found.`;
         } else if (errMsg === 'missing_api_key') {
           errMsg = lang === 'id'
             ? "API Key Gemini belum dikonfigurasi di server ataupun aplikasi."
@@ -323,11 +327,12 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
         timestamp: Date.now()
       };
 
-      const finalHistory = [...updatedHistory, modelMsg];
-      setMessages(finalHistory);
-      saveChatHistory(finalHistory);
+      setMessages(prev => {
+        const finalHistory = [...prev, modelMsg];
+        saveChatHistory(finalHistory);
+        return finalHistory;
+      });
 
-      // Deduct Credit only on success
       updateCredits(Math.max(0, creditsLeft - 1));
 
     } catch (err: any) {
@@ -593,39 +598,38 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
             {messages.map((msg) => {
               const isUser = msg.role === 'user';
               
-              // Handle formatting text inside bubbles (Markdown support)
-              // We do a simple parse of **bold** and *italic*
-              const formattedContent = msg.content
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/\n/g, '<br />');
-
-              return (
+                            return (
                 <div
                   key={msg.id}
-                  className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-150`}
+                  className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-150 w-full mb-2`}
                 >
-                  <div className={`flex gap-3 max-w-[85%] md:max-w-[70%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`flex gap-3 max-w-[90%] md:max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                     
                     {/* Icon / Avatar */}
-                    <div className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-xs font-bold ${
+                    <div className={`w-8 h-8 rounded-2xl shrink-0 flex items-center justify-center text-xs font-bold shadow-sm mt-1 ${
                       isUser 
                         ? 'bg-slate-800 text-slate-300 border border-slate-700/50' 
-                        : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                        : 'bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-500/30'
                     }`}>
                       {isUser ? 'ME' : <Bot size={16} />}
                     </div>
 
                     {/* Chat Bubble */}
-                    <div className="flex flex-col gap-1">
-                      <div className={`rounded-2xl p-4 text-sm leading-relaxed ${
+                    <div className="flex flex-col gap-1.5 w-full overflow-hidden">
+                      <div className={`rounded-3xl p-4 text-[14px] leading-relaxed shadow-sm ${
                         isUser 
-                          ? 'bg-indigo-600 text-white rounded-tr-none shadow-lg shadow-indigo-600/10' 
-                          : 'bg-slate-900 text-slate-200 rounded-tl-none border border-slate-800/80 shadow-md'
+                          ? 'bg-indigo-600 text-white rounded-tr-sm' 
+                          : 'bg-slate-900 text-slate-200 rounded-tl-sm border border-slate-800/80 prose prose-invert prose-p:leading-relaxed prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-a:text-indigo-400 max-w-none'
                       }`}>
-                        <p dangerouslySetInnerHTML={{ __html: formattedContent }} />
+                        {isUser ? (
+                          <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
+                        ) : (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        )}
                       </div>
-                      <span className={`text-[9px] text-slate-500 px-1 ${isUser ? 'text-right' : 'text-left'}`}>
+                      <span className={`text-[10px] text-slate-500 font-medium px-2 ${isUser ? 'text-right' : 'text-left'}`}>
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>

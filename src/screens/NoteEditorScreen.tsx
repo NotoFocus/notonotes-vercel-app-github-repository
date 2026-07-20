@@ -28,7 +28,7 @@ interface NoteEditorProps {
 }
 
 export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEditorProps) {
-  const { notes, addNote, updateNote, deleteNote, lang, setTempNoteContext, geminiApiKey } = useAppStore();
+  const { notes, addNote, updateNote, deleteNote, lang, setTempNoteContext, setAutoSendNoteToAI, geminiApiKey } = useAppStore();
   const t = useTranslation(lang);
   const [title, setTitle] = useState(note.title);
   const [initialHtml] = useState(() => {
@@ -74,13 +74,6 @@ export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEdito
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [customReminderVal, setCustomReminderVal] = useState("");
 
-  // Noto AI Helper State
-  const [showAIHelperModal, setShowAIHelperModal] = useState(false);
-  const [aiHelperStage, setAIHelperStage] = useState<'select' | 'consent' | 'processing' | 'result'>('select');
-  const [aiHelperAction, setAIHelperAction] = useState<'tidy' | 'summary' | 'checklist' | 'ideas'>('tidy');
-  const [aiHelperResult, setAIHelperResult] = useState('');
-  const [aiHelperError, setAIHelperError] = useState<string | null>(null);
-  const [aiCredits, setAICredits] = useState(10);
   const [showGiveToAIModal, setShowGiveToAIModal] = useState(false);
   const [sharedWithAI, setSharedWithAI] = useState<boolean>(!!note.sharedWithAI);
   const sharedWithAIRef = useRef(!!note.sharedWithAI);
@@ -94,132 +87,6 @@ export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEdito
     }
   }, []); // Only run once on mount
 
-  // Load and check daily credits
-  useEffect(() => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const storedDate = localStorage.getItem('noto_ai_credits_date');
-      const storedCredits = localStorage.getItem('noto_ai_credits_left');
-
-      if (storedDate === today && storedCredits !== null) {
-        setAICredits(Number(storedCredits));
-      } else {
-        localStorage.setItem('noto_ai_credits_date', today);
-        localStorage.setItem('noto_ai_credits_left', '10');
-        setAICredits(10);
-      }
-    } catch (e) {}
-  }, [showAIHelperModal]);
-
-  const handleRunAIHelper = async () => {
-    const rawContent = (editorRef.current ? editorRef.current.innerText : contentRef.current) || '';
-    if (!rawContent.trim()) {
-      setAIHelperError(lang === 'id' ? "Catatan Anda masih kosong. Silakan tulis sesuatu terlebih dahulu!" : "Your note is empty. Please write something first!");
-      return;
-    }
-
-    if (aiCredits <= 0) {
-      setAIHelperError(lang === 'id' ? "Kredit AI harian Anda habis. Silakan coba lagi besok!" : "Your daily AI credits are fully spent. Please try again tomorrow!");
-      return;
-    }
-
-    setAIHelperStage('processing');
-    setAIHelperError(null);
-
-    let instruction = '';
-    if (aiHelperAction === 'tidy') {
-      instruction = lang === 'id'
-        ? "Tolong rapikan tulisan berikut agar lebih rapi, profesional, perbaiki ejaan, tata bahasa, dan struktur kalimatnya tanpa merubah inti isinya. Kembalikan hasil jadinya langsung tanpa komentar pembuka atau penutup:\n\n"
-        : "Please tidy up the following writing, improve its spelling, grammar, sentence structure, and make it look clean and professional without changing its core meaning. Return the finalized text directly without any introductory or concluding remarks:\n\n";
-    } else if (aiHelperAction === 'summary') {
-      instruction = lang === 'id'
-        ? "Tolong buat ringkasan eksekutif yang padat, jelas, menggunakan poin-poin penting dari catatan berikut. Sampaikan langsung dengan format markdown atau poin-poin:\n\n"
-        : "Please create a concise, clear executive summary with key bullet points from the following note. Return the formatted markdown directly:\n\n";
-    } else if (aiHelperAction === 'checklist') {
-      instruction = lang === 'id'
-        ? "Tolong ubah catatan atau tulisan berikut menjadi daftar checklist tugas (todo list) terstruktur dalam format markdown sederhana:\n\n"
-        : "Please convert the following writing/notes into a structured todo checklist in simple markdown format:\n\n";
-    } else {
-      instruction = lang === 'id'
-        ? "Tolong berikan saran kreatif, ide pengembangan tambahan, atau umpan balik konstruktif untuk memperkaya isi catatan berikut:\n\n"
-        : "Please provide creative suggestions, additional development ideas, or constructive feedback to enrich the following note:\n\n";
-    }
-
-    try {
-      const messagesPayload = [
-        { role: 'user', content: instruction + rawContent }
-      ];
-
-      const requestUrl = `${window.location.origin}/api/ai/chat`;
-      console.log("[AI Note Helper Request]:", {
-        url: requestUrl,
-        payloadSize: JSON.stringify(messagesPayload).length,
-      });
-
-      const res = await fetch(requestUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: messagesPayload,
-          lang,
-          customApiKey: geminiApiKey ? geminiApiKey.trim() : undefined
-        })
-      });
-
-      console.log("[AI Note Helper Response]:", {
-        status: res.status,
-        statusText: res.statusText,
-      });
-
-      if (!res.ok) {
-        const responseBodyText = await res.text().catch(() => "");
-        console.error("[AI Note Helper Response Error Body]:", responseBodyText);
-        
-        let errorData: any = {};
-        try {
-          errorData = JSON.parse(responseBodyText);
-        } catch (_) {}
-
-        let errMsg = errorData?.error || `API Error (${res.status})`;
-        if (res.status === 404 && !errorData?.error) {
-          errMsg = lang === 'id'
-            ? `Error 404: Endpoint API atau Model tidak ditemukan. Harap pastikan model yang digunakan valid atau server web berjalan dengan benar.`
-            : `Error 404: API Endpoint or Model not found. Please ensure the model is valid or the web server is running correctly.`;
-        }
-        throw new Error(errMsg);
-      }
-
-      const data = await res.json();
-      setAIHelperResult(data.reply || '');
-      setAIHelperStage('result');
-
-      // Deduct credit
-      const nextCredits = Math.max(0, aiCredits - 1);
-      setAICredits(nextCredits);
-      localStorage.setItem('noto_ai_credits_left', String(nextCredits));
-
-    } catch (err) {
-      console.error(err);
-      setAIHelperError(lang === 'id' ? "Gagal memproses dengan Noto AI. Silakan coba lagi nanti." : "Failed to process with Noto AI. Please try again later.");
-      setAIHelperStage('select');
-    }
-  };
-
-  const handleApplyAIResult = () => {
-    if (editorRef.current) {
-      const formatted = aiHelperResult
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-        .replace(/\*(.*?)\*/g, '<i>$1</i>')
-        .replace(/\n/g, '<br>');
-      
-      editorRef.current.innerHTML = formatted;
-      contentRef.current = formatted;
-      setHasUnsavedChanges(true);
-      triggerAutosave();
-    }
-    setShowAIHelperModal(false);
-  };
-
   const handleGiveToAI = () => {
     const rawContent = (editorRef.current ? editorRef.current.innerText : contentRef.current) || '';
     setSharedWithAI(true);
@@ -229,6 +96,7 @@ export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEdito
       title: title || (lang === 'id' ? 'Catatan Tanpa Judul' : 'Untitled Note'),
       content: rawContent
     });
+    setAutoSendNoteToAI(true);
     
     const existing = notes.find((n) => n.id === note.id);
     const currTitle = titleRef.current || '';
@@ -696,21 +564,6 @@ export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEdito
               <Bell size={18} />
             </button>
 
-            {/* Noto AI Surgical Note Helper */}
-            <button
-              onPointerDown={(e) => {
-                e.preventDefault();
-                setAIHelperStage('select');
-                setAIHelperError(null);
-                setShowAIHelperModal(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-500/40 rounded-full text-xs font-semibold text-indigo-400 cursor-pointer transition-all hover:bg-indigo-500/20 ml-2"
-              title="Noto AI Helper"
-            >
-              <Bot size={14} className="animate-pulse" />
-              <span>Noto AI</span>
-            </button>
-
             {/* Berikan ke AI Button */}
             <button
               onPointerDown={(e) => {
@@ -725,7 +578,7 @@ export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEdito
               title={lang === 'id' ? 'Pengaturan Akses Noto AI' : 'Noto AI Access Settings'}
             >
               <Sparkles size={14} className={sharedWithAI ? "animate-pulse text-emerald-400" : ""} />
-              <span>{sharedWithAI ? (lang === 'id' ? 'Masuk AI (Aktif)' : 'Shared (Active)') : (lang === 'id' ? 'Berikan ke AI' : 'Give to AI')}</span>
+              <span>{sharedWithAI ? (lang === 'id' ? 'Masuk AI (Aktif)' : 'Shared (Active)') : (lang === 'id' ? 'Tanya AI' : 'Ask AI')}</span>
             </button>
           </div>
         </div>
@@ -860,222 +713,6 @@ export default function NoteEditorScreen({ note, onBack, onNavigate }: NoteEdito
                 {t('delete')}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* NOTO AI HELPER MODAL */}
-      {showAIHelperModal && (
-        <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-4 md:p-4 z-[100] animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-md flex flex-col text-left shadow-2xl relative overflow-hidden">
-            {/* Ambient bg blur decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex items-center justify-between mb-4 flex-none">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                  <Bot size={20} className="animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-100">Noto AI Helper</h3>
-                  <p className="text-[10px] text-indigo-400 font-semibold flex items-center gap-1">
-                    <Shield size={10} /> Privacy-First Surgical Note Helper
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowAIHelperModal(false)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-              >
-                &times;
-              </button>
-            </div>
-
-            {aiHelperError && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-2 flex-none">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-red-300 leading-relaxed">{aiHelperError}</p>
-              </div>
-            )}
-
-            {/* Stage: Select Action */}
-            {aiHelperStage === 'select' && (
-              <div className="flex flex-col flex-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
-                  {lang === 'id' ? 'Pilih Aksi AI' : 'Select AI Action'}
-                </span>
-
-                <div className="grid grid-cols-2 gap-2.5 mb-5">
-                  <button
-                    onClick={() => setAIHelperAction('tidy')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                      aiHelperAction === 'tidy' 
-                        ? 'bg-indigo-600/20 border-indigo-500 text-slate-100' 
-                        : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600 text-slate-300'
-                    }`}
-                  >
-                    <div className="font-bold text-xs">{lang === 'id' ? 'Rapikan Tulisan' : 'Tidy Up'}</div>
-                    <div className="text-[10px] text-slate-400 mt-1 leading-normal">{lang === 'id' ? 'Tata bahasa & ejaan' : 'Fix grammar & styling'}</div>
-                  </button>
-
-                  <button
-                    onClick={() => setAIHelperAction('summary')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                      aiHelperAction === 'summary' 
-                        ? 'bg-indigo-600/20 border-indigo-500 text-slate-100' 
-                        : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600 text-slate-300'
-                    }`}
-                  >
-                    <div className="font-bold text-xs">{lang === 'id' ? 'Buat Ringkasan' : 'Summarize'}</div>
-                    <div className="text-[10px] text-slate-400 mt-1 leading-normal">{lang === 'id' ? 'Poin-poin eksekutif' : 'Key executive points'}</div>
-                  </button>
-
-                  <button
-                    onClick={() => setAIHelperAction('checklist')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                      aiHelperAction === 'checklist' 
-                        ? 'bg-indigo-600/20 border-indigo-500 text-slate-100' 
-                        : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600 text-slate-300'
-                    }`}
-                  >
-                    <div className="font-bold text-xs">{lang === 'id' ? 'Ubah Checklist' : 'To Checklist'}</div>
-                    <div className="text-[10px] text-slate-400 mt-1 leading-normal">{lang === 'id' ? 'Ubah jadi daftar todo' : 'Turn into todo list'}</div>
-                  </button>
-
-                  <button
-                    onClick={() => setAIHelperAction('ideas')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                      aiHelperAction === 'ideas' 
-                        ? 'bg-indigo-600/20 border-indigo-500 text-slate-100' 
-                        : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600 text-slate-300'
-                    }`}
-                  >
-                    <div className="font-bold text-xs">{lang === 'id' ? 'Saran & Ide' : 'Get Ideas'}</div>
-                    <div className="text-[10px] text-slate-400 mt-1 leading-normal">{lang === 'id' ? 'Inspirasi tambahan' : 'Feedback & creativity'}</div>
-                  </button>
-                </div>
-
-                <div className="flex justify-between items-center bg-slate-950 px-4 py-3 border border-slate-800/80 rounded-2xl mb-5 flex-none">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                    <Sparkles size={14} className="text-amber-400" />
-                    <span>{lang === 'id' ? 'Kredit Harian Tersisa:' : 'Daily Credits Left:'}</span>
-                  </div>
-                  <span className="text-xs font-bold text-slate-200 bg-slate-800 px-2.5 py-1 rounded-full">
-                    {aiCredits} / 10
-                  </span>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowAIHelperModal(false)}
-                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700/80 text-slate-300 font-semibold text-sm rounded-xl transition-colors cursor-pointer border border-slate-700/40 text-center"
-                  >
-                    {lang === 'id' ? 'Batal' : 'Cancel'}
-                  </button>
-                  <button
-                    onClick={() => setAIHelperStage('consent')}
-                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl transition-colors cursor-pointer text-center shadow-lg shadow-indigo-600/20"
-                  >
-                    {lang === 'id' ? 'Lanjutkan' : 'Continue'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Stage: Explicit Consent */}
-            {aiHelperStage === 'consent' && (
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2.5 text-amber-400 mb-3 flex-none">
-                  <Shield size={18} />
-                  <span className="text-xs font-bold uppercase tracking-wider">{lang === 'id' ? 'Persetujuan Privasi' : 'Privacy Consent'}</span>
-                </div>
-
-                <p className="text-sm text-slate-300 leading-relaxed mb-4">
-                  {lang === 'id'
-                    ? "Untuk melakukan pemrosesan ini, Noto AI perlu mengirimkan **seluruh isi catatan aktif ini** ke server Gemini API secara aman."
-                    : "To perform this request, Noto AI needs to securely transmit the **entire text of this active note** to the Gemini API server."}
-                </p>
-
-                <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-3.5 mb-5 flex items-start gap-2.5 flex-none">
-                  <Eye className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    {lang === 'id'
-                      ? "Kami tidak menyimpan, mencatat, atau membagikan catatan Anda kepada siapa pun. Data dikirim statelesst untuk pemrosesan instan dan langsung dilupakan."
-                      : "We never save, log, or track your writing. Data is sent statelessly for instant computation and is immediately forgotten."}
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setAIHelperStage('select')}
-                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700/80 text-slate-300 font-semibold text-sm rounded-xl transition-colors cursor-pointer border border-slate-700/40 text-center"
-                  >
-                    {lang === 'id' ? 'Kembali' : 'Back'}
-                  </button>
-                  <button
-                    onClick={handleRunAIHelper}
-                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-xl transition-colors cursor-pointer text-center shadow-lg shadow-indigo-600/20"
-                  >
-                    {lang === 'id' ? 'Izinkan & Proses' : 'Allow & Process'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Stage: Processing */}
-            {aiHelperStage === 'processing' && (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <RefreshCw size={36} className="text-indigo-400 animate-spin mb-4" />
-                <h4 className="font-bold text-slate-100 text-sm mb-1">{lang === 'id' ? 'Sedang Memproses secara Aman...' : 'Processing Securely...'}</h4>
-                <p className="text-xs text-slate-400 max-w-[280px] leading-relaxed">
-                  {lang === 'id' 
-                    ? "Menghubungi Noto AI menggunakan jalur terenkripsi. Mohon tunggu sebentar." 
-                    : "Connecting to Noto AI over encrypted channels. Please wait."}
-                </p>
-              </div>
-            )}
-
-            {/* Stage: Result View */}
-            {aiHelperStage === 'result' && (
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex-none">
-                  {lang === 'id' ? 'HASIL PROSES NOTO AI' : 'NOTO AI OUTPUT'}
-                </span>
-
-                <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 mb-5 overflow-y-auto max-h-[220px] text-xs leading-relaxed text-slate-200 no-scrollbar whitespace-pre-wrap flex-1 font-mono">
-                  {aiHelperResult}
-                </div>
-
-                <div className="flex gap-2.5 flex-none">
-                  <button
-                    onClick={() => {
-                      try {
-                        navigator.clipboard.writeText(aiHelperResult);
-                      } catch (err) {}
-                    }}
-                    className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition-colors border border-slate-700/40 text-center cursor-pointer"
-                  >
-                    {lang === 'id' ? 'Salin' : 'Copy'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setAIHelperStage('select');
-                      setAIHelperResult('');
-                    }}
-                    className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition-colors border border-slate-700/40 text-center cursor-pointer"
-                  >
-                    {lang === 'id' ? 'Kembali' : 'Back'}
-                  </button>
-                  <button
-                    onClick={handleApplyAIResult}
-                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl transition-colors text-center cursor-pointer shadow-lg shadow-indigo-600/20"
-                  >
-                    {lang === 'id' ? 'Terapkan ke Catatan' : 'Apply to Note'}
-                  </button>
-                </div>
-              </div>
-            )}
-
           </div>
         </div>
       )}

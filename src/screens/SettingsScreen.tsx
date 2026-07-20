@@ -1527,7 +1527,7 @@ export default function SettingsScreen({
                             setConnectionError(null);
                           }}
                           className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-4 pr-11 py-3 text-slate-100 text-sm outline-none focus:border-indigo-500/40 transition-all placeholder-slate-700"
-                          placeholder={lang === 'id' ? 'Masukkan AIzaSy...' : 'Enter AIzaSy...'}
+                          placeholder={lang === 'id' ? 'Masukkan API Key (AIzaSy..., sk-..., gsk_..., dll)...' : 'Enter API Key (AIzaSy..., sk-..., gsk_..., etc)...'}
                         />
                         <button
                           type="button"
@@ -1576,7 +1576,7 @@ export default function SettingsScreen({
                           setConnectionError(null);
 
                           try {
-                            const requestUrl = `${window.location.origin}/api/ai/test-key`;
+                            const requestUrl = `/api/ai/test-key`;
                             console.log("[AI Key Test Request]:", {
                               url: requestUrl,
                               apiKeyLength: testApiKey.trim().length,

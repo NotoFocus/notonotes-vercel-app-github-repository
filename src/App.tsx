@@ -54,7 +54,7 @@ export default function App() {
   } = useAppStore();
   const t = useTranslation(lang);
   const [currentScreen, _setCurrentScreen] = useState<ScreenItem>('home');
-  const [activeSettingsSection, setActiveSettingsSection] = useState<'appearance' | 'security' | 'backup' | 'about' | null>(null);
+  const [activeSettingsSection, setActiveSettingsSection] = useState<'appearance' | 'security' | 'backup' | 'about' | 'ai' | null>(null);
 
   const [showAutoBackupModal, setShowAutoBackupModal] = useState(false);
   const [enteredAutoBackupPin, setEnteredAutoBackupPin] = useState('');

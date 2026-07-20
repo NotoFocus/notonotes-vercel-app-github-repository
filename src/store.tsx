@@ -76,6 +76,8 @@ interface AppContextType {
   recordAutoBackupPinChange: (newHashedPin: string | null) => Promise<void>;
   tempNoteContext: { title: string; content: string } | null;
   setTempNoteContext: (context: { title: string; content: string } | null) => void;
+  autoSendNoteToAI: boolean;
+  setAutoSendNoteToAI: (val: boolean) => void;
   geminiApiKey: string | null;
   setGeminiApiKey: (key: string | null) => void;
 }
@@ -92,6 +94,7 @@ const safeSetItem = (key: string, value: string) => {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [tempNoteContext, setTempNoteContext] = useState<{ title: string; content: string } | null>(null);
+  const [autoSendNoteToAI, setAutoSendNoteToAI] = useState<boolean>(false);
   const [geminiApiKey, setGeminiApiKeyState] = useState<string | null>(() => {
     try {
       return localStorage.getItem('noto_gemini_api_key');
@@ -1094,7 +1097,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     autoBackupPin, setAutoBackupPin,
     autoBackupPinHistory, setAutoBackupPinHistory,
     recordAutoBackupPinChange,
-    tempNoteContext, setTempNoteContext,
+    tempNoteContext, setTempNoteContext, autoSendNoteToAI, setAutoSendNoteToAI,
     geminiApiKey, setGeminiApiKey
   }), [
     notes, tasks, transactions, moods, user, searchQuery, appPin, pinHistory, pinRecoveryQuestion, pinRecoveryAnswer, lang,
