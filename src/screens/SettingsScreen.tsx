@@ -13,71 +13,6 @@ import { getLargeItem, getLargeItemSync, setLargeItem } from '../utils/db';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import UpdateNotesModal from '../components/UpdateNotesModal';
 
-
-function CustomKeypad({ value = '', onChange, onEnter, error, maxLength = 4 }: { value?: string, onChange: (val: string) => void, onEnter?: () => void, error?: boolean, maxLength?: number }) {
-  const safeValue = value || '';
-  const handleKeyPress = (key: string) => {
-    if (key === 'backspace') {
-      onChange(safeValue.slice(0, -1));
-      return;
-    }
-    if (safeValue.length >= maxLength) return;
-    const newVal = safeValue + key;
-    onChange(newVal);
-    if (newVal.length === maxLength && onEnter) {
-      setTimeout(onEnter, 50);
-    }
-  };
-
-  return (
-    <div className="w-full max-w-[280px] sm:max-w-[340px] md:max-w-[380px] lg:max-w-[420px] mx-auto mb-6">
-      <div className={`flex justify-center gap-6 sm:gap-8 md:gap-10 mb-10 min-h-[24px] items-center ${error ? 'animate-pulse' : ''}`}>
-        {Array.from({ length: maxLength }).map((_, i) => {
-          const isFilled = safeValue.length > i;
-          return (
-            <div 
-              key={i} 
-              className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full transition-all duration-300 ${
-                isFilled 
-                  ? 'bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)] scale-110' 
-                  : error ? 'bg-red-500/50' : 'bg-slate-800/80'
-              }`}
-            />
-          );
-        })}
-      </div>
-      
-      <div className="grid grid-cols-3 gap-3 sm:gap-5 md:gap-6 w-full">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-          <button
-            key={num}
-            type="button"
-            onClick={() => handleKeyPress(num.toString())}
-            className="w-full aspect-square rounded-full bg-transparent hover:bg-slate-800/60 active:bg-slate-700 flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-light text-slate-200 transition-colors"
-          >
-            {num}
-          </button>
-        ))}
-        <div className="w-full aspect-square"></div>
-        <button
-          type="button"
-          onClick={() => handleKeyPress('0')}
-          className="w-full aspect-square rounded-full bg-transparent hover:bg-slate-800/60 active:bg-slate-700 flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-light text-slate-200 transition-colors"
-        >
-          0
-        </button>
-        <button
-          type="button"
-          onClick={() => handleKeyPress('backspace')}
-          className="w-full aspect-square rounded-full bg-transparent hover:bg-slate-800/60 active:bg-slate-700 flex items-center justify-center text-2xl sm:text-3xl md:text-4xl text-slate-400 hover:text-slate-200 transition-colors"
-        >
-          ⌫
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function SettingsScreen({ 
   appTheme, 
   setAppTheme, 
@@ -206,8 +141,6 @@ export default function SettingsScreen({
   const [showApiKey, setShowApiKey] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'connected' | 'error'>(geminiApiKey ? 'connected' : 'idle');
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [detectedProvider, setDetectedProvider] = useState<string | null>(null);
-  const [detectedModel, setDetectedModel] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
@@ -1158,7 +1091,7 @@ export default function SettingsScreen({
                         { id: 'slate', name: 'Slate', color: 'bg-slate-700' },
                         { id: 'light', name: 'Light', color: 'bg-slate-200' },
                         { id: 'cool', name: 'Cool Blue', color: 'bg-blue-600' },
-                        { id: 'ecy', name: 'Ecy', color: 'bg-rose-500' },
+                        { id: 'pink', name: 'Pink Rose', color: 'bg-rose-500' },
                         { id: 'cute', name: 'Warm Amber', color: 'bg-amber-500' }
                       ].map((theme) => {
                         const isCurrent = appTheme === theme.id;
@@ -1340,7 +1273,7 @@ export default function SettingsScreen({
                                   <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-lg border border-slate-900">
                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1 shrink-0">{lang === 'id' ? 'TES' : 'TEST'}:</span>
                                     <input 
-                                      type="text" autoComplete="off" style={{ WebkitTextSecurity: 'disc' } as any}
+                                      type="password" 
                                       maxLength={4}
                                       placeholder="••••"
                                       onChange={async (e) => {
@@ -1573,19 +1506,9 @@ export default function SettingsScreen({
 
                     {/* API Key Input */}
                     <div className="space-y-2">
-                      {!geminiApiKey && (
-                        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2 text-amber-200/90 text-[11px] leading-relaxed">
-                          <AlertTriangle size={14} className="shrink-0 mt-0.5 text-amber-400" />
-                          <p>
-                            {lang === 'id' 
-                              ? 'Anda sedang menggunakan API Key default dari sistem (Vercel). Untuk limit yang lebih leluasa dan privasi penuh, harap gunakan API Key Anda sendiri (mendukung Gemini, OpenAI, Groq, Anthropic, OpenRouter).' 
-                              : 'You are using the default system API Key (Vercel). For better rate limits and full privacy, please use your own API Key (supports Gemini, OpenAI, Groq, Anthropic, OpenRouter).'}
-                          </p>
-                        </div>
-                      )}
                       <div className="flex items-center justify-between">
                         <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">
-                          {lang === 'id' ? 'API Key (Google, OpenAI, Groq, Anthropic, OpenRouter)' : 'API Key (Google, OpenAI, Groq, Anthropic, OpenRouter)'}
+                          {lang === 'id' ? 'Google Gemini API Key' : 'Google Gemini API Key'}
                         </label>
                         {geminiApiKey && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
@@ -1596,14 +1519,12 @@ export default function SettingsScreen({
                       </div>
                       <div className="relative">
                         <input
-                          type="text" autoComplete="off" spellCheck="false" autoCorrect="off" style={{ WebkitTextSecurity: showApiKey ? 'none' : 'disc' } as any}
+                          type={showApiKey ? 'text' : 'password'}
                           value={testApiKey}
                           onChange={(e) => {
                             setTestApiKey(e.target.value);
                             setConnectionStatus('idle');
                             setConnectionError(null);
-                            setDetectedProvider(null);
-                            setDetectedModel(null);
                           }}
                           className="w-full bg-slate-950/60 border border-slate-800 rounded-2xl pl-4 pr-11 py-3 text-slate-100 text-sm outline-none focus:border-indigo-500/40 transition-all placeholder-slate-700"
                           placeholder={lang === 'id' ? 'Masukkan API Key (AIzaSy..., sk-..., gsk_..., dll)...' : 'Enter API Key (AIzaSy..., sk-..., gsk_..., etc)...'}
@@ -1637,13 +1558,6 @@ export default function SettingsScreen({
                         </div>
                         {connectionStatus === 'error' && connectionError && (
                           <p className="text-[11px] text-slate-400 font-semibold mt-1 bg-slate-950/40 p-2 rounded-lg border border-slate-800/60">{connectionError}</p>
-                        )}
-                        {connectionStatus === 'connected' && detectedProvider && (
-                          <div className="mt-2 text-[11px] text-emerald-400/80 bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/10 flex flex-col gap-1">
-                            <span className="font-bold flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-emerald-500"></span>{lang === 'id' ? 'Sistem Mendeteksi:' : 'System Detected:'}</span>
-                            <span className="text-emerald-300 pl-2.5">- Penyedia: {detectedProvider}</span>
-                            {detectedModel && <span className="text-emerald-300 pl-2.5">- Model: {detectedModel}</span>}
-                          </div>
                         )}
                       </div>
                     )}
@@ -1688,11 +1602,8 @@ export default function SettingsScreen({
                             });
 
                             if (response.ok) {
-                              const data = await response.json();
-                              if (data.provider) setDetectedProvider(data.provider);
-                              if (data.model) setDetectedModel(data.model);
                               setConnectionStatus('connected');
-                              showNotificationToast(lang === 'id' ? `Koneksi Berhasil! (Penyedia: ${data.provider || 'Tidak diketahui'})` : `Connection Successful! (Provider: ${data.provider || 'Unknown'})`);
+                              showNotificationToast(lang === 'id' ? 'Koneksi Berhasil! API Key Anda valid.' : 'Connection Successful! Your API Key is valid.');
                             } else {
                               const responseBodyText = await response.text().catch(() => "");
                               console.error("[AI Key Test Response Error Body]:", responseBodyText);
@@ -1753,8 +1664,6 @@ export default function SettingsScreen({
                             setTestApiKey('');
                             setConnectionStatus('idle');
                             setConnectionError(null);
-                            setDetectedProvider(null);
-                            setDetectedModel(null);
                             showNotificationToast(lang === 'id' ? 'API Key berhasil dihapus!' : 'API Key successfully removed!');
                           }}
                           className="w-full sm:w-auto px-4 py-3 bg-rose-950/30 hover:bg-rose-900/30 text-rose-400 border border-rose-500/15 font-bold text-xs uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
@@ -1876,12 +1785,46 @@ export default function SettingsScreen({
             </p>
 
             {/* PREMIUM SEGMENTED 4-BOX PIN INPUT (Eliminates the 2-digit bug!) */}
-            <CustomKeypad 
-              value={pinInput} 
-              onChange={val => setPinInput(val)} 
-              onEnter={handlePinSubmit} 
-              error={pinError} 
-            />
+            <div className="relative w-full max-w-[240px] mx-auto mb-5">
+              {/* Invisible real text field overlay */}
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="off"
+                maxLength={4}
+                autoFocus
+                value={pinInput}
+                onChange={e => setPinInput(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handlePinSubmit();
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              {/* Premium boxes */}
+              <div className="flex justify-between gap-3.5 pointer-events-none">
+                {[0, 1, 2, 3].map((index) => {
+                  const isFilled = index < pinInput.length;
+                  const isCurrent = index === pinInput.length;
+                  return (
+                    <div 
+                      key={index}
+                      className={`w-12 h-14 rounded-2xl border-2 flex items-center justify-center text-3xl font-extrabold transition-all duration-150 ${
+                        isFilled 
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                          : isCurrent
+                            ? 'border-indigo-500/50 bg-slate-950/50 text-indigo-300'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-600'
+                      }`}
+                    >
+                      {isFilled ? '•' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             {(pinModalMode === 'create' || pinModalMode === 'change') && (
               <div className="space-y-3 mb-6">
@@ -2013,7 +1956,7 @@ export default function SettingsScreen({
                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">{lang === 'id' ? 'Proteksi Enkripsi Sandi (Opsional)' : 'Encryption Password (Optional)'}</span>
                     <p className="text-[10px] text-slate-500 leading-normal">{lang === 'id' ? 'Masukkan sandi untuk mengamankan file cadangan. Jika dikosongkan, file tidak terenkripsi.' : 'Enter a password to encrypt backup file. If empty, the file remains in raw text.'}</p>
                     <input 
-                      type="text" autoComplete="off" style={{ WebkitTextSecurity: 'disc' } as any}
+                      type="password"
                       value={backupPassword}
                       onChange={e => setBackupPassword(e.target.value)}
                       className="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs outline-none focus:border-indigo-500/40 placeholder-slate-600 font-mono"
@@ -2039,7 +1982,7 @@ export default function SettingsScreen({
                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">{lang === 'id' ? 'Masukkan Sandi Dekripsi' : 'Decrypt Password Required'}</span>
                     <p className="text-[10px] text-slate-500 leading-normal">{lang === 'id' ? 'Jika file cadangan Anda menggunakan kata sandi enkripsi, silakan masukkan untuk membuka.' : 'If your backup file was encrypted with a password, enter it below to restore.'}</p>
                     <input 
-                      type="text" autoComplete="off" style={{ WebkitTextSecurity: 'disc' } as any}
+                      type="password"
                       value={backupPassword}
                       onChange={e => setBackupPassword(e.target.value)}
                       className="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs outline-none focus:border-indigo-500/40 placeholder-slate-600 font-mono"
@@ -2082,11 +2025,44 @@ export default function SettingsScreen({
             </div>
 
             {/* Segmented PIN input */}
-            <CustomKeypad 
-              value={autoBackupEnableVerifyPin} 
-              onChange={val => setAutoBackupEnableVerifyPin(val)} 
-              onEnter={handleAutoBackupVerifySubmit} 
-            />
+            <div className="relative w-full max-w-[240px] mx-auto mb-5">
+              <input
+                ref={enableVerifyInputRef}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                autoFocus
+                value={autoBackupEnableVerifyPin}
+                onChange={e => setAutoBackupEnableVerifyPin(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && autoBackupEnableVerifyPin.length === 4) {
+                    handleAutoBackupVerifySubmit();
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="flex justify-between gap-3 pointer-events-none">
+                {[0, 1, 2, 3].map((index) => {
+                  const isFilled = index < autoBackupEnableVerifyPin.length;
+                  const isCurrent = index === autoBackupEnableVerifyPin.length;
+                  return (
+                    <div 
+                      key={index}
+                      className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all duration-150 ${
+                        isFilled 
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                          : isCurrent
+                            ? 'border-indigo-500/50 bg-slate-950/50 text-indigo-300'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-600'
+                      }`}
+                    >
+                      {isFilled ? '•' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             {autoBackupEnableVerifyError && (
               <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">{lang === 'id' ? '❌ PIN Cadangan salah!' : '❌ Incorrect Backup PIN!'}</p>
@@ -2147,15 +2123,50 @@ export default function SettingsScreen({
             </div>
 
             {/* Segmented PIN input */}
-            <CustomKeypad 
-              value={autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm} 
-              onChange={val => {
-                if (autoBackupPinSetupStep === 1) setAutoBackupPinSetupPin(val);
-                else setAutoBackupPinSetupConfirm(val);
-              }} 
-              onEnter={handleAutoBackupPinSetupSubmit} 
-              error={autoBackupPinSetupError} 
-            />
+            <div className="relative w-full max-w-[240px] mx-auto mb-5">
+              <input
+                ref={pinSetupInputRef}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                autoFocus
+                value={autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm}
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (autoBackupPinSetupStep === 1) setAutoBackupPinSetupPin(val);
+                  else setAutoBackupPinSetupConfirm(val);
+                }}
+                onKeyDown={e => {
+                  const currentVal = autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm;
+                  if (e.key === 'Enter' && currentVal.length === 4) {
+                    handleAutoBackupPinSetupSubmit();
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="flex justify-between gap-3 pointer-events-none">
+                {[0, 1, 2, 3].map((index) => {
+                  const currentVal = autoBackupPinSetupStep === 1 ? autoBackupPinSetupPin : autoBackupPinSetupConfirm;
+                  const isFilled = index < currentVal.length;
+                  const isCurrent = index === currentVal.length;
+                  return (
+                    <div 
+                      key={index}
+                      className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all duration-150 ${
+                        isFilled 
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                          : isCurrent
+                            ? 'border-indigo-500/50 bg-slate-950/50 text-indigo-300'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-600'
+                      }`}
+                    >
+                      {isFilled ? '•' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             {autoBackupPinSetupError && (
               <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">{lang === 'id' ? '❌ PIN konfirmasi tidak cocok!' : '❌ Confirmation PIN mismatch!'}</p>
@@ -2222,22 +2233,65 @@ export default function SettingsScreen({
             </div>
 
             {/* Segmented PIN input */}
-            <CustomKeypad 
-              value={
-                autoBackupPinChangeStep === 1 
-                  ? autoBackupPinChangeCurrent 
-                  : autoBackupPinChangeStep === 2 
-                    ? autoBackupPinChangeNew 
-                    : autoBackupPinChangeConfirm
-              } 
-              onChange={val => {
-                if (autoBackupPinChangeStep === 1) setAutoBackupPinChangeCurrent(val);
-                else if (autoBackupPinChangeStep === 2) setAutoBackupPinChangeNew(val);
-                else setAutoBackupPinChangeConfirm(val);
-              }} 
-              onEnter={handleAutoBackupPinChangeSubmit} 
-              error={autoBackupPinChangeError} 
-            />
+            <div className="relative w-full max-w-[240px] mx-auto mb-5">
+              <input
+                ref={pinChangeInputRef}
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                autoFocus
+                value={
+                  autoBackupPinChangeStep === 1 
+                    ? autoBackupPinChangeCurrent 
+                    : autoBackupPinChangeStep === 2 
+                      ? autoBackupPinChangeNew 
+                      : autoBackupPinChangeConfirm
+                }
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (autoBackupPinChangeStep === 1) setAutoBackupPinChangeCurrent(val);
+                  else if (autoBackupPinChangeStep === 2) setAutoBackupPinChangeNew(val);
+                  else setAutoBackupPinChangeConfirm(val);
+                }}
+                onKeyDown={e => {
+                  const currentVal = autoBackupPinChangeStep === 1 
+                    ? autoBackupPinChangeCurrent 
+                    : autoBackupPinChangeStep === 2 
+                      ? autoBackupPinChangeNew 
+                      : autoBackupPinChangeConfirm;
+                  if (e.key === 'Enter' && currentVal.length === 4) {
+                    handleAutoBackupPinChangeSubmit();
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="flex justify-between gap-3 pointer-events-none">
+                {[0, 1, 2, 3].map((index) => {
+                  const currentVal = autoBackupPinChangeStep === 1 
+                    ? autoBackupPinChangeCurrent 
+                    : autoBackupPinChangeStep === 2 
+                      ? autoBackupPinChangeNew 
+                      : autoBackupPinChangeConfirm;
+                  const isFilled = index < currentVal.length;
+                  const isCurrent = index === currentVal.length;
+                  return (
+                    <div 
+                      key={index}
+                      className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all duration-150 ${
+                        isFilled 
+                          ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                          : isCurrent
+                            ? 'border-indigo-500/50 bg-slate-950/50 text-indigo-300'
+                            : 'border-slate-800 bg-slate-950/20 text-slate-600'
+                      }`}
+                    >
+                      {isFilled ? '•' : ''}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             {autoBackupPinChangeError && (
               <p className="text-[10px] text-red-400 font-bold text-center mb-4 animate-pulse">
