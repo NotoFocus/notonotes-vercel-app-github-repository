@@ -179,7 +179,7 @@ app.use(
     return 'gemini'; // Default to gemini
   }
 
-  async function testApiKeyWithProvider(apiKey: string, provider: string, lang: string): Promise<void> {
+  async function testApiKeyWithProvider(apiKey: string, provider: string, lang: string): Promise<{ provider: string, model: string }> {
     const cleanKey = apiKey.trim();
     if (provider === 'gemini') {
       const ai = getGeminiClient(cleanKey);
@@ -187,6 +187,7 @@ app.use(
         contents: [{ role: "user", parts: [{ text: "Hello" }] }],
         config: { maxOutputTokens: 5 }
       });
+      return { provider: "Gemini", model: "gemini-2.5-flash / gemini-2.0-flash" };
     } else if (provider === 'openai') {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -209,6 +210,7 @@ app.use(
         } catch (_) {}
         const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
+      return { provider: "OpenAI", model: "gpt-4o-mini" };
     } else if (provider === 'anthropic') {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -232,6 +234,7 @@ app.use(
         } catch (_) {}
         const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
+      return { provider: "Anthropic", model: "claude-3-5-haiku-latest" };
     } else if (provider === 'groq') {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -254,6 +257,7 @@ app.use(
         } catch (_) {}
         const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
+      return { provider: "Groq", model: "llama-3.1-8b-instant" };
     } else if (provider === 'openrouter') {
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -276,7 +280,9 @@ app.use(
         } catch (_) {}
         const err: any = new Error(errMsg); err.status = res.status; throw err;
       }
+      return { provider: "OpenRouter", model: "google/gemini-2.5-flash" };
     }
+    return { provider: "Unknown", model: "unknown" };
   }
 
   async function handleChatWithProvider(
@@ -502,8 +508,8 @@ app.use(
       const provider = detectProvider(testKey);
       console.log(`[API /api/ai/test-key] Detected provider: ${provider}`);
 
-      await testApiKeyWithProvider(testKey, provider, lang);
-      res.json({ status: "ok" });
+      const info = await testApiKeyWithProvider(testKey, provider, lang);
+      res.json({ status: "ok", provider: info.provider, model: info.model });
     } catch (error: any) {
       console.error(`[API /api/ai/test-key Exception]: ${error.message || String(error).substring(0, 100)}`);
       const parsedMsg = parseGeminiError(error, lang);

@@ -42,6 +42,70 @@ export const stopGlobalAudio = () => {
   }
 };
 
+function CustomKeypad({ value = '', onChange, onEnter, error, maxLength = 4 }: { value?: string, onChange: (val: string) => void, onEnter?: () => void, error?: boolean, maxLength?: number }) {
+  const safeValue = value || '';
+  const handleKeyPress = (key: string) => {
+    if (key === 'backspace') {
+      onChange(safeValue.slice(0, -1));
+      return;
+    }
+    if (safeValue.length >= maxLength) return;
+    const newVal = safeValue + key;
+    onChange(newVal);
+    if (newVal.length === maxLength && onEnter) {
+      setTimeout(onEnter, 50);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-[280px] sm:max-w-[340px] md:max-w-[380px] lg:max-w-[420px] mx-auto mb-6">
+      <div className={`flex justify-center gap-6 sm:gap-8 md:gap-10 mb-10 min-h-[24px] items-center ${error ? 'animate-pulse' : ''}`}>
+        {Array.from({ length: maxLength }).map((_, i) => {
+          const isFilled = safeValue.length > i;
+          return (
+            <div 
+              key={i} 
+              className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full transition-all duration-300 ${
+                isFilled 
+                  ? 'bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)] scale-110' 
+                  : error ? 'bg-red-500/50' : 'bg-slate-800/80'
+              }`}
+            />
+          );
+        })}
+      </div>
+      
+      <div className="grid grid-cols-3 gap-3 sm:gap-5 md:gap-6 w-full">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+          <button
+            key={num}
+            type="button"
+            onClick={() => handleKeyPress(num.toString())}
+            className="w-full aspect-square rounded-full bg-transparent hover:bg-slate-800/60 active:bg-slate-700 flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-light text-slate-200 transition-colors"
+          >
+            {num}
+          </button>
+        ))}
+        <div className="w-full aspect-square"></div>
+        <button
+          type="button"
+          onClick={() => handleKeyPress('0')}
+          className="w-full aspect-square rounded-full bg-transparent hover:bg-slate-800/60 active:bg-slate-700 flex items-center justify-center text-3xl sm:text-4xl md:text-5xl font-light text-slate-200 transition-colors"
+        >
+          0
+        </button>
+        <button
+          type="button"
+          onClick={() => handleKeyPress('backspace')}
+          className="w-full aspect-square rounded-full bg-transparent hover:bg-slate-800/60 active:bg-slate-700 flex items-center justify-center text-2xl sm:text-3xl md:text-4xl text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          ⌫
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const { 
     appPin, isUnlocked, setIsUnlocked, lang, tasks, notes, 
@@ -202,9 +266,9 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const [appTheme, setAppTheme] = useState<'dark' | 'light' | 'pink' | 'cool' | 'cute' | 'wallpaper'>(() => {
+  const [appTheme, setAppTheme] = useState<'dark' | 'light' | 'ecy' | 'cool' | 'cute' | 'wallpaper'>(() => {
     try {
-      return (localStorage.getItem('noto_theme') as 'dark' | 'light' | 'pink' | 'cool' | 'cute' | 'wallpaper') || 'dark';
+      return (localStorage.getItem('noto_theme') as 'dark' | 'light' | 'ecy' | 'cool' | 'cute' | 'wallpaper') || 'dark';
     } catch (e) {
       return 'dark';
     }
@@ -491,7 +555,7 @@ export default function App() {
     let base = '';
     const activeTheme = isLiteMode ? 'dark' : appTheme;
     if (activeTheme === 'light') base = 'light-theme bg-slate-950';
-    else if (activeTheme === 'pink') base = 'pink-theme bg-slate-950';
+    else if (activeTheme === 'ecy') base = 'ecy-theme bg-slate-950';
     else if (activeTheme === 'cool') base = 'cool-theme';
     else if (activeTheme === 'cute') base = 'cute-theme';
     else if (activeTheme === 'wallpaper') base = 'wallpaper-theme bg-transparent';
@@ -768,31 +832,15 @@ export default function App() {
                 {lang === 'id' ? 'Masukkan PIN Cadangan Anda' : 'Enter Your Backup PIN'}
               </label>
               
-              <div className="relative">
-                <input
-                  type="password"
-                  pattern="[0-9]*"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={enteredAutoBackupPin}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setEnteredAutoBackupPin(val);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && enteredAutoBackupPin.length === 4) {
-                      executeAutoBackup();
-                    }
-                  }}
-                  placeholder="••••"
-                  className={`w-full text-center text-3xl tracking-[0.5em] font-mono bg-slate-950 border-2 py-3 px-4 rounded-xl outline-none transition-all ${
-                    enteredAutoBackupPinError 
-                      ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
-                      : 'border-slate-800 focus:border-indigo-500 focus:bg-slate-950/90 focus:shadow-[0_0_10px_rgba(99,102,241,0.15)] text-indigo-400'
-                  }`}
-                  autoFocus
-                />
-              </div>
+              <CustomKeypad 
+                value={enteredAutoBackupPin} 
+                onChange={val => {
+                  setEnteredAutoBackupPin(val);
+                  setEnteredAutoBackupPinError(false);
+                }} 
+                onEnter={executeAutoBackup} 
+                error={enteredAutoBackupPinError} 
+              />
 
               {enteredAutoBackupPinError && (
                 <p className="text-[10px] text-red-400 font-bold text-center mt-1 animate-pulse">
@@ -884,10 +932,28 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
     }
   };
 
+  const checkPin = async () => {
+    if (input.length !== 4) return;
+    const { hashPin } = await import('./utils');
+    const hashed = await hashPin(input);
+    if (hashed === correctPin || input === correctPin) {
+      if (input === correctPin && input !== hashed) {
+        await recordPinChange(hashed);
+      }
+      setTimeout(onUnlock, 150);
+    } else {
+      setError(true);
+      setTimeout(() => {
+        setInput('');
+        setError(false);
+      }, 800);
+    }
+  };
+
   const getThemeClass = () => {
     let base = '';
     if (appTheme === 'light') base = 'light-theme bg-slate-950';
-    else if (appTheme === 'pink') base = 'pink-theme bg-slate-950';
+    else if (appTheme === 'ecy') base = 'ecy-theme bg-slate-950';
     else if (appTheme === 'cool') base = 'cool-theme';
     else if (appTheme === 'cute') base = 'cute-theme';
     else if (appTheme === 'wallpaper') base = 'wallpaper-theme bg-transparent';
@@ -897,94 +963,76 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   };
 
   return (
-    <div className={`min-h-screen flex justify-center items-center ${getThemeClass()} relative`}>
+    <div className={`min-h-screen w-full flex justify-center items-center ${getThemeClass()} relative overflow-hidden`}>
       <OfflineIndicator lang={lang} />
-      <div className="w-full max-w-[480px] min-h-[100dvh] relative flex flex-col items-center justify-center text-slate-200 font-sans p-8 shadow-2xl sm:border-x border-slate-800 bg-slate-950 backdrop-blur-md">
+      <div className="w-full h-full min-h-[100dvh] md:min-h-0 md:h-auto md:max-w-xl md:rounded-[2rem] relative flex flex-col items-center justify-center text-slate-200 font-sans p-8 md:p-12 shadow-2xl sm:border-x md:border border-slate-800 bg-slate-950 backdrop-blur-md">
         <Lock className="w-12 h-12 text-indigo-500 mb-6" />
-        <h2 className="text-xl font-bold tracking-tight mb-2">{t('pinLocked')}</h2>
-        <p className="text-slate-400 text-sm mb-12">{t('enterPin')}</p>
+        <h2 className="text-xl md:text-2xl font-bold tracking-tight mb-2">{t('pinLocked')}</h2>
+        <p className="text-slate-400 text-sm md:text-base mb-12">{t('enterPin')}</p>
         
-        <div className="w-full max-w-[280px] mb-12">
-          <input
-            type="password"
-            pattern="[0-9]*"
-            inputMode="numeric"
-            maxLength={4}
-            value={input}
-            onChange={async (e) => {
-              const val = e.target.value.replace(/[^0-9]/g, '');
-              setInput(val);
-              setError(false);
-              
-              if (val.length === 4) {
-                const { hashPin } = await import('./utils');
-                const hashed = await hashPin(val);
-                if (hashed === correctPin || val === correctPin) { // support legacy plaintext pin
-                  if (val === correctPin && val !== hashed) {
-                    await recordPinChange(hashed); // seamlessly upgrade to hash
-                  }
-                  setTimeout(onUnlock, 150);
-                } else {
-                  setError(true);
-                  setTimeout(() => {
-                    setInput('');
-                    setError(false);
-                  }, 800);
-                }
-              }
-            }}
-            placeholder="••••"
-            className={`w-full text-center text-3xl tracking-[0.5em] font-mono bg-slate-900/80 border-2 py-4 px-6 rounded-2xl outline-none transition-all ${
-              error 
-                ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
-                : 'border-slate-800 focus:border-indigo-500 focus:bg-slate-950 focus:shadow-[0_0_15px_rgba(99,102,241,0.25)] text-indigo-400'
-            }`}
-            autoFocus
-          />
-        </div>
+        <CustomKeypad 
+          value={input} 
+          onChange={val => {
+            setInput(val);
+            setError(false);
+          }} 
+          onEnter={checkPin} 
+          error={error} 
+        />
 
         <button 
           type="button"
           onClick={() => setForgotModalVisible(true)}
-          className="mt-4 text-sm text-slate-400 hover:text-indigo-400 transition-colors font-medium border-b border-transparent hover:border-indigo-400"
+          className="mt-6 text-sm text-slate-400 hover:text-indigo-400 transition-colors font-medium border-b border-transparent hover:border-indigo-400"
         >
           {t('forgotPin') || 'Lupa PIN?'}
         </button>
 
         {forgotModalVisible && (
-          <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-6 z-50">
-            <div className={`bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm ${error ? 'animate-pulse border-red-500/50' : ''}`}>
-              <h3 className="text-lg font-bold text-slate-50 mb-2">{t('resetPin') || 'Reset PIN'}</h3>
-              <p className="text-sm text-slate-400 mb-2">{t('resetPinDesc') || 'Jawab pertanyaan keamanan Anda untuk memverifikasi dan menghapus PIN.'}</p>
+          <div className="absolute inset-0 bg-slate-950/95 flex items-center justify-center p-6 z-50 rounded-[2rem]">
+            <div className={`bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl ${error ? 'animate-pulse border-red-500/50' : ''}`}>
+              <h3 className="text-lg md:text-xl font-bold text-slate-50 mb-2">{t('resetPin') || 'Reset PIN'}</h3>
+              <p className="text-sm text-slate-400 mb-6">{t('resetPinDesc') || 'Jawab pertanyaan keamanan Anda untuk memverifikasi dan menghapus PIN.'}</p>
               {pinRecoveryQuestion && (
-                <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4">
-                  <span className="text-xs text-indigo-400 font-bold uppercase tracking-widest mb-1 block">
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl mb-6">
+                  <span className="text-xs text-indigo-400 font-bold uppercase tracking-widest mb-2 block">
                     {lang === 'id' ? 'Pertanyaan' : 'Question'}
                   </span>
                   <p className="text-sm text-slate-200">{pinRecoveryQuestion}</p>
                 </div>
               )}
-              <input
+              <input 
                 type="text"
                 autoFocus
                 value={forgotNameInput}
-                onChange={e => setForgotNameInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleForgotPinSubmit()}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 mb-4 outline-none focus:border-indigo-500 transition-colors"
-                placeholder={pinRecoveryQuestion ? (lang === 'id' ? "Jawaban Anda..." : "Your Answer...") : (lang === 'id' ? "Nama profil Anda..." : "Your profile name...")}
+                onChange={e => {
+                  setForgotNameInput(e.target.value);
+                  setError(false);
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleForgotPinSubmit();
+                }}
+                placeholder={pinRecoveryQuestion ? (lang === 'id' ? 'Jawaban Anda...' : 'Your answer...') : (lang === 'id' ? 'Masukkan nama Anda...' : 'Enter your name...')}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-50 text-sm outline-none focus:border-indigo-500/50 transition-all placeholder-slate-600 mb-6"
               />
-              <div className="flex justify-end gap-3">
+              <div className="flex gap-3">
                 <button 
-                  onClick={() => setForgotModalVisible(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-50 transition-colors"
+                  type="button"
+                  onClick={() => {
+                    setForgotModalVisible(false);
+                    setForgotNameInput('');
+                  }}
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold rounded-xl transition-all"
                 >
                   {t('cancel')}
                 </button>
                 <button 
+                  type="button"
                   onClick={handleForgotPinSubmit}
-                  className="px-4 py-2 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors"
+                  disabled={!forgotNameInput.trim()}
+                  className="flex-1 py-3 bg-indigo-500 hover:bg-indigo-400 text-slate-950 text-sm font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t('verify') || (lang === 'id' ? 'Verifikasi' : 'Verify')}
+                  {lang === 'id' ? 'Verifikasi' : 'Verify'}
                 </button>
               </div>
             </div>
@@ -994,7 +1042,6 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
     </div>
   );
 }
-
 function OfflineIndicator({ lang }: { lang: 'id' | 'en' }) {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
