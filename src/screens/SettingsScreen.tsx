@@ -1091,8 +1091,9 @@ export default function SettingsScreen({
                         { id: 'slate', name: 'Slate', color: 'bg-slate-700' },
                         { id: 'light', name: 'Light', color: 'bg-slate-200' },
                         { id: 'cool', name: 'Cool Blue', color: 'bg-blue-600' },
-                        { id: 'pink', name: 'Pink Rose', color: 'bg-rose-500' },
-                        { id: 'cute', name: 'Warm Amber', color: 'bg-amber-500' }
+                        { id: 'pink', name: 'Ecy', color: 'bg-rose-500' },
+                        { id: 'cute', name: 'Warm Amber', color: 'bg-amber-500' },
+                        { id: 'wallpaper', name: 'Wallpaper', color: 'bg-indigo-600' }
                       ].map((theme) => {
                         const isCurrent = appTheme === theme.id;
                         return (

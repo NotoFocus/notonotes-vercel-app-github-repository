@@ -275,7 +275,7 @@ export default function TasksScreen({ onNavigate }: { onNavigate?: (s: any) => v
             <>
               {filteredTasks.length === 0 && completedTasks.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-                  <ClipboardList className="w-12 h-12 mb-4 text-slate-800" />
+                  <ClipboardList className="w-12 h-12 mb-4 text-slate-600" />
                   <div className="text-center font-medium text-sm md:text-base">
                     {lang === 'id' ? 'Belum ada tugas.' : 'No tasks.'}
                   </div>
