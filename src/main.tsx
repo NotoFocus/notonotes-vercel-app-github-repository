@@ -58,6 +58,7 @@ preloadLargeItems().then(() => {
     <ErrorBoundary>
       <AppProvider>
         <App />
+        <Analytics />
       </AppProvider>
     </ErrorBoundary>
   </StrictMode>

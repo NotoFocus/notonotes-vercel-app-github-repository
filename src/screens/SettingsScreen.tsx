@@ -790,161 +790,168 @@ export default function SettingsScreen({
           {activeSection === null && (
             <div className="space-y-6 animate-in fade-in duration-300">
               {/* Profile Card Banner */}
-              <div className="p-6 bg-slate-900/40 border border-slate-800/80 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-36 h-36 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+              <div className={isLiteMode ? "p-4 bg-slate-900/30 border border-transparent rounded-3xl flex items-center justify-between gap-4 relative overflow-hidden" : "p-6 bg-slate-900/40 border border-slate-800/80 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden"}>
+                {!isLiteMode && <div className="absolute top-0 right-0 w-36 h-36 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />}
                 
-                <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row w-full sm:w-auto">
-                  <div className="w-16 h-16 rounded-full bg-slate-950 border-2 border-indigo-500/20 overflow-hidden flex items-center justify-center shrink-0">
+                <div className={isLiteMode ? "flex items-center gap-4 w-full" : "flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row w-full sm:w-auto"}>
+                  <div className={isLiteMode ? "w-14 h-14 rounded-full bg-slate-800 overflow-hidden flex items-center justify-center shrink-0" : "w-16 h-16 rounded-full bg-slate-950 border-2 border-indigo-500/20 overflow-hidden flex items-center justify-center shrink-0"}>
                     {user.avatarUrl === 'indexeddb:user_avatar' ? (
                       <div className="w-full h-full bg-slate-800 animate-pulse" />
                     ) : user.avatarUrl ? (
                       <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
-                      <User size={24} className="text-slate-400" />
+                      <User size={isLiteMode ? 20 : 24} className="text-slate-400" />
                     )}
                   </div>
-                  <div>
-                    <h2 className="text-lg font-black text-slate-100 tracking-tight">
+                  <div className={isLiteMode ? "flex-1" : ""}>
+                    <h2 className={isLiteMode ? "text-base font-bold text-slate-100" : "text-lg font-black text-slate-100 tracking-tight"}>
                       {lang === 'id' ? `Halo, ${user.name || 'Pengguna'}!` : `Hello, ${user.name || 'User'}!`}
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-400 mt-0.5">
                       {isLiteMode 
-                        ? (lang === 'id' ? 'Tampilan Lite aktif untuk fokus maksimal.' : 'Lite mode active for maximum focus.')
+                        ? (lang === 'id' ? 'Tampilan Lite' : 'Lite Mode')
                         : (lang === 'id' ? 'Tampilan Pro aktif dengan penyesuaian visual penuh.' : 'Pro mode active with full personalization.')
                       }
                     </p>
                   </div>
                 </div>
 
-                {streak > 0 && (
+                {streak > 0 && !isLiteMode && (
                   <div className="px-4 py-2 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center gap-2 shrink-0 self-center sm:self-auto animate-pulse">
                     <span className="text-base">🔥</span>
                     <span className="text-xs font-black text-amber-400">{streak} {lang === 'id' ? 'Hari Beruntun' : 'Day Streak'}</span>
                   </div>
                 )}
+                {streak > 0 && isLiteMode && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-sm">🔥</span>
+                    <span className="text-xs font-bold text-amber-500">{streak}</span>
+                  </div>
+                )}
               </div>
 
               {/* Mode Selector Option (Pro vs Lite switch) */}
-              <div className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className={isLiteMode ? "p-4 bg-slate-900/30 border border-transparent rounded-3xl flex items-center justify-between gap-4" : "p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4"}>
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                    <Smartphone size={18} />
+                  <div className={isLiteMode ? "w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0" : "w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0"}>
+                    <Smartphone size={isLiteMode ? 20 : 18} />
                   </div>
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="font-bold text-[14px] text-slate-200">{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
-                    <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur tambahan (Games, Wallpaper) agar lebih fokus.' : 'Hide extra features (Games, Wallpaper) for a cleaner layout.'}</span>
+                    <span className={isLiteMode ? "font-bold text-[15px] text-slate-200" : "font-bold text-[14px] text-slate-200"}>{lang === 'id' ? 'Tipe Tampilan' : 'Display Mode'}</span>
+                    {!isLiteMode && <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Sembunyikan fitur tambahan (Games, Wallpaper) agar lebih fokus.' : 'Hide extra features (Games, Wallpaper) for a cleaner layout.'}</span>}
                   </div>
                 </div>
-                <div className="flex bg-slate-950/60 p-1 border border-slate-850 rounded-xl shrink-0 w-full sm:w-auto">
+
+                <div className={isLiteMode ? "flex bg-slate-950/40 p-1 border border-slate-800/60 rounded-xl shrink-0" : "flex bg-slate-950/60 p-1 border border-slate-850 rounded-xl shrink-0 w-full sm:w-auto"}>
                   <button
                     onClick={() => {
                       setIsLiteMode(true);
                       showNotificationToast(lang === 'id' ? 'Mode Lite aktif! Tampilan sangat bersih.' : 'Lite Mode active! Clean interface.');
                     }}
-                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
-                      isLiteMode ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
+                      isLiteMode ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    Lite Mode ⚡
+                    Lite ⚡
                   </button>
                   <button
                     onClick={() => {
                       setIsLiteMode(false);
                       showNotificationToast(lang === 'id' ? 'Mode Pro aktif! Semua fitur kustomisasi terbuka.' : 'Pro Mode active! All customizations enabled.');
                     }}
-                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
-                      !isLiteMode ? 'bg-indigo-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
+                      !isLiteMode ? 'bg-indigo-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    Pro Mode 👑
+                    Pro 👑
                   </button>
                 </div>
               </div>
 
               {/* Categorized Menu List */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className={isLiteMode ? "flex flex-col gap-2 bg-transparent" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
                 {/* 1. Appearance Section Card */}
                 <button 
                   onClick={() => setActiveSection('appearance')}
-                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  className={isLiteMode 
+                    ? "p-4 bg-slate-900/40 hover:bg-slate-800/60 rounded-[1.25rem] transition-all group cursor-pointer flex items-center gap-4"
+                    : "p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  }
                 >
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Palette size={18} />
+                  <div className={isLiteMode ? "w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0" : "w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform"}>
+                    <Palette size={isLiteMode ? 20 : 18} />
                   </div>
-                  <div className="mt-4">
+                  <div className={isLiteMode ? "flex-1" : "mt-4"}>
                     <div className="flex items-center justify-between">
                       <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Tampilan & Profil' : 'Appearance & Profile'}</span>
-                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                      {!isLiteMode && <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Kelola nama, avatar, bahasa aplikasi, dan tema warna.' : 'Manage name, avatar, app language, and color theme.'}</p>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Kelola nama, avatar, bahasa, tema.' : 'Manage name, avatar, app language, theme.'}</p>
                   </div>
+                  {isLiteMode && <ChevronRight size={18} className="text-slate-500 group-hover:translate-x-1 transition-all shrink-0" />}
                 </button>
 
                 {/* 2. Security Section Card */}
                 <button 
                   onClick={() => setActiveSection('security')}
-                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  className={isLiteMode 
+                    ? "p-4 bg-slate-900/40 hover:bg-slate-800/60 rounded-[1.25rem] transition-all group cursor-pointer flex items-center gap-4"
+                    : "p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  }
                 >
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Lock size={18} />
+                  <div className={isLiteMode ? "w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0" : "w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center group-hover:scale-105 transition-transform"}>
+                    <Lock size={isLiteMode ? 20 : 18} />
                   </div>
-                  <div className="mt-4">
+                  <div className={isLiteMode ? "flex-1" : "mt-4"}>
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Keamanan PIN' : 'Security PIN'}</span>
-                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-emerald-400 transition-colors">{lang === 'id' ? 'Keamanan PIN' : 'Security PIN'}</span>
+                      {!isLiteMode && <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Kunci aplikasi Anda menggunakan PIN 4-digit yang aman.' : 'Lock your application using a secure 4-digit PIN.'}</p>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Kunci aplikasi dengan PIN 4-digit.' : 'Lock app using a 4-digit PIN.'}</p>
                   </div>
+                  {isLiteMode && <ChevronRight size={18} className="text-slate-500 group-hover:translate-x-1 transition-all shrink-0" />}
                 </button>
 
                 {/* 3. Backup Section Card */}
                 <button 
                   onClick={() => setActiveSection('backup')}
-                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  className={isLiteMode 
+                    ? "p-4 bg-slate-900/40 hover:bg-slate-800/60 rounded-[1.25rem] transition-all group cursor-pointer flex items-center gap-4"
+                    : "p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  }
                 >
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Database size={18} />
+                  <div className={isLiteMode ? "w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0" : "w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center group-hover:scale-105 transition-transform"}>
+                    <Database size={isLiteMode ? 20 : 18} />
                   </div>
-                  <div className="mt-4">
+                  <div className={isLiteMode ? "flex-1" : "mt-4"}>
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Cadangan & Database' : 'Backup & Database'}</span>
-                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-blue-400 transition-colors">{lang === 'id' ? 'Cadangan & Database' : 'Backup & Database'}</span>
+                      {!isLiteMode && <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Ekspor, impor cadangan, dan reset semua data aplikasi.' : 'Export, import backups, and reset all app database records.'}</p>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Ekspor, impor cadangan, dan reset data.' : 'Export, import backups, reset data.'}</p>
                   </div>
+                  {isLiteMode && <ChevronRight size={18} className="text-slate-500 group-hover:translate-x-1 transition-all shrink-0" />}
                 </button>
 
-                {/* 4. About Section Card */}
-                <button 
-                  onClick={() => setActiveSection('about')}
-                  className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
-                >
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Info size={18} />
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Tentang Noto' : 'About Noto'}</span>
-                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Informasi legalitas, uji notifikasi, dan perawatan sistem.' : 'Legal info, test notifications, and system diagnostic care.'}</p>
-                  </div>
-                </button>
                 {/* 5. AI Assistant Section Card */}
                 <button 
                   onClick={() => setActiveSection('ai')}
-                  className={`p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px] ${isLiteMode ? 'sm:col-span-2' : ''}`}
+                  className={isLiteMode 
+                    ? "p-4 bg-slate-900/40 hover:bg-slate-800/60 rounded-[1.25rem] transition-all group cursor-pointer flex items-center gap-4"
+                    : "p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  }
                 >
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Bot size={18} />
+                  <div className={isLiteMode ? "w-10 h-10 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center shrink-0" : "w-10 h-10 rounded-2xl bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center justify-center group-hover:scale-105 transition-transform"}>
+                    <Bot size={isLiteMode ? 20 : 18} />
                   </div>
-                  <div className="mt-4">
+                  <div className={isLiteMode ? "flex-1" : "mt-4"}>
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">{lang === 'id' ? 'Pengaturan Noto AI' : 'Noto AI Settings'}</span>
-                      <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-orange-400 transition-colors">{lang === 'id' ? 'Pengaturan Noto AI' : 'Noto AI Settings'}</span>
+                      {!isLiteMode && <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Konfigurasi provider, masukkan API Key mandiri Anda untuk mengaktifkan asisten AI.' : 'Configure provider, enter your own API Key to activate the AI assistant.'}</p>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Konfigurasi provider & API Key mandiri.' : 'Configure provider & API Key.'}</p>
                   </div>
+                  {isLiteMode && <ChevronRight size={18} className="text-slate-500 group-hover:translate-x-1 transition-all shrink-0" />}
                 </button>
 
                 {/* 6. Mini Games Section Card (Pro Mode only) */}
@@ -953,22 +960,43 @@ export default function SettingsScreen({
                     onClick={() => onNavigate && onNavigate('games-hub')}
                     className="p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
                   >
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
                       <Gamepad2 size={18} />
                     </div>
                     <div className="mt-4">
                       <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-indigo-400 transition-colors">
+                        <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-rose-400 transition-colors">
                           {lang === 'id' ? 'Mini Games' : 'Mini Games'}
                         </span>
                         <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />
                       </div>
                       <p className="text-xs text-slate-400 mt-1.5 leading-normal">
-                        {lang === 'id' ? 'Istirahat sejenak dengan pilihan game kasual yang seru.' : 'Take a short break with a selection of fun casual games.'}
+                        {lang === 'id' ? 'Istirahat sejenak dengan pilihan game kasual.' : 'Take a short break with casual games.'}
                       </p>
                     </div>
                   </button>
                 )}
+                
+                {/* 4. About Section Card */}
+                <button 
+                  onClick={() => setActiveSection('about')}
+                  className={isLiteMode 
+                    ? "p-4 bg-slate-900/40 hover:bg-slate-800/60 rounded-[1.25rem] transition-all group cursor-pointer flex items-center gap-4"
+                    : "p-5 bg-slate-900/40 border border-slate-800/80 rounded-3xl text-left hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all group cursor-pointer flex flex-col justify-between min-h-[140px]"
+                  }
+                >
+                  <div className={isLiteMode ? "w-10 h-10 rounded-xl bg-slate-500/10 text-slate-400 flex items-center justify-center shrink-0" : "w-10 h-10 rounded-2xl bg-slate-500/10 text-slate-400 border border-slate-500/20 flex items-center justify-center group-hover:scale-105 transition-transform"}>
+                    <Info size={isLiteMode ? 20 : 18} />
+                  </div>
+                  <div className={isLiteMode ? "flex-1" : "mt-4"}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-[15px] text-slate-100 group-hover:text-slate-300 transition-colors">{lang === 'id' ? 'Tentang Noto' : 'About Noto'}</span>
+                      {!isLiteMode && <ChevronRight size={16} className="text-slate-500 group-hover:translate-x-1 transition-all" />}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1.5 leading-normal">{lang === 'id' ? 'Informasi legalitas dan uji sistem.' : 'Legal info and system diagnostic care.'}</p>
+                  </div>
+                  {isLiteMode && <ChevronRight size={18} className="text-slate-500 group-hover:translate-x-1 transition-all shrink-0" />}
+                </button>
               </div>
 
               {/* Minimal Brand Tag */}
@@ -1002,9 +1030,9 @@ export default function SettingsScreen({
 
               {/* SECTION: APPEARANCE */}
               {activeSection === 'appearance' && (
-                <div className="space-y-6">
+                <div className={isLiteMode ? "space-y-4" : "space-y-6"}>
                   {/* Avatar & Profile Card */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-6">
+                  <div className={`flex flex-col gap-6 ${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"}`}>
                     <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{lang === 'id' ? 'Identitas Pengguna' : 'User Identity'}</h4>
                     <div className="flex flex-col sm:flex-row items-center gap-6">
                       {/* Avatar upload */}
@@ -1055,7 +1083,7 @@ export default function SettingsScreen({
                   </div>
 
                   {/* Language Card */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                  <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} flex flex-col gap-4`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center">
@@ -1084,7 +1112,7 @@ export default function SettingsScreen({
                   </div>
 
                   {/* Themes selection Card */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                  <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} flex flex-col gap-4`}>
                     <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{lang === 'id' ? 'Tema Warna Aplikasi' : 'Application Theme'}</h4>
                     <div className="flex flex-wrap gap-3">
                       {[
@@ -1119,7 +1147,7 @@ export default function SettingsScreen({
 
                   {/* Wallpaper uploads (Only in Pro Mode) */}
                   {!isLiteMode ? (
-                    <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                    <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} flex flex-col gap-4`}>
                       <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{lang === 'id' ? 'Kustomisasi Wallpaper (Pro)' : 'Custom Wallpapers (Pro)'}</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Box 1: Custom wallpaper */}
@@ -1187,9 +1215,9 @@ export default function SettingsScreen({
 
               {/* SECTION: SECURITY */}
               {activeSection === 'security' && (
-                <div className="space-y-6">
+                <div className={isLiteMode ? "space-y-4" : "space-y-6"}>
                   {/* Security PIN status */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-6">
+                  <div className={`flex flex-col gap-6 ${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"}`}>
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
                         <Lock size={20} />
@@ -1242,7 +1270,7 @@ export default function SettingsScreen({
 
                   {/* PIN Change logs */}
                   {appPin && (
-                    <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-4">
+                    <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} space-y-4`}>
                       <button 
                         onClick={() => setShowPinHistoryDropdown(!showPinHistoryDropdown)}
                         className="w-full flex items-center justify-between text-left cursor-pointer"
@@ -1318,9 +1346,9 @@ export default function SettingsScreen({
 
               {/* SECTION: DATABASE & BACKUP */}
               {activeSection === 'backup' && (
-                <div className="space-y-6">
+                <div className={isLiteMode ? "space-y-4" : "space-y-6"}>
                   {/* Database Actions Cards */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-4">
+                  <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} flex flex-col gap-4`}>
                     <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{lang === 'id' ? 'Ekspor & Impor Database' : 'Database Export & Import'}</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button 
@@ -1352,7 +1380,7 @@ export default function SettingsScreen({
                   </div>
 
                   {/* Auto-backup trigger settings */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl">
+                  <div className={isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"}>
                     {renderAutoBackupSettings()}
                   </div>
 
@@ -1379,9 +1407,9 @@ export default function SettingsScreen({
 
               {/* SECTION: ABOUT & DIAGNOSTICS */}
               {activeSection === 'about' && (
-                <div className="space-y-6">
+                <div className={isLiteMode ? "space-y-4" : "space-y-6"}>
                   {/* System Care */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} flex flex-col sm:flex-row sm:items-center justify-between gap-4`}>
                     <div className="flex flex-col">
                       <span className="font-bold text-[14px] text-slate-200">{lang === 'id' ? 'Perawatan Sistem' : 'System Care'}</span>
                       <span className="text-xs text-slate-400 leading-normal mt-0.5">{lang === 'id' ? 'Segarkan cache aplikasi jika terjadi kesalahan layar.' : 'Refresh app storage cache if glitches occur.'}</span>
@@ -1395,7 +1423,7 @@ export default function SettingsScreen({
                   </div>
 
                   {/* Notification Test */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-4">
+                  <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} space-y-4`}>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex flex-col">
                         <span className="font-bold text-[14px] text-slate-200">{lang === 'id' ? 'Uji Coba Notifikasi' : 'Notification Test Tool'}</span>
@@ -1417,7 +1445,7 @@ export default function SettingsScreen({
                   </div>
 
                   {/* Document Links */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl flex flex-col gap-3">
+                  <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} flex flex-col gap-3`}>
                     <button 
                       onClick={() => setShowPrivacyPolicy(true)}
                       className="w-full flex items-center justify-between p-3 bg-slate-950/40 hover:bg-slate-950/80 rounded-2xl border border-slate-850 transition-all text-left cursor-pointer"
@@ -1449,7 +1477,7 @@ export default function SettingsScreen({
 
               {/* SECTION: NOTO AI SETTINGS */}
               {activeSection === 'ai' && (
-                <div className="space-y-6">
+                <div className={isLiteMode ? "space-y-4" : "space-y-6"}>
                   {/* Privacy Disclaimer Card */}
                   <div className="p-5 sm:p-6 bg-indigo-950/15 border border-indigo-900/30 rounded-3xl space-y-3">
                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-1.5">
@@ -1463,28 +1491,14 @@ export default function SettingsScreen({
                     <ul className="text-[11px] text-slate-400 space-y-1.5 list-disc list-inside">
                       <li>{lang === 'id' ? 'API Key disimpan secara lokal di perangkat Anda (IndexedDB).' : 'Your API Key is saved locally in this device (IndexedDB).'}</li>
                       <li>{lang === 'id' ? 'Kunci Anda disimpan dengan aman dan diproses langsung lewat server lokal Anda.' : 'Your key is stored securely and processed directly via your backend server.'}</li>
-                      <li>{lang === 'id' ? 'Fitur AI di workspace Preview berjalan otomatis menggunakan kunci developer bawaan AI Studio. Di website publik (Shared/Deployed), Anda wajib mengonfigurasi kunci API Anda sendiri.' : 'AI features in the workspace Preview work automatically using AI Studio\'s built-in developer key. On the public website (Shared/Deployed), you must configure your own API key.'}</li>
+                      
                     </ul>
                     
-                    <div className="mt-3.5 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-[11px] text-amber-300/90 leading-relaxed space-y-1">
-                      <span className="font-bold flex items-center gap-1">
-                        <Info size={12} /> {lang === 'id' ? 'Kenapa di Preview bisa tapi di Website gagal?' : 'Why does it work in Preview but fail on Website?'}
-                      </span>
-                      <p>
-                        {lang === 'id' 
-                          ? 'Di dalam iframe Preview AI Studio, kunci pengembang otomatis aktif untuk mempermudah uji coba. Di website yang disebar/dideploy, kunci tersebut sengaja ditiadakan demi keamanan kuota pengembang.'
-                          : 'Within the AI Studio Preview iframe, the developer key is auto-active for easier testing. On shared/deployed websites, this key is excluded to protect developer quotas.'}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                        {lang === 'id'
-                          ? '💡 Solusi Terbaik: Anda juga bisa memasukkan GEMINI_API_KEY Anda ke bagian Secrets/Environment Variables di pengaturan deploy Google AI Studio Anda, agar semua pengunjung web langsung terhubung secara gratis dan otomatis!'
-                          : '💡 Best Solution: You can also add your GEMINI_API_KEY to the Secrets/Environment Variables section in your Google AI Studio deployment settings, so all web visitors are automatically connected for free!'}
-                      </p>
-                    </div>
+                    
                   </div>
 
                   {/* AI Provider & Form Section */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-5">
+                  <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} space-y-5`}>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">
                         {lang === 'id' ? 'AI Provider' : 'AI Provider'}
@@ -1677,7 +1691,7 @@ export default function SettingsScreen({
                   </div>
 
                   {/* Accordion/Collapsible Guide Section */}
-                  <div className="p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-4">
+                  <div className={`${isLiteMode ? "p-4 sm:p-5 bg-slate-900/30 border border-transparent rounded-3xl" : "p-5 sm:p-6 bg-slate-900/40 border border-slate-800/80 rounded-3xl"} space-y-4`}>
                     <button
                       onClick={() => setShowGuide(!showGuide)}
                       className="w-full flex items-center justify-between text-left cursor-pointer group"
@@ -1855,7 +1869,7 @@ export default function SettingsScreen({
                   setPinAnswerInput('');
                   setPinError(false);
                 }}
-                className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-200 bg-slate-950/40 border border-slate-800/60 hover:bg-slate-800/40 transition-all cursor-pointer"
+                className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-400 hover:text-slate-200 bg-slate-950/40 border border-transparent hover:bg-slate-800/40 transition-all cursor-pointer"
               >
                 {t('cancel')}
               </button>
@@ -1953,7 +1967,7 @@ export default function SettingsScreen({
                     ))}
                   </div>
 
-                  <div className="bg-slate-950/60 border border-slate-850 rounded-2xl p-4 space-y-3">
+                  <div className={isLiteMode ? "bg-slate-950/40 border border-transparent rounded-xl p-3 space-y-2" : "bg-slate-950/60 border border-slate-850 rounded-2xl p-4 space-y-3"}>
                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">{lang === 'id' ? 'Proteksi Enkripsi Sandi (Opsional)' : 'Encryption Password (Optional)'}</span>
                     <p className="text-[10px] text-slate-500 leading-normal">{lang === 'id' ? 'Masukkan sandi untuk mengamankan file cadangan. Jika dikosongkan, file tidak terenkripsi.' : 'Enter a password to encrypt backup file. If empty, the file remains in raw text.'}</p>
                     <input 
@@ -1979,7 +1993,7 @@ export default function SettingsScreen({
                     </div>
                   </div>
 
-                  <div className="bg-slate-950/60 border border-slate-850 rounded-2xl p-4 space-y-3">
+                  <div className={isLiteMode ? "bg-slate-950/40 border border-transparent rounded-xl p-3 space-y-2" : "bg-slate-950/60 border border-slate-850 rounded-2xl p-4 space-y-3"}>
                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">{lang === 'id' ? 'Masukkan Sandi Dekripsi' : 'Decrypt Password Required'}</span>
                     <p className="text-[10px] text-slate-500 leading-normal">{lang === 'id' ? 'Jika file cadangan Anda menggunakan kata sandi enkripsi, silakan masukkan untuk membuka.' : 'If your backup file was encrypted with a password, enter it below to restore.'}</p>
                     <input 

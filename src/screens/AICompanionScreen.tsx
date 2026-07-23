@@ -31,7 +31,7 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
   const [showNoteAttachModal, setShowNoteAttachModal] = useState(false);
 
   // Daily AI Credits State
-  const [creditsLeft, setCreditsLeft] = useState(10);
+  const [creditsLeft, setCreditsLeft] = useState(15);
   const [todayStr] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -55,8 +55,8 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
         setCreditsLeft(Number(storedCredits));
       } else {
         localStorage.setItem('noto_ai_credits_date', todayStr);
-        localStorage.setItem('noto_ai_credits_left', '10');
-        setCreditsLeft(10);
+        localStorage.setItem('noto_ai_credits_left', '15');
+        setCreditsLeft(15);
       }
     } catch (e) {
       console.error("Failed to load credits:", e);
@@ -171,10 +171,10 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
     const textToSend = (customPrompt || inputText).trim();
     if (!textToSend) return;
 
-    if (creditsLeft <= 0) {
+    if (creditsLeft <= 0 && !geminiApiKey) {
       setErrorMsg(lang === 'id' 
-        ? "Kredit AI harian Anda telah habis (Maks 10 per hari). Kredit akan di-reset otomatis besok!" 
-        : "Your daily AI credits are fully spent (Max 10 per day). Credits will automatically reset tomorrow!");
+        ? "Kredit AI harian Anda telah habis (Maks 15 per hari). Kredit akan di-reset otomatis besok!" 
+        : "Your daily AI credits are fully spent (Max 15 per day). Credits will automatically reset tomorrow!");
       return;
     }
 
@@ -333,7 +333,7 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
         return finalHistory;
       });
 
-      updateCredits(Math.max(0, creditsLeft - 1));
+      if (!geminiApiKey) updateCredits(Math.max(0, creditsLeft - 1));
 
     } catch (err: any) {
       console.error(err);
@@ -389,7 +389,7 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700/80">
             <Sparkles size={13} className="text-amber-400" />
             <span className="text-xs font-semibold text-slate-300">
-              {creditsLeft} {lang === 'id' ? 'Kredit' : 'Credits'}
+              {geminiApiKey ? (lang === 'id' ? 'Kredit Tak Terbatas (BYOK)' : 'Unlimited (BYOK)') : `${creditsLeft} ${lang === 'id' ? 'Kredit' : 'Credits'}`}
             </span>
           </div>
           
@@ -404,129 +404,11 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 overflow-hidden flex flex-col md:flex-row relative">
-        {/* Left Side: Info & Guidelines Panel (Hidden on small mobile) */}
-        <div className="hidden md:flex flex-col w-[320px] bg-slate-900/60 border-r border-slate-800 p-5 overflow-y-auto gap-5 shrink-0 no-scrollbar">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-indigo-400">
-              <Lock size={18} />
-              <h3 className="font-bold text-sm uppercase tracking-wider">{lang === 'id' ? 'Benteng Privasi' : 'Privacy Shield'}</h3>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              {lang === 'id' 
-                ? "Noto AI berjalan statelesst tanpa server database. Data Anda dirangkum lokal di perangkat Anda lalu dikirim HANYA jika Anda mengizinkannya."
-                : "Noto AI runs statelessly without a backend database. Your data is compiled locally on device and only transmitted if you explicitly grant permission."}
-            </p>
-          </div>
-
-          <div className="h-[1px] bg-slate-800" />
-
-          {/* Quick analysis guidelines */}
-          <div className="flex flex-col gap-3">
-            <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider">{lang === 'id' ? 'Pintasan Analisis' : 'Analysis Shortcuts'}</h4>
-            <button
-              onClick={() => handleSend(lang === 'id' ? "Tolong beri saya analisis mood minggu ini" : "Please give me a mood reflection for this week", 'mood')}
-              className="flex items-center gap-3 p-3 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 rounded-2xl text-left hover:border-indigo-500/50 transition-all text-xs cursor-pointer group"
-            >
-              <Smile size={16} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-              <div>
-                <div className="font-semibold text-slate-200">{lang === 'id' ? 'Analisis Mood' : 'Mood reflection'}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">{lang === 'id' ? 'Tinjau suasana hati aman' : 'Securely analyze mood logs'}</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleSend(lang === 'id' ? "Bagaimana kondisi keuangan saya bulan ini?" : "How is my financial performance this month?", 'finance')}
-              className="flex items-center gap-3 p-3 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 rounded-2xl text-left hover:border-indigo-500/50 transition-all text-xs cursor-pointer group"
-            >
-              <Wallet size={16} className="text-amber-400 group-hover:scale-110 transition-transform" />
-              <div>
-                <div className="font-semibold text-slate-200">{lang === 'id' ? 'Keuangan Agregat' : 'Financial Summary'}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">{lang === 'id' ? 'Kirim ringkasan total angka' : 'Transmit aggregated totals only'}</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleSend(lang === 'id' ? "Beri evaluasi kedisiplinan dan produktivitas saya" : "Evaluate my productivity and check-in discipline", 'tasks')}
-              className="flex items-center gap-3 p-3 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 rounded-2xl text-left hover:border-indigo-500/50 transition-all text-xs cursor-pointer group"
-            >
-              <CheckSquare size={16} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-              <div>
-                <div className="font-semibold text-slate-200">{lang === 'id' ? 'Kedisiplinan Kerja' : 'Discipline & Tasks'}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">{lang === 'id' ? 'Analisis streak & rasio tugas' : 'Analyze streak & completion rate'}</div>
-              </div>
-            </button>
-          </div>
-
-          <div className="h-[1px] bg-slate-800" />
-
-          {/* AI Credits Transparency Card */}
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/80 flex flex-col gap-2.5">
-            <div className="flex items-center gap-1.5 text-amber-400">
-              <Sparkles size={14} className="animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-wider">
-                {lang === 'id' ? 'Sistem Kredit Noto AI' : 'Noto AI Credits System'}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              {lang === 'id'
-                ? "Guna membatasi penggunaan AI demi kenyamanan dan efisiensi bersama, sistem kredit transparan diterapkan:"
-                : "To limit AI usage responsibly and maintain high efficiency, a transparent credit system is enforced:"}
-            </p>
-            <ul className="space-y-1.5 text-[10px] text-slate-300">
-              <li className="flex items-start gap-1.5">
-                <span className="text-amber-400 mt-0.5">•</span>
-                <span>
-                  {lang === 'id'
-                    ? "Pengguna Gratis memiliki 10 AI Credits per hari."
-                    : "Free Users receive 10 AI Credits per day."}
-                </span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-amber-400 mt-0.5">•</span>
-                <span>
-                  {lang === 'id'
-                    ? "Satu pesan sukses mengurangi 1 AI Credit."
-                    : "One successful message deducts 1 AI Credit."}
-                </span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-amber-400 mt-0.5">•</span>
-                <span>
-                  {lang === 'id'
-                    ? "Kredit TIDAK berkurang jika AI gagal merespons atau error."
-                    : "Credits DO NOT deduct if the AI fails to reply due to an error."}
-                </span>
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span className="text-indigo-400 mt-0.5">•</span>
-                <span>
-                  {lang === 'id'
-                    ? "Kredit akan otomatis di-reset penuh setiap hari."
-                    : "Credits automatically reset in full every day."}
-                </span>
-              </li>
-              <li className="flex items-start gap-1.5 border-t border-slate-800/60 pt-1.5 mt-1">
-                <span className="text-indigo-400 font-bold">✨</span>
-                <span className="text-slate-400">
-                  {lang === 'id'
-                    ? "Segera Hadir: Akun Premium dengan kapasitas kredit AI jauh lebih banyak!"
-                    : "Coming Soon: Premium account with substantially more AI credits!"}
-                </span>
-              </li>
-            </ul>
-          </div>
-          
-          <div className="mt-auto p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/10 text-center">
-            <span className="text-[10px] text-slate-500 leading-relaxed block">
-              Noto AI • Version 1.1<br/>Privacy First & User Owns Data
-            </span>
-          </div>
-        </div>
-
-        {/* Right Side: Conversation Panel */}
+      <div className="flex-1 overflow-hidden flex flex-col relative">
+        {/* Conversation Panel */}
         <div className="flex-1 flex flex-col h-full bg-slate-950">
           
+          <div className="w-full max-w-4xl mx-auto flex flex-col h-full">
           {/* Active Note Context Banner */}
           {tempNoteContext ? (
             <div className="flex-none bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-3 flex items-center justify-between text-xs animate-in slide-in-from-top-2 duration-200">
@@ -570,85 +452,96 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
 
           {/* Chat Messages Log */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 no-scrollbar">
-            {/* Quick-action pills for mobile layout */}
-            <div className="md:hidden grid grid-cols-3 gap-2 pb-4 border-b border-slate-800/50">
-              <button
-                onClick={() => handleSend(lang === 'id' ? "Tolong beri saya analisis mood" : "Please give me a mood reflection", 'mood')}
-                className="flex flex-col items-center justify-center p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-center text-[10px] gap-1 hover:border-indigo-500/40"
-              >
-                <Smile size={16} className="text-emerald-400" />
-                <span className="font-semibold">{lang === 'id' ? 'Mood' : 'Mood'}</span>
-              </button>
-              <button
-                onClick={() => handleSend(lang === 'id' ? "Bagaimana kondisi keuangan saya?" : "How is my financial performance?", 'finance')}
-                className="flex flex-col items-center justify-center p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-center text-[10px] gap-1 hover:border-indigo-500/40"
-              >
-                <Wallet size={16} className="text-amber-400" />
-                <span className="font-semibold">{lang === 'id' ? 'Keuangan' : 'Finance'}</span>
-              </button>
-              <button
-                onClick={() => handleSend(lang === 'id' ? "Evaluasi disiplin saya" : "Evaluate my discipline", 'tasks')}
-                className="flex flex-col items-center justify-center p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-center text-[10px] gap-1 hover:border-indigo-500/40"
-              >
-                <CheckSquare size={16} className="text-indigo-400" />
-                <span className="font-semibold">{lang === 'id' ? 'Disiplin' : 'Discipline'}</span>
-              </button>
-            </div>
+            
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full px-4 animate-in fade-in duration-500">
+                <div className="w-16 h-16 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-6">
+                  <Bot size={32} />
+                </div>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-100 mb-2">{lang === 'id' ? 'Ada yang bisa saya bantu?' : 'How can I help you today?'}</h2>
+                <p className="text-sm text-slate-400 mb-8 text-center max-w-md">
+                  {lang === 'id' 
+                    ? 'Saya adalah asisten AI yang berjalan secara lokal untuk menjaga privasi Anda. Pilih salah satu tugas di bawah ini untuk memulai.' 
+                    : 'I am a privacy-first AI assistant. Choose a task below to get started.'}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-3xl">
+                  <button
+                    onClick={() => handleSend(lang === 'id' ? "Tolong beri saya analisis mood" : "Please give me a mood reflection", 'mood')}
+                    className="flex flex-col items-start p-4 bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/30 rounded-2xl text-left transition-all group cursor-pointer"
+                  >
+                    <Smile size={20} className="text-emerald-400 mb-3 group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold text-slate-200 text-sm mb-1">{lang === 'id' ? 'Analisis Mood' : 'Mood reflection'}</span>
+                    <span className="text-xs text-slate-400">{lang === 'id' ? 'Tinjau suasana hati secara aman' : 'Securely analyze mood logs'}</span>
+                  </button>
+                  <button
+                    onClick={() => handleSend(lang === 'id' ? "Bagaimana kondisi keuangan saya?" : "How is my financial performance?", 'finance')}
+                    className="flex flex-col items-start p-4 bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/30 rounded-2xl text-left transition-all group cursor-pointer"
+                  >
+                    <Wallet size={20} className="text-amber-400 mb-3 group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold text-slate-200 text-sm mb-1">{lang === 'id' ? 'Keuangan Agregat' : 'Financial Summary'}</span>
+                    <span className="text-xs text-slate-400">{lang === 'id' ? 'Ringkasan total pemasukan & pengeluaran' : 'Aggregated income & expenses'}</span>
+                  </button>
+                  <button
+                    onClick={() => handleSend(lang === 'id' ? "Evaluasi disiplin saya" : "Evaluate my discipline", 'tasks')}
+                    className="flex flex-col items-start p-4 bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/30 rounded-2xl text-left transition-all group cursor-pointer"
+                  >
+                    <CheckSquare size={20} className="text-indigo-400 mb-3 group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold text-slate-200 text-sm mb-1">{lang === 'id' ? 'Kedisiplinan Kerja' : 'Discipline & Tasks'}</span>
+                    <span className="text-xs text-slate-400">{lang === 'id' ? 'Analisis streak & penyelesaian tugas' : 'Analyze streak & completion rate'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
-            {messages.map((msg) => {
+
+                        {messages.map((msg) => {
               const isUser = msg.role === 'user';
               
-                            return (
+              return (
                 <div
                   key={msg.id}
-                  className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-150 w-full mb-2`}
+                  className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in duration-300 w-full mb-6`}
                 >
-                  <div className={`flex gap-3 max-w-[90%] md:max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`flex gap-4 max-w-3xl w-full ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                     
-                    {/* Icon / Avatar */}
-                    <div className={`w-8 h-8 rounded-2xl shrink-0 flex items-center justify-center text-xs font-bold shadow-sm mt-1 ${
-                      isUser 
-                        ? 'bg-slate-800 text-slate-300 border border-slate-700/50' 
-                        : 'bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-500/30'
-                    }`}>
-                      {isUser ? 'ME' : <Bot size={16} />}
-                    </div>
+                    {/* Avatar */}
+                    {!isUser && (
+                      <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold border border-indigo-500/20 bg-indigo-500/10 text-indigo-400 mt-0.5">
+                        <Bot size={18} />
+                      </div>
+                    )}
 
-                    {/* Chat Bubble */}
-                    <div className="flex flex-col gap-1.5 w-full overflow-hidden">
-                      <div className={`rounded-3xl p-4 text-[14px] leading-relaxed shadow-sm ${
+                    {/* Chat Bubble / Text */}
+                    <div className={`flex flex-col gap-1 w-full overflow-hidden ${isUser ? 'items-end' : 'items-start'}`}>
+                      <div className={`text-[15px] leading-relaxed ${
                         isUser 
-                          ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                          : 'bg-slate-900 text-slate-200 rounded-tl-sm border border-slate-800/80 prose prose-invert prose-p:leading-relaxed prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-a:text-indigo-400 max-w-none'
+                          ? 'bg-slate-800 text-slate-200 rounded-[1.5rem] px-5 py-3.5 inline-block max-w-[85%]' 
+                          : 'text-slate-200 prose prose-invert prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:border prose-pre:border-slate-800/60 prose-a:text-indigo-400 max-w-none pt-1'
                       }`}>
                         {isUser ? (
-                          <div className="whitespace-pre-wrap font-medium">{msg.content}</div>
+                          <div className="whitespace-pre-wrap">{msg.content}</div>
                         ) : (
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {msg.content}
                           </ReactMarkdown>
                         )}
-                      </div>
-                      <span className={`text-[10px] text-slate-500 font-medium px-2 ${isUser ? 'text-right' : 'text-left'}`}>
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                                            </div>
                     </div>
-
                   </div>
                 </div>
               );
             })}
 
             {isLoading && (
-              <div className="flex justify-start animate-in fade-in duration-200">
-                <div className="flex gap-3 max-w-[70%]">
-                  <div className="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                    <Bot size={16} />
+              <div className="flex justify-start animate-in fade-in duration-200 w-full mb-6">
+                <div className="flex gap-4 max-w-3xl w-full">
+                  <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mt-0.5">
+                    <Bot size={18} />
                   </div>
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-none p-4 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="pt-2 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-slate-600 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 rounded-full bg-slate-600 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 rounded-full bg-slate-600 animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -657,13 +550,7 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Error Message banner */}
-          {errorMsg && (
-            <div className="mx-4 mb-2 p-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-2.5 animate-in slide-in-from-bottom-2">
-              <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-red-300 font-medium leading-relaxed">{errorMsg}</p>
-            </div>
-          )}
+          
 
           {/* Bottom Chat Input Form */}
           <form
@@ -671,43 +558,66 @@ export default function AICompanionScreen({ onBack }: AICompanionProps) {
               e.preventDefault();
               handleSend();
             }}
-            className="flex-none p-4 md:p-6 bg-slate-900/40 border-t border-slate-800/80 flex gap-2.5 items-center pb-[calc(env(safe-area-inset-bottom)+12px)]"
+            className="flex-none p-4 md:p-6 pb-[calc(env(safe-area-inset-bottom)+16px)] w-full max-w-3xl mx-auto flex flex-col gap-2"
           >
-            {/* Attachment / Choose Note Button */}
-            <button
-              type="button"
-              onClick={() => setShowNoteAttachModal(true)}
-              className={`p-3 rounded-2xl border transition-all cursor-pointer shrink-0 ${
-                tempNoteContext 
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
-                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30'
-              }`}
-              title={lang === 'id' ? 'Lampirkan Catatan Berizin' : 'Attach Authorized Note'}
-            >
-              <FileText size={18} />
-            </button>
+            {/* Error Message banner inline */}
+            {errorMsg && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-2.5 animate-in slide-in-from-bottom-2 mb-2">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-300 font-medium leading-relaxed">{errorMsg}</p>
+              </div>
+            )}
 
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={lang === 'id' ? "Kirim pesan aman ke Noto AI..." : "Send a secure message to Noto AI..."}
-              disabled={isLoading}
-              className="flex-1 bg-slate-900 border border-slate-800 focus:border-indigo-500 rounded-2xl px-4 py-3.5 text-sm placeholder-slate-500 outline-none transition-all disabled:opacity-50 min-w-0"
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !inputText.trim()}
-              className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl transition-all disabled:opacity-40 disabled:hover:bg-indigo-600 cursor-pointer shadow-lg shadow-indigo-600/15 shrink-0"
-            >
-              <Send size={18} />
-            </button>
-          </form>
-
+            <div className="flex gap-2 items-end bg-slate-900/60 border border-slate-800 focus-within:border-indigo-500/50 focus-within:bg-slate-900 rounded-[1.5rem] p-1.5 transition-all shadow-sm">
+              <button
+                type="button"
+                onClick={() => setShowNoteAttachModal(true)}
+                className={`p-3.5 rounded-full transition-all cursor-pointer shrink-0 ${
+                  tempNoteContext 
+                    ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20' 
+                    : 'text-slate-400 hover:text-indigo-400 hover:bg-slate-800'
+                }`}
+                title={lang === 'id' ? 'Lampirkan Catatan Berizin' : 'Attach Authorized Note'}
+              >
+                <FileText size={20} />
+              </button>
+              
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!isLoading && inputText.trim()) handleSend();
+                  }
+                }}
+                placeholder={lang === 'id' ? "Kirim pesan aman ke Noto AI..." : "Send a secure message to Noto AI..."}
+                disabled={isLoading}
+                rows={1}
+                className="flex-1 bg-transparent border-none px-2 py-3.5 text-[15px] placeholder-slate-500 outline-none resize-none min-h-[52px] max-h-32 text-slate-100 no-scrollbar"
+                style={{ overflowY: 'auto' }}
+              />
+              
+              <button
+                type="submit"
+                disabled={isLoading || !inputText.trim()}
+                className={`p-3.5 rounded-full transition-all shrink-0 ${
+                  inputText.trim() && !isLoading
+                    ? 'bg-indigo-500 text-white shadow-md hover:bg-indigo-400 cursor-pointer'
+                    : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                <Send size={18} />
+              </button>
+            </div>
+            <div className="text-center text-[10px] text-slate-500 font-medium mt-1">
+              {lang === 'id' ? 'Noto AI dapat membuat kesalahan. Harap periksa informasi penting.' : 'Noto AI can make mistakes. Please verify important information.'}
+            </div>
+                    </form>
         </div>
       </div>
-
-      {/* CONSENT DIALOG MODAL */}
+    </div>
+    {/* CONSENT DIALOG MODAL */}
       <AnimatePresence>
         {showConsentModal && (
           <div className="fixed inset-0 z-[10000] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">

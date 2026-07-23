@@ -140,9 +140,9 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
   };
 
   const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [hasSeenUpdate300, setHasSeenUpdate121] = useState(() => {
+  const [hasSeenUpdate400, setHasSeenUpdate400] = useState(() => {
     try {
-      return localStorage.getItem('noto_update_3_0_0') === 'true';
+      return localStorage.getItem('noto_update_4_0_0') === 'true';
     } catch(e) {
       return true; // Skip if fails
     }
@@ -248,7 +248,7 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
           </button>
           <button className="p-3 -mr-2 text-slate-400 hover:text-slate-50 transition-colors relative" onClick={() => setShowNotificationModal(true)}>
             <Bell className="w-5 h-5" />
-            {!hasSeenUpdate300 && <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></span>}
+            {!hasSeenUpdate400 && <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border border-slate-900"></span>}
           </button>
         </div>
       </div>
@@ -609,9 +609,9 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
             className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-4" 
             onClick={() => {
               setShowNotificationModal(false);
-              if (!hasSeenUpdate300) {
-                try { localStorage.setItem('noto_update_3_0_0', 'true'); } catch(e){}
-                setHasSeenUpdate121(true);
+              if (!hasSeenUpdate400) {
+                try { localStorage.setItem('noto_update_4_0_0', 'true'); } catch(e){}
+                setHasSeenUpdate400(true);
               }
             }}
           >
@@ -627,26 +627,26 @@ export default function HomeScreen({ appTheme, setAppTheme, onOpenNote, onNaviga
                 <button 
                   onClick={() => {
                     setShowNotificationModal(false);
-                    if (!hasSeenUpdate300) {
-                      try { localStorage.setItem('noto_update_3_0_0', 'true'); } catch(e){}
-                      setHasSeenUpdate121(true);
+                    if (!hasSeenUpdate400) {
+                      try { localStorage.setItem('noto_update_4_0_0', 'true'); } catch(e){}
+                      setHasSeenUpdate400(true);
                     }
                   }}
                   className="absolute top-5 right-5 text-slate-400 hover:text-slate-200 transition-colors z-10 bg-slate-800 hover:bg-slate-700 rounded-full p-1.5"
                 >
                   <X className="w-5 h-5" />
                 </button>
-                <div className={`w-12 h-12 sm:w-16 sm:h-16 ${!hasSeenUpdate300 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'} rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm`}>
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 ${!hasSeenUpdate400 ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'} rounded-3xl flex items-center justify-center mb-6 z-10 shadow-sm`}>
                   <Bell className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-black text-slate-50 mb-3 z-10 tracking-tight">{!hasSeenUpdate300 ? t('appUpdateTitle') : t('noNotification')}</h3>
-                <p className="text-[15px] text-slate-400 mb-8 font-medium z-10 leading-relaxed px-2">{!hasSeenUpdate300 ? t('appUpdateBody') : t('allNotificationRead')}</p>
+                <h3 className="text-xl font-black text-slate-50 mb-3 z-10 tracking-tight">{!hasSeenUpdate400 ? t('appUpdateTitle') : t('noNotification')}</h3>
+                <p className="text-[15px] text-slate-400 mb-8 font-medium z-10 leading-relaxed px-2">{!hasSeenUpdate400 ? t('appUpdateBody') : t('allNotificationRead')}</p>
                 <button 
                   onClick={() => {
                     setShowNotificationModal(false);
-                    if (!hasSeenUpdate300) {
-                      try { localStorage.setItem('noto_update_3_0_0', 'true'); } catch(e){}
-                      setHasSeenUpdate121(true);
+                    if (!hasSeenUpdate400) {
+                      try { localStorage.setItem('noto_update_4_0_0', 'true'); } catch(e){}
+                      setHasSeenUpdate400(true);
                     }
                   }}
                   className="w-full py-4 rounded-2xl font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors active:scale-95 shadow-lg shadow-indigo-600/20 z-10"

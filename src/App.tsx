@@ -867,6 +867,54 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const [forgotNameInput, setForgotNameInput] = useState('');
 
+  
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (forgotModalVisible) return; // Don't intercept if forgot modal is open
+      if (/^[0-9]$/.test(e.key)) {
+        handlePinInput(e.key);
+      } else if (e.key === 'Backspace') {
+        handlePinDelete();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [input, error, forgotModalVisible]);
+
+  const handlePinInput = async (digit: string) => {
+    if (error) return;
+    setInput(prev => {
+      if (prev.length >= 4) return prev;
+      const newVal = prev + digit;
+      
+      if (newVal.length === 4) {
+        import('./utils').then(async ({ hashPin }) => {
+          const hashed = await hashPin(newVal);
+          if (hashed === correctPin || newVal === correctPin) {
+            if (newVal === correctPin && newVal !== hashed) {
+              await recordPinChange(hashed);
+            }
+            setTimeout(onUnlock, 150);
+          } else {
+            setError(true);
+            setTimeout(() => {
+              setInput('');
+              setError(false);
+            }, 800);
+          }
+        });
+      }
+      return newVal;
+    });
+  };
+
+  const handlePinDelete = () => {
+    if (!error) {
+      setInput(prev => prev.length > 0 ? prev.slice(0, -1) : prev);
+    }
+  };
+
   const handleForgotPinSubmit = async () => {
     const isCorrect = pinRecoveryAnswer 
       ? forgotNameInput.trim().toLowerCase() === pinRecoveryAnswer.trim().toLowerCase()
@@ -897,50 +945,55 @@ function PinScreen({ correctPin, onUnlock, appTheme, lang }: { correctPin: strin
   };
 
   return (
-    <div className={`min-h-screen flex justify-center items-center ${getThemeClass()} relative`}>
+    <div className={`min-h-screen flex justify-center ${getThemeClass()} relative overflow-y-auto`}>
       <OfflineIndicator lang={lang} />
-      <div className="w-full max-w-[480px] min-h-[100dvh] relative flex flex-col items-center justify-center text-slate-200 font-sans p-8 shadow-2xl sm:border-x border-slate-800 bg-slate-950 backdrop-blur-md">
+      <div className="w-full max-w-[480px] min-h-[100dvh] relative flex flex-col items-center justify-center text-slate-200 font-sans p-6 sm:p-8 shadow-2xl sm:border-x border-slate-800 bg-slate-950 backdrop-blur-md py-10 sm:py-12">
         <Lock className="w-12 h-12 text-indigo-500 mb-6" />
         <h2 className="text-xl font-bold tracking-tight mb-2">{t('pinLocked')}</h2>
         <p className="text-slate-400 text-sm mb-12">{t('enterPin')}</p>
         
-        <div className="w-full max-w-[280px] mb-12">
-          <input
-            type="password"
-            pattern="[0-9]*"
-            inputMode="numeric"
-            maxLength={4}
-            value={input}
-            onChange={async (e) => {
-              const val = e.target.value.replace(/[^0-9]/g, '');
-              setInput(val);
-              setError(false);
-              
-              if (val.length === 4) {
-                const { hashPin } = await import('./utils');
-                const hashed = await hashPin(val);
-                if (hashed === correctPin || val === correctPin) { // support legacy plaintext pin
-                  if (val === correctPin && val !== hashed) {
-                    await recordPinChange(hashed); // seamlessly upgrade to hash
-                  }
-                  setTimeout(onUnlock, 150);
-                } else {
-                  setError(true);
-                  setTimeout(() => {
-                    setInput('');
-                    setError(false);
-                  }, 800);
-                }
-              }
-            }}
-            placeholder="••••"
-            className={`w-full text-center text-3xl tracking-[0.5em] font-mono bg-slate-900/80 border-2 py-4 px-6 rounded-2xl outline-none transition-all ${
-              error 
-                ? 'border-red-500 bg-red-500/10 text-red-400 animate-pulse' 
-                : 'border-slate-800 focus:border-indigo-500 focus:bg-slate-950 focus:shadow-[0_0_15px_rgba(99,102,241,0.25)] text-indigo-400'
-            }`}
-            autoFocus
-          />
+        
+        <div className="flex flex-col items-center mb-8">
+          <div className="flex gap-4 mb-10">
+            {[0, 1, 2, 3].map((i) => (
+              <div 
+                key={i} 
+                className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                  input.length > i 
+                    ? 'bg-indigo-500 scale-100 shadow-[0_0_10px_rgba(99,102,241,0.5)]' 
+                    : 'bg-slate-800 scale-75'
+                } ${error ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse' : ''}`}
+              />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-x-8 gap-y-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <button
+                key={num}
+                type="button"
+                className="w-16 h-16 flex items-center justify-center rounded-full bg-slate-900 border border-slate-800 text-2xl font-mono text-slate-200 hover:bg-indigo-500/20 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 transition-all shadow-sm"
+                onClick={() => handlePinInput(num.toString())}
+              >
+                {num}
+              </button>
+            ))}
+            <div className="w-16 h-16"></div>
+            <button
+              type="button"
+              className="w-16 h-16 flex items-center justify-center rounded-full bg-slate-900 border border-slate-800 text-2xl font-mono text-slate-200 hover:bg-indigo-500/20 hover:border-indigo-500/50 hover:text-indigo-400 active:scale-95 transition-all shadow-sm"
+              onClick={() => handlePinInput('0')}
+            >
+              0
+            </button>
+            <button
+              type="button"
+              className="w-16 h-16 flex items-center justify-center rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:bg-rose-500/20 hover:border-rose-500/50 hover:text-rose-400 active:scale-95 transition-all shadow-sm"
+              onClick={handlePinDelete}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21 4-14 0c-1 0-2 1-3 2l-3 6 3 6c1 1 2 2 3 2l14 0c1 0 2-1 2-2l0-12c0-1-1-2-2-2z"/><path d="m16 9-4 6"/><path d="m12 9 4 6"/></svg>
+            </button>
+          </div>
         </div>
 
         <button 

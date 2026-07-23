@@ -16,7 +16,7 @@ export default function UpdateNotesModal({ isOpen, onClose, lang, t }: UpdateNot
       <div className="bg-slate-900 border border-slate-800 p-4 md:p-4 rounded-3xl w-full max-w-sm max-h-[80vh] flex flex-col">
         <h3 className="text-xl font-bold text-slate-50 mb-4">{t('aboutAppTitle')}</h3>
         <div className="overflow-y-auto pr-2 flex-1 space-y-4 mb-6 custom-scrollbar text-sm text-slate-300">
-          <p><strong>Noto v3.0</strong></p>
+          <p><strong>Noto v4.0</strong></p>
           <p>{t('aboutAppDesc')}</p>
           
           <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 text-amber-200">
@@ -33,6 +33,7 @@ export default function UpdateNotesModal({ isOpen, onClose, lang, t }: UpdateNot
               <strong className="text-emerald-400 text-sm mb-0.5">{t('appUpdateTitle')}</strong> 
               <span className="text-emerald-200">{t('appUpdateBody')}</span>
             </li>
+            <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat12')}</strong> <span>{t('aboutAppFeat12Desc')}</span></li>
             <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat11')}</strong> <span>{t('aboutAppFeat11Desc')}</span></li>
             <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat1')}</strong> <span>{t('aboutAppFeat1Desc')}</span></li>
             <li className="flex flex-col"><strong className="text-emerald-400 text-sm mb-0.5">{t('aboutAppFeat2')}</strong> <span>{t('aboutAppFeat2Desc')}</span></li>
